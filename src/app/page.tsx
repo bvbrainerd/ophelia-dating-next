@@ -1,29 +1,36 @@
-'use client'
-import { useRouter } from 'next/navigation'
+'use client';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../supabase/client';
+import { useEffect } from 'react';
 
 export default function Home() {
-  const router = useRouter(); 
+  const router = useRouter();
+
+  // const testingFunction = async () => {
+  //   const { error } = await supabase.from('testing').insert({ id: 1 });
+  // };
+  
+  // useEffect(() => {
+  //   testingFunction();
+  // }, []);
+
 
   const onLogin = () => {
-    router.push('/dashboard')
-    
-    return 
-  }
+    router.push('/dashboard');
+
+    return;
+  };
 
   const onSignup = () => {
-    return 
-  }
+    return;
+  };
 
   return (
-    <div className="max-w-md mx-auto p-5 font-sans">
-      <h1 className="">Ophelia</h1>
-      <input className="" type='email' placeholder='BC Email' />
-      <input
-        className=""
-        type='password'
-        placeholder='Password'
-      />
-      <button className="" onClick={onLogin}>
+    <div className='max-w-md mx-auto p-5 font-sans'>
+      <h1 className=''>Ophelia</h1>
+      <input className='' type='email' placeholder='BC Email' />
+      <input className='' type='password' placeholder='Password' />
+      <button className='' onClick={onLogin}>
         Log In
       </button>
       <button
