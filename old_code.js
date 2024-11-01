@@ -177,36 +177,36 @@ const ResultScreen = ({ datingStyle, onContinue }) => (
 );
 
 // Dashboard Component
-const Dashboard = ({ onMatch, onMessage, onEditProfile, onLogout, onUpcomingDates }) => (
-  <div style={commonStyles.container}>
-    <h1 style={commonStyles.h1}>Ophelia</h1>
-    <h2 style={{
-      ...commonStyles.h2,
-      color: '#cc0000',
-      fontSize: '16px',
-      fontWeight: '500',
-      textAlign: 'center',
-      marginBottom: '20px',
-      marginTop: '10px'
-    }}>It All Starts with the First Date...</h2>
-    <button style={commonStyles.button} onClick={onMatch}>Start Dating</button>
-    <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onMessage}>Date Requests</button>
-    <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onUpcomingDates}>Upcoming Dates</button>
-    <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onEditProfile}>Edit Profile</button>
-    <button 
-      style={{
-        ...commonStyles.button, 
-        marginTop: '10px', 
-        backgroundColor: 'white',
-        color: '#cc0000',
-        border: '2px solid #cc0000'
-      }} 
-      onClick={onLogout}
-    >
-      Logout
-    </button>
-  </div>
-);
+// const Dashboard = ({ onMatch, onMessage, onEditProfile, onLogout, onUpcomingDates }) => (
+//   <div style={commonStyles.container}>
+//     <h1 style={commonStyles.h1}>Ophelia</h1>
+//     <h2 style={{
+//       ...commonStyles.h2,
+//       color: '#cc0000',
+//       fontSize: '16px',
+//       fontWeight: '500',
+//       textAlign: 'center',
+//       marginBottom: '20px',
+//       marginTop: '10px'
+//     }}>It All Starts with the First Date...</h2>
+//     <button style={commonStyles.button} onClick={onMatch}>Start Dating</button>
+//     <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onMessage}>Date Requests</button>
+//     <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onUpcomingDates}>Upcoming Dates</button>
+//     <button style={{...commonStyles.button, marginTop: '10px'}} onClick={onEditProfile}>Edit Profile</button>
+//     <button 
+//       style={{
+//         ...commonStyles.button, 
+//         marginTop: '10px', 
+//         backgroundColor: 'white',
+//         color: '#cc0000',
+//         border: '2px solid #cc0000'
+//       }} 
+//       onClick={onLogout}
+//     >
+//       Logout
+//     </button>
+//   </div>
+// );
 
 // MatchingPage Component
 const MatchingPage = ({ onBack }) => {

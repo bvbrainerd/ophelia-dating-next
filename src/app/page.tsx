@@ -22,6 +22,7 @@ export default function Home() {
   };
 
   const onSignup = () => {
+    router.push('/onboarding')
     return;
   };
 
