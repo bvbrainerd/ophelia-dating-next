@@ -4,15 +4,9 @@ import { supabase } from '../../supabase/client';
 import { useEffect } from 'react';
 
 export default function Home() {
-  const router = useRouter();
+  // need to create an authentication, log in system 
 
-  // const testingFunction = async () => {
-  //   const { error } = await supabase.from('testing').insert({ id: 1 });
-  // };
-  
-  // useEffect(() => {
-  //   testingFunction();
-  // }, []);
+  const router = useRouter();
 
 
   const onLogin = () => {
