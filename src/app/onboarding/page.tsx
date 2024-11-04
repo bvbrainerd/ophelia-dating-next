@@ -28,7 +28,6 @@ export default function Page() {
   };
 
   const handleComplete = async () => {
-    // Just create the profile
     const { error } = await supabase.from('profiles').insert([
       {
         first_name: userInfo.firstName,
@@ -48,12 +47,10 @@ export default function Page() {
     router.push('/onboarding/dating_quiz');
   };
 
-  // creating a profile and a user once we handle complete
 
   return (
     <div>
       <h2>Set Up Your Profile</h2>
-      {/* Added missing name attributes and fixed typo in 'email' */}
       <input
         type='text'
         placeholder='First Name'
