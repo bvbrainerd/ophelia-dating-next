@@ -9,7 +9,7 @@ export default function Page() {
   const router = useRouter();
   const [userInfo, setUserInfo] = useState({
     firstName: '',
-    lastName: '', 
+    lastName: '',
     email: '',
     age: '',
     gender: '',
@@ -31,11 +31,12 @@ export default function Page() {
     const { error } = await supabase.from('profiles').insert([
       {
         first_name: userInfo.firstName,
-        last_name: userInfo.lastName, 
+        last_name: userInfo.lastName,
         email: userInfo.email,
         age: userInfo.age,
         gender: userInfo.gender,
         school: userInfo.school,
+        password: userInfo.password,
       },
     ]);
 
@@ -46,7 +47,6 @@ export default function Page() {
 
     router.push('/onboarding/dating_quiz');
   };
-
 
   return (
     <div>
