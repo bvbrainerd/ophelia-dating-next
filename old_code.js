@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Camera, X } from 'lucide-react';
 
+// this needs to be refactored and converted into next.js app !!!!
+
 // Common styles object
 const commonStyles = {
   container: {
