@@ -2,7 +2,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-const EditProfilePage = ({ onSave = () => {}, onBack = () => {} }) => {
+
+// { onSave = () => {}, onBack = () => {} 
+const EditProfilePage = () => {
     const router = useRouter(); 
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
