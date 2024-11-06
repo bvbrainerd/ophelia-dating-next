@@ -17,12 +17,8 @@ interface DateType {
   description: string
 }
 
-interface MessagingPageProps {
-  onBack: () => void
-  onDateAccepted: (date: DateType) => void
-}
 
-const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted }) => {
+const MessagingPage = () => {
   const [dateRequests, setDateRequests] = useState<DateType[]>([
     {
       id: 1,
@@ -59,7 +55,6 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
     if (newStatus === 'accepted') {
       const acceptedDate = dateRequests.find(request => request.id === id)
       if (acceptedDate) {
-        onDateAccepted(acceptedDate)
       }
     }
   }
@@ -139,7 +134,6 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
 
       <button 
         className="w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        onClick={onBack}
       >
         Back to Dashboard
       </button>

@@ -15,11 +15,7 @@ export default function ParentComponent() {
   }
 
   return (
-    <EditProfilePage
-      onSave={() => console.log('Save profile')}
-      onBack={() => router.back()}
-      // Pass the navigation function here
-    />
+    <></>
   )
 }
 
@@ -41,9 +37,6 @@ interface PreviousDate extends UpcomingDate {
   rating: number
 }
 
-interface UpcomingDatesPageProps {
-  onBack: () => void
-}
 
 // export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
 //   const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([

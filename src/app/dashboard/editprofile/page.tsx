@@ -2,13 +2,8 @@
 
 import { useState } from 'react'
 
-interface EditProfilePageProps {
-  onSave: () => void
-  onBack: () => void
-  // onPreviousDates: () => void // New prop for navigating to previous dates
-}
 
-export default function EditProfilePage({ onSave, onBack }: EditProfilePageProps) {
+export default function EditProfilePage() {
   const [name, setName] = useState('')
   const [age, setAge] = useState('')
   const [daterArchetype, setDaterArchetype] = useState('')
@@ -33,7 +28,6 @@ export default function EditProfilePage({ onSave, onBack }: EditProfilePageProps
 
   const handleSave = () => {
     console.log('Saving profile:', { name, age, daterArchetype, school })
-    onSave()
   }
 
   return (
@@ -111,7 +105,6 @@ export default function EditProfilePage({ onSave, onBack }: EditProfilePageProps
 
       <button 
         className="w-full p-2.5 mt-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        onClick={onBack}
       >
         Back to Dashboard
       </button>

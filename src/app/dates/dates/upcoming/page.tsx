@@ -17,11 +17,7 @@ interface UpcomingDate {
   description: string
 }
 
-interface UpcomingDatesPageProps {
-  onBack: () => void
-}
-
-export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
+export default function UpcomingDatesPage() {
   const router = useRouter() // Initialize router
   const [upcomingDates] = useState<UpcomingDate[]>([
     {
@@ -127,7 +123,6 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
 
       <button 
         className="w-full p-2.5 mt-5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        onClick={onBack}
       >
         Back to Dashboard
       </button>
