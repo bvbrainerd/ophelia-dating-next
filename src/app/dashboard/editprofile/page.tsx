@@ -5,10 +5,10 @@ import { useState } from 'react'
 interface EditProfilePageProps {
   onSave: () => void
   onBack: () => void
-  onPreviousDates: () => void // New prop for navigating to previous dates
+  // onPreviousDates: () => void // New prop for navigating to previous dates
 }
 
-export default function EditProfilePage({ onSave, onBack, onPreviousDates }: EditProfilePageProps) {
+export default function EditProfilePage({ onSave, onBack }: EditProfilePageProps) {
   const [name, setName] = useState('')
   const [age, setAge] = useState('')
   const [daterArchetype, setDaterArchetype] = useState('')
@@ -96,7 +96,7 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
       {/* Previous Dates Button */}
       <button 
         className="w-full p-2.5 mb-4 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-        onClick={onPreviousDates} // New button to navigate to Previous Dates
+        onClick={()=>{}} // New button to navigate to Previous Dates
       >
         Previous Dates
       </button>
