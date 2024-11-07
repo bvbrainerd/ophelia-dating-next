@@ -62,7 +62,7 @@ export default function Dashboard() {
 
       <button
         className='w-full p-2.5 mt-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-        onClick={() => router.push('/messaging')}
+        onClick={() => router.push('/daterequests')}
       >
         Date Requests
       </button>

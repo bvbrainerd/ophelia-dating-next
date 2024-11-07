@@ -1,4 +1,3 @@
-// app/messaging/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react'
@@ -52,9 +51,10 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
   'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
 } as const;
 
-export default function MessagingPage() {
+export default function MatchingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
@@ -198,72 +198,85 @@ export default function MessagingPage() {
           No pending date requests
         </div>
       ) : (
-        dateRequests.map((request) => (
-          <div
-            key={request.id}
-            className='border border-gray-200 rounded-lg p-5 mb-5 shadow-sm'
-          >
-            <div className='flex items-center mb-4'>
-              <div className='relative w-24 h-24 mr-4'>
-                <Image
-                  src={request.sender.avatar_url || '/default-avatar.png'}
-                  alt={`${request.sender.first_name} ${request.sender.last_name}`}
-                  fill
-                  className='object-cover rounded-full'
-                  priority
-                />
-              </div>
-              <div>
-                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                  {request.sender.first_name} {request.sender.last_name},{' '}
-                  {request.sender.age}
-                </h3>
-                <p className='text-gray-600 mb-1'>{request.sender.bio}</p>
-                <p className='mb-1'>
-                  {request.venue} on{' '}
-                  {new Date(request.proposed_time).toLocaleDateString()} @{' '}
-                  {new Date(request.proposed_time).toLocaleTimeString()}
-                </p>
-                {request.proposed_payment > 0 && (
-                  <p className='font-medium'>
-                    Proposed Payment: ${request.proposed_payment}
+        <div className="space-y-5">
+          {dateRequests.map((request) => (
+            <div
+              key={request.id}
+              className='border border-gray-200 rounded-lg p-5 shadow-sm'
+            >
+              <div className='flex items-start space-x-4'>
+                <div className="flex-shrink-0">
+                  <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
+                    <Image
+                      src={request.sender.avatar_url || '/default-avatar.png'}
+                      alt={`${request.sender.first_name} ${request.sender.last_name}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 128px"
+                      priority
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className='text-[#cc0000] text-xl font-medium mb-1 truncate'>
+                    {request.sender.first_name} {request.sender.last_name},{' '}
+                    {request.sender.age}
+                  </h3>
+                  <p className='text-gray-600 text-sm mb-2 line-clamp-2'>{request.sender.bio}</p>
+                  <p className='text-sm mb-2'>
+                    <span className="font-medium">Venue:</span> {request.venue}
                   </p>
+                  <p className='text-sm mb-2'>
+                    <span className="font-medium">Date:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleDateString()}
+                  </p>
+                  <p className='text-sm mb-2'>
+                    <span className="font-medium">Time:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                  {request.proposed_payment > 0 && (
+                    <p className='text-sm font-medium'>
+                      Proposed Payment: ${request.proposed_payment}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                {request.status === 'pending' ? (
+                  <div className='grid grid-cols-2 gap-3'>
+                    <button
+                      className='p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
+                      onClick={() => handleDateResponse(request.id, 'accepted')}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className='p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                      onClick={() => handleDateResponse(request.id, 'declined')}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <div className='bg-gray-50 p-3 rounded-lg'>
+                    <p className={`text-center font-medium ${getStatusColor(request.status)}`}>
+                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
-
-            {request.status === 'pending' ? (
-              <div className='grid grid-cols-2 gap-3'>
-                <button
-                  className='p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  onClick={() => handleDateResponse(request.id, 'accepted')}
-                >
-                  Accept
-                </button>
-                <button
-                  className='p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                  onClick={() => handleDateResponse(request.id, 'declined')}
-                >
-                  Decline
-                </button>
-              </div>
-            ) : (
-              <div className='bg-gray-50 p-3 rounded-lg'>
-                <p
-                  className={`text-center font-medium ${getStatusColor(
-                    request.status
-                  )}`}
-                >
-                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                </p>
-              </div>
-            )}
-          </div>
-        ))
+          ))}
+        </div>
       )}
 
       <button
-        className='w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+        className='w-full p-3 mt-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
         onClick={() => router.push('/dashboard')}
       >
         Back to Dashboard

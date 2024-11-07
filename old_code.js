@@ -750,7 +750,7 @@ const App = () => {
       {currentPage === 'login' && (
         <LoginSignup 
           onLogin={() => navigateTo('dashboard')} 
-          onSignup={() => navigateTo('profile')} 
+          onSignup={() => navigateTo('quiz')} 
         />
       )}
       

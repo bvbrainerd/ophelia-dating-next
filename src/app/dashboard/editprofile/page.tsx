@@ -3,7 +3,7 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { supabase } from '@/supabase/client'; // Using your existing Supabase client
+import { supabase } from '@/supabase/client';
 
 // Types
 interface ProfileData {
@@ -200,6 +200,49 @@ export default function EditProfilePage() {
       )}
 
       <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+        {/* Profile Picture Upload */}
+        <div className="flex items-center justify-center w-full mb-6">
+          <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
+            {previewUrl ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={previewUrl}
+                  alt="Profile preview"
+                  fill
+                  className="object-cover rounded-full"
+                  sizes="(max-width: 768px) 100vw, 128px"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <svg
+                  className="w-8 h-8 mb-4 text-gray-500"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                <p className="mb-2 text-xs text-gray-500 text-center">
+                  Click to upload
+                </p>
+              </div>
+            )}
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+          </label>
+        </div>
+
         <input
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
           type="text"
@@ -278,49 +321,6 @@ export default function EditProfilePage() {
             </option>
           ))}
         </select>
-
-        <div className="flex items-center justify-center w-full">
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-            {previewUrl ? (
-              <div className="relative w-full h-full">
-                <Image
-                  src={previewUrl}
-                  alt="Profile preview"
-                  fill
-                  className="object-cover rounded-lg"
-                  sizes="(max-width: 768px) 100vw, 384px"
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg
-                  className="w-8 h-8 mb-4 text-gray-500"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                <p className="mb-2 text-sm text-gray-500">
-                  <span className="font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs text-gray-500">PNG, JPG (MAX. 5MB)</p>
-              </div>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </label>
-        </div>
 
         <div className="space-y-3 pt-4">
           <button

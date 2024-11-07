@@ -23,17 +23,15 @@ interface DateRequest {
   proposed_payment: number;
 }
 
-// Define the shape of raw data from Supabase
 interface RawDateRequest {
   id: string;
   venue: string;
   proposed_time: string;
   status: 'pending' | 'accepted' | 'declined';
   proposed_payment: number;
-  profiles: Profile; // This matches the joined profiles table
+  profiles: Profile;
 }
 
-// Venue payment links mapping
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
@@ -53,8 +51,8 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
   'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
 };
-
 
 export default function DateRequests() {
   const router = useRouter();
@@ -76,8 +74,7 @@ export default function DateRequests() {
           status: request.status,
           proposed_payment: request.proposed_payment || 0,
         }));
-      
-
+        
         setDateRequests(formattedRequests);
       }
     } catch (error) {
@@ -92,7 +89,6 @@ export default function DateRequests() {
       if (newStatus === 'accepted') {
         const acceptedDate = dateRequests.find(request => request.id === requestId);
         if (acceptedDate?.venue && VENUE_PAYMENT_LINKS[acceptedDate.venue]) {
-          // Store date info before redirect
           sessionStorage.setItem('pendingDateId', requestId);
           sessionStorage.setItem('paymentReturnTime', new Date().toISOString());
           
@@ -136,12 +132,10 @@ export default function DateRequests() {
       if (pendingDateId) {
         sessionStorage.removeItem('pendingDateId');
         sessionStorage.removeItem('paymentReturnTime');
-        
         await handleDateResponse(pendingDateId, 'accepted');
       }
     };
 
-    // Check if we're returning from payment
     if (window.location.pathname === '/payment-success') {
       handlePaymentReturn();
     }
@@ -172,65 +166,81 @@ export default function DateRequests() {
               key={request.id}
               className="border border-gray-200 rounded-lg p-5 shadow-sm"
             >
-              <div className="flex items-center mb-4">
-                <div className="relative w-24 h-24 mr-4">
-                  <Image
-                    src={request.sender.avatar_url || '/default-avatar.png'}
-                    alt={`${request.sender.first_name} ${request.sender.last_name}`}
-                    fill
-                    className="object-cover rounded-full"
-                    priority
-                  />
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
+                    <Image
+                      src={request.sender.avatar_url || '/default-avatar.png'}
+                      alt={`${request.sender.first_name} ${request.sender.last_name}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 128px"
+                      priority
+                    />
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-[#cc0000] text-xl font-medium mb-1">
+                
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[#cc0000] text-xl font-medium mb-1 truncate">
                     {request.sender.first_name} {request.sender.last_name}, {request.sender.age}
                   </h2>
-                  <p className="text-gray-600 mb-1">{request.sender.bio}</p>
-                  <p className="mb-1">
-                    {request.venue} on {new Date(request.proposed_time).toLocaleDateString()} @{' '}
-                    {new Date(request.proposed_time).toLocaleTimeString()}
+                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{request.sender.bio}</p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Venue:</span> {request.venue}
+                  </p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Date:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Time:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit'
+                    })}
                   </p>
                   {request.proposed_payment > 0 && (
-                    <p className="font-medium">
+                    <p className="text-sm font-medium">
                       Proposed Payment: ${request.proposed_payment}
                     </p>
                   )}
                 </div>
               </div>
 
-              {request.status === 'pending' ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-                    onClick={() => handleDateResponse(request.id, 'accepted')}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                    onClick={() => handleDateResponse(request.id, 'declined')}
-                  >
-                    Decline
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className={`text-center font-medium ${
-                    request.status === 'accepted' ? 'text-green-600' : 'text-[#cc0000]'
-                  }`}>
-                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                  </p>
-                </div>
-              )}
+              <div className="mt-4">
+                {request.status === 'pending' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
+                      onClick={() => handleDateResponse(request.id, 'accepted')}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                      onClick={() => handleDateResponse(request.id, 'declined')}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className={`text-center font-medium ${
+                      request.status === 'accepted' ? 'text-green-600' : 'text-[#cc0000]'
+                    }`}>
+                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
 
       <button
-        className="w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        onClick={() => router.push('/daterequests')}
+        className="w-full p-3 mt-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+        onClick={() => router.push('/dashboard')}
       >
         Back to Dashboard
       </button>
