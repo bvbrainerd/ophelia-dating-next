@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import type { FC } from 'react';
 
 interface Profile {
   id: string;
@@ -43,7 +44,7 @@ interface SenderDateResponse {
   profiles: Profile;
 }
 
-export default function UpcomingDatesPage() {
+const UpcomingDatesPage: FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([]);
@@ -214,6 +215,7 @@ export default function UpcomingDatesPage() {
                   fill
                   className='object-cover rounded-full'
                   priority
+                  sizes="96px"
                 />
               </div>
               <div>
@@ -240,12 +242,14 @@ export default function UpcomingDatesPage() {
               <button
                 onClick={() => handleStartDate(date.id)}
                 className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
+                type="button"
               >
                 Start Date
               </button>
               <button
                 onClick={() => handleRescheduleOrCancel(date.id)}
                 className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                type="button"
               >
                 Reschedule or Cancel Date
               </button>
@@ -257,9 +261,12 @@ export default function UpcomingDatesPage() {
       <button
         onClick={() => router.push('/dashboard')}
         className='w-full p-2.5 mt-5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+        type="button"
       >
         Back to Dashboard
       </button>
     </div>
   );
-}
+};
+
+export default UpcomingDatesPage;

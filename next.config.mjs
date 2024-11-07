@@ -21,9 +21,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  experimental: {
-    serverActions: true,
-  },
   webpack(config) {
     return config;
   },
