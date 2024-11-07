@@ -1,102 +1,11 @@
+// app/messaging/page.tsx
 'use client';
 
-<<<<<<< HEAD
-import React, { useState, type ButtonHTMLAttributes } from 'react'
-import Image from 'next/image'
-import type { DetailedHTMLProps, ChangeEvent } from 'react'
-
-interface MatchingPageProps {
-  onBack: () => void
-}
-=======
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
 
-interface Match {
-  id: string;
-  first_name: string;
-  last_name: string;
-  age: number;
-  avatar_url: string;
-  bio: string;
-  gender: string;
-}
-
-<<<<<<< HEAD
-type ButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>
-type SelectProps = DetailedHTMLProps<React.SelectHTMLAttributes<HTMLSelectElement>, HTMLSelectElement>
-type InputProps = DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>
-
-export default function MatchingPage({ onBack }: MatchingPageProps): React.JSX.Element {
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [dateLocation, setDateLocation] = useState('')
-  const [dateTime, setDateTime] = useState('')
-  const [remainingMatches, setRemainingMatches] = useState<Match[]>([
-    { 
-      name: 'Claudia', 
-      age: 21, 
-      image: '/images/claudia_profile.jpg', 
-      description: 'Cautious Dater, Ideal Date: Restaurant, Humor: Witty' 
-    },
-    { 
-      name: 'Virginia', 
-      age: 20, 
-      image: '/images/Virginia_profile.jpg', 
-      description: 'Hopeless Romantic, Ideal Date: Concert, Favorite Genre: Alternative' 
-    },
-  ])
-
-  const venues = [
-    "Boston Bruins Game",
-    "Boston Celtics Game",
-    "BC Hockey Game",
-    "BC Basketball Game",
-    "Barcelona Wine Bar", 
-    "Kured",
-    "Capo",
-    "Locco Fenway",
-    "Blue Ribbon",
-    "Lolita Back Bay",
-    "F1 Arcade",
-    "Joe's on Newbury",
-    "Lucca North End",
-    "Museum of Fine Arts",
-    "Snowport @Seaport",
-    "Boston Commons @BeaconHill",
-    "Private Helicopter Ride"
-  ]
-
-  // Fixed sports events object with proper key-value pairs
-  const sportsEvents: { [key: string]: string } = {
-    "Boston Bruins Game": "2024-04-13T19:00",
-    "Boston Celtics Game": "2024-04-09T19:30",
-    "BC Hockey Game": "2024-04-12T19:00",
-    "BC Basketball Game": "2024-04-08T20:00"
-  }
-
-  const handleDateRequest = (): void => {
-    if (selectedMatch && dateLocation) {
-      // For sports events, use the predefined time
-      const finalDateTime = sportsEvents[dateLocation] || dateTime
-      
-      if (!finalDateTime && !dateTime) {
-        alert('Please select a time for your date.')
-        return
-      }
-
-      console.log(`Date request sent to ${selectedMatch.name} for ${dateLocation} at ${finalDateTime || dateTime}`)
-      
-      setRemainingMatches(prevMatches => prevMatches.filter(match => match !== selectedMatch))
-      
-      setSelectedMatch(null)
-      setDateLocation('')
-      setDateTime('')
-    } else {
-      alert('Please select a match and location before sending a date request.')
-=======
 interface Profile {
   id: string;
   first_name: string;
@@ -104,358 +13,261 @@ interface Profile {
   age: number;
   avatar_url: string;
   bio: string;
-  gender: string;
 }
 
-const useMatches = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+interface DateRequest {
+  id: string;
+  sender: Profile;
+  venue: string;
+  proposed_time: string;
+  status: 'pending' | 'accepted' | 'declined';
+  proposed_payment: number;
+}
 
-  const fetchMatches = async () => {
+interface RawDateRequest {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  status: 'pending' | 'accepted' | 'declined';
+  proposed_payment: number;
+  profiles: Profile;
+}
+
+const VENUE_PAYMENT_LINKS: Record<string, string> = {
+  'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
+  'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+  'BC Hockey': 'https://buy.stripe.com/bIYcPb3iw6VT5mobIN',
+  'BC Basketball': 'https://buy.stripe.com/fZebL7bP24NL9CE9AB',
+  'Boston Commons': 'https://buy.stripe.com/eVaaH31ao2FDbKM3ck',
+  'Kured': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
+  'Private Helicopter Ride': 'https://buy.stripe.com/14k2ax7yM0xv6qs8wz',
+  'Barcelona Wine Bar': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Capo': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Locco Fenway': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'F1 Arcade': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Lucca North End': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Lolita Back Bay': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Blue Ribbon Sushi': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
+  'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+} as const;
+
+export default function MessagingPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
+
+  const fetchDateRequests = async () => {
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No authenticated user');
 
-      // Get user profile
-      const { data: userProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (!userProfile) throw new Error('No profile found');
-      setCurrentUser(userProfile);
-
-      // Get existing date requests to exclude
-      const { data: dateRequests } = await supabase
+      const { data, error: requestError } = await supabase
         .from('date_requests')
-        .select('receiver_id')
-        .eq('sender_id', user.id);
+        .select(`
+          id,
+          venue,
+          proposed_time,
+          status,
+          proposed_payment,
+          profiles!date_requests_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            age,
+            avatar_url,
+            bio
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending')
+        .returns<RawDateRequest[]>();
 
-      const excludedIds = dateRequests?.map(r => r.receiver_id) || [];
+      if (requestError) throw requestError;
 
-      // Get new potential matches
-      const { data: potentialMatches, error: matchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('gender', userProfile.gender === 'male' ? 'female' : 'male')
-        .neq('id', user.id);
-
-      if (matchError) throw matchError;
-
-      if (potentialMatches) {
-        // Filter out users who already have date requests
-        const availableMatches = potentialMatches.filter(
-          match => !excludedIds.includes(match.id)
-        );
-
-        // Take first 5 matches
-        const matchesToShow = availableMatches.slice(0, 5);
-        setMatches(matchesToShow);
-
-        // Store in match_feed
-        const matchInserts = matchesToShow.map(match => ({
-          user_id: user.id,
-          potential_match_id: match.id
+      if (data) {
+        const formattedRequests: DateRequest[] = data.map((request) => ({
+          id: request.id,
+          sender: request.profiles,
+          venue: request.venue,
+          proposed_time: request.proposed_time,
+          status: request.status,
+          proposed_payment: request.proposed_payment || 0,
         }));
 
-        await supabase.from('match_feed').insert(matchInserts);
+        setDateRequests(formattedRequests);
       }
     } catch (error) {
-      console.error('Error fetching matches:', error);
+      console.error('Error fetching date requests:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDateRequest = async (matchId: string, venue: string, time: string) => {
-    if (!currentUser) return false;
+  const handlePaymentReturn = async () => {
+    const pendingDateId = localStorage.getItem('pendingDateId');
+    if (pendingDateId) {
+      localStorage.removeItem('pendingDateId');
+      localStorage.removeItem('paymentReturnTime');
+      
+      setDateRequests(prev => prev.map(request =>
+        request.id === pendingDateId 
+          ? { ...request, status: 'accepted' }
+          : request
+      ));
+    }
+  };
 
+  const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
     try {
-      // Create date request
-      const { error: requestError } = await supabase
-        .from('date_requests')
-        .insert({
-          sender_id: currentUser.id,
-          receiver_id: matchId,
-          venue: venue,
-          proposed_time: new Date(time).toISOString(),
-          status: 'pending'
-        });
+      if (newStatus === 'accepted') {
+        const acceptedDate = dateRequests.find(request => request.id === requestId);
+        if (acceptedDate) {
+          localStorage.setItem('pendingDateId', requestId);
+          localStorage.setItem('paymentReturnTime', new Date().toISOString());
 
-      if (requestError) throw requestError;
-
-      // Remove match from local state
-      setMatches(prev => prev.filter(match => match.id !== matchId));
-
-      // If running low on matches, fetch more
-      if (matches.length <= 2) {
-        fetchMatches();
+          const paymentLink = VENUE_PAYMENT_LINKS[acceptedDate.venue];
+          if (paymentLink) {
+            const returnUrl = `${window.location.origin}/payment-success`;
+            const finalPaymentLink = `${paymentLink}?redirect=${encodeURIComponent(returnUrl)}`;
+            window.location.href = finalPaymentLink;
+            return;
+          } else {
+            console.error(`No payment link found for venue: ${acceptedDate.venue}`);
+          }
+        }
       }
 
-      return true;
+      const { error } = await supabase
+        .from('date_requests')
+        .update({ status: newStatus })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setDateRequests((prev) =>
+        prev.map((request) =>
+          request.id === requestId
+            ? { ...request, status: newStatus }
+            : request
+        )
+      );
     } catch (error) {
-      console.error('Error creating date request:', error);
-      return false;
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
+      console.error('Error updating date request:', error);
+      alert('Failed to update date request. Please try again.');
     }
   };
-
-  return {
-    isLoading,
-    matches,
-    currentUser,
-    fetchMatches,
-    handleDateRequest,
-  };
-};
-
-// Rest of the component remains the same...
-export default function MatchingPage() {
-  const router = useRouter();
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [dateLocation, setDateLocation] = useState('');
-  const [dateTime, setDateTime] = useState('');
-
-  const {
-    isLoading,
-    matches,
-    currentUser,
-    fetchMatches,
-    handleDateRequest,
-  } = useMatches();
 
   useEffect(() => {
-    fetchMatches();
+    fetchDateRequests();
   }, []);
 
-  const venues = [
-    'Red Sox @Fenway Park',
-    'Kured',
-    'Museum of Fine Arts',
-    'Lolita Back Bay',
-    'Celtics Game @TD Garden',
-    'Custom',
-  ];
+  useEffect(() => {
+    handlePaymentReturn();
+  }, []);
 
-  const venueTimeSlots: { [key: string]: string[] } = {
-    'Celtics Game @TD Garden': ['2024-11-10T19:30', '2024-11-15T20:00'],
-    'Red Sox @Fenway Park': ['2024-04-05T13:30', '2024-04-06T18:00'],
-  };
-
-  const handleDateSubmit = async () => {
-    if (!selectedMatch || !dateLocation || !dateTime) {
-      alert('Please select a match, location, and time before sending a date request.');
-      return;
-    }
-
-    const success = await handleDateRequest(selectedMatch.id, dateLocation, dateTime);
-
-    if (success) {
-      setSelectedMatch(null);
-      setDateLocation('');
-      setDateTime('');
-      alert('Date request sent successfully!');
-    } else {
-      alert('Error sending date request. Please try again.');
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'accepted':
+        return 'text-green-600';
+      case 'declined':
+        return 'text-[#cc0000]';
+      default:
+        return 'text-gray-600';
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+      <div className='flex justify-center items-center min-h-screen'>
+        <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]'></div>
       </div>
     );
-  }
-
-  if (!currentUser) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <p className="text-gray-600 mb-4">Please sign in to see your matches</p>
-        <button
-          className="px-6 py-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-          onClick={() => router.push('/login')}
-        >
-          Sign In
-        </button>
-      </div>
-    );
-  }
-
-  const handleLocationChange = (e: ChangeEvent<HTMLSelectElement>): void => {
-    const selectedVenue = e.target.value
-    setDateLocation(selectedVenue)
-    
-    // Clear the dateTime if it's not a sports event
-    if (!sportsEvents[selectedVenue]) {
-      setDateTime('')
-    }
-  }
-
-  const handleTimeChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    setDateTime(e.target.value)
   }
 
   return (
-    <div className="max-w-md mx-auto p-5">
-      <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
-        Your Matches
+    <div className='max-w-md mx-auto p-5'>
+      <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
+        Your Date Requests
       </h2>
-<<<<<<< HEAD
-      
-      {remainingMatches.map((match, index) => (
-        <div 
-          key={index} 
-          className="border border-gray-200 rounded-lg p-5 mb-5 shadow-sm"
-        >
-          <div className="flex items-center mb-4">
-            <div className="relative w-24 h-24 mr-4">
-              <Image 
-                src={match.image}
-                alt={`${match.name}'s profile picture`}
-                fill
-                className="object-cover rounded-full"
-                priority
-                sizes="(max-width: 96px) 96px, 96px"
-              />
-            </div>
-            <div>
-              <h3 className="text-[#cc0000] text-xl font-medium mb-1">
-                {match.name}, {match.age}
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                {match.description}
-              </p>
-            </div>
-          </div>
-          <button 
-            className="px-6 py-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-            onClick={() => setSelectedMatch(match)}
-            type="button"
-=======
 
-      {matches.length === 0 ? (
-        <div className="text-center text-gray-600 py-8">
-          No matches available at the moment
-          <button
-            onClick={fetchMatches}
-            className="mt-4 px-6 py-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
-          >
-            Find New Matches
-          </button>
+      {dateRequests.length === 0 ? (
+        <div className='text-center text-gray-600 py-8'>
+          No pending date requests
         </div>
       ) : (
-        matches.map((match) => (
+        dateRequests.map((request) => (
           <div
-            key={match.id}
-            className="border border-gray-200 rounded-lg p-5 mb-5 shadow-sm"
+            key={request.id}
+            className='border border-gray-200 rounded-lg p-5 mb-5 shadow-sm'
           >
-            <div className="flex items-center mb-4">
-              <div className="relative w-24 h-24 mr-4">
+            <div className='flex items-center mb-4'>
+              <div className='relative w-24 h-24 mr-4'>
                 <Image
-                  src={match.avatar_url || '/default-avatar.png'}
-                  alt={`${match.first_name} ${match.last_name}`}
+                  src={request.sender.avatar_url || '/default-avatar.png'}
+                  alt={`${request.sender.first_name} ${request.sender.last_name}`}
                   fill
-                  className="object-cover rounded-full"
+                  className='object-cover rounded-full'
                   priority
                 />
               </div>
               <div>
-                <h3 className="text-[#cc0000] text-xl font-medium mb-1">
-                  {match.first_name} {match.last_name}, {match.age}
+                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
+                  {request.sender.first_name} {request.sender.last_name},{' '}
+                  {request.sender.age}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">{match.bio}</p>
+                <p className='text-gray-600 mb-1'>{request.sender.bio}</p>
+                <p className='mb-1'>
+                  {request.venue} on{' '}
+                  {new Date(request.proposed_time).toLocaleDateString()} @{' '}
+                  {new Date(request.proposed_time).toLocaleTimeString()}
+                </p>
+                {request.proposed_payment > 0 && (
+                  <p className='font-medium'>
+                    Proposed Payment: ${request.proposed_payment}
+                  </p>
+                )}
               </div>
             </div>
-            <button
-              className="px-6 py-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-              onClick={() => setSelectedMatch(match)}
-            >
-              Date
-            </button>
+
+            {request.status === 'pending' ? (
+              <div className='grid grid-cols-2 gap-3'>
+                <button
+                  className='p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
+                  onClick={() => handleDateResponse(request.id, 'accepted')}
+                >
+                  Accept
+                </button>
+                <button
+                  className='p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                  onClick={() => handleDateResponse(request.id, 'declined')}
+                >
+                  Decline
+                </button>
+              </div>
+            ) : (
+              <div className='bg-gray-50 p-3 rounded-lg'>
+                <p
+                  className={`text-center font-medium ${getStatusColor(
+                    request.status
+                  )}`}
+                >
+                  {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                </p>
+              </div>
+            )}
           </div>
         ))
       )}
 
-      {selectedMatch && (
-        <div className="border border-gray-200 rounded-lg p-5 mt-5 shadow-sm">
-          <h3 className="text-[#cc0000] text-xl font-medium mb-4">
-            Set up your date with {selectedMatch.first_name}
-          </h3>
-          <select
-            className="w-full p-2.5 mb-4 border border-gray-200 rounded-full outline-none focus:border-[#cc0000]"
-            value={dateLocation}
-            onChange={handleLocationChange}
-          >
-            <option value="">Select a venue</option>
-            {venues.map((venue) => (
-              <option key={venue} value={venue}>
-                {venue}
-              </option>
-            ))}
-          </select>
-<<<<<<< HEAD
-          
-          {/* Only show datetime input for non-sports venues */}
-          {dateLocation && !sportsEvents[dateLocation] && (
-=======
-
-          {dateLocation in venueTimeSlots ? (
-            <select
-              className="w-full p-2.5 mb-4 border border-gray-200 rounded-full outline-none focus:border-[#cc0000]"
-              value={dateTime}
-              onChange={(e) => setDateTime(e.target.value)}
-            >
-              <option value="">Select a time</option>
-              {venueTimeSlots[dateLocation].map((slot) => (
-                <option key={slot} value={slot}>
-                  {new Date(slot).toLocaleString()}
-                </option>
-              ))}
-            </select>
-          ) : (
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
-            <input
-              className="w-full p-2.5 mb-4 border border-gray-200 rounded-full outline-none focus:border-[#cc0000]"
-              type="datetime-local"
-              value={dateTime}
-              onChange={handleTimeChange}
-            />
-          )}
-
-          <button
-            className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-<<<<<<< HEAD
-            onClick={handleDateRequest}
-            type="button"
-=======
-            onClick={handleDateSubmit}
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
-          >
-            Send Date Request
-          </button>
-        </div>
-      )}
-
       <button
-        className="w-full p-2.5 mt-5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-<<<<<<< HEAD
-        onClick={onBack}
-        type="button"
-=======
+        className='w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
         onClick={() => router.push('/dashboard')}
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
       >
         Back to Dashboard
       </button>
     </div>
-<<<<<<< HEAD
-  )
-=======
   );
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
 }

@@ -1,9 +1,31 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your config options here
   reactStrictMode: true,
   images: {
-    domains: [process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '')].filter(Boolean),
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', ''),
+        port: '',
+        pathname: '/**',
+      },
+      {
+        // For default avatar fallback
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        port: '',
+        pathname: '/**',
+      }
+    ],
+  },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  experimental: {
+    serverActions: true,
+  },
+  webpack(config) {
+    return config;
   },
 };
 

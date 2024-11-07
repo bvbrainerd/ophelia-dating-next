@@ -1,13 +1,9 @@
 'use client';
 
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-import React, { useState, useEffect } from 'react'
-=======
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
+import { supabase } from '@/supabase/client';
 
 interface Profile {
   id: string;
@@ -18,13 +14,26 @@ interface Profile {
   bio: string;
 }
 
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-interface DateRequestsPageProps {
-  onBack: () => void
-  onDateAccepted: (date: DateType) => void
+interface DateRequest {
+  id: string;
+  sender: Profile;
+  venue: string;
+  proposed_time: string;
+  status: 'pending' | 'accepted' | 'declined';
+  proposed_payment: number;
 }
 
-// Map venues to their corresponding Stripe payment links
+// Define the shape of raw data from Supabase
+interface RawDateRequest {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  status: 'pending' | 'accepted' | 'declined';
+  proposed_payment: number;
+  profiles: Profile; // This matches the joined profiles table
+}
+
+// Venue payment links mapping
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
@@ -43,147 +52,23 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Blue Ribbon Sushi': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
   'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
   'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
-  'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0', // Added mapping for Boston Celtics Game
-} as const
+  'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+};
 
-const DateRequestsPage: React.FC<DateRequestsPageProps> = ({ onBack, onDateAccepted }) => {
-  const [dateRequests, setDateRequests] = useState<DateType[]>([
-    {
-      id: 1,
-      name: 'Adelaide',
-      age: 19,
-      image: '/images/adelaide_profile.jpg',
-      description: 'Hopeless Romantic',
-      venue: 'Boston Celtics Game',
-      date: '2024-11-02',
-      time: '8:00 PM',
-      status: 'pending',
-      price: 150 // Updated to match Celtics price
-    },
-    {
-      id: 2,
-      name: 'Emelia',
-      age: 21,
-      image: '/images/emelia_profile.jpg',
-      description: 'Cautious Dater',
-      venue: 'Kured',
-      date: '2024-11-01',
-      time: '1:00 PM',
-      status: 'pending',
-      price: 10 // Updated to match Kured price
-    }
-  ])
 
-  useEffect(() => {
-    const handlePaymentReturn = async () => {
-      const pendingDateId = localStorage.getItem('pendingDateId')
-      if (pendingDateId) {
-        // Clear the pending payment data
-        localStorage.removeItem('pendingDateId')
-        localStorage.removeItem('paymentReturnTime')
-        
-        // Update the date status
-        const dateId = parseInt(pendingDateId)
-        setDateRequests(prev => prev.map(request =>
-          request.id === dateId 
-            ? { ...request, status: 'accepted' }
-            : request
-        ))
-      }
-    }
-
-    handlePaymentReturn()
-  }, [])
-
-  const handleDateResponse = async (id: number, newStatus: DateStatus) => {
-    if (newStatus === 'accepted') {
-      const acceptedDate = dateRequests.find(request => request.id === id)
-      if (acceptedDate) {
-        // Store the date ID before redirecting
-        localStorage.setItem('pendingDateId', id.toString())
-        localStorage.setItem('paymentReturnTime', new Date().toISOString())
-
-        // Notify parent component
-        onDateAccepted(acceptedDate)
-
-        // Get payment link and redirect
-        const paymentLink = VENUE_PAYMENT_LINKS[acceptedDate.venue]
-        if (paymentLink) {
-          // Add return URL to payment link
-          const returnUrl = `${window.location.origin}/payment-success`
-          const finalPaymentLink = `${paymentLink}?redirect=${encodeURIComponent(returnUrl)}`
-          window.location.href = finalPaymentLink
-        } else {
-          console.error(`No payment link found for venue: ${acceptedDate.venue}`)
-        }
-      }
-    } else {
-      // Handle decline
-      setDateRequests(prev => prev.map(request =>
-        request.id === id ? { ...request, status: newStatus } : request
-      ))
-=======
-interface DateRequest {
-  id: string;
-  sender: Profile;
-  venue: string;
-  proposed_time: string;
-  status: 'pending' | 'accepted' | 'declined';
-  proposed_payment: number;
-}
-
-// Type for raw Supabase response
-interface RawDateRequest {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: 'pending' | 'accepted' | 'declined';
-  proposed_payment: number;
-  profiles: Profile;
-}
-
-const MessagingPage = () => {
+export default function DateRequests() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
 
   const fetchDateRequests = async () => {
     try {
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('No authenticated user');
-
-      // Get pending date requests
-      const { data, error: requestError } = await supabase
-        .from('date_requests')
-        .select(
-          `
-          id,
-          venue,
-          proposed_time,
-          status,
-          proposed_payment,
-          profiles!date_requests_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url,
-            bio
-          )
-        `,
-        )
-        .eq('receiver_id', user.id)
-        .eq('status', 'pending')
-        .returns<RawDateRequest[]>();
-
-      if (requestError) throw requestError;
-
+      const response = await fetch('/api/date-requests');
+      if (!response.ok) throw new Error('Failed to fetch date requests');
+      
+      const { data } = await response.json();
       if (data) {
-        // Format the requests with correct typing
-        const formattedRequests: DateRequest[] = data.map((request) => ({
+        const formattedRequests: DateRequest[] = data.map((request: RawDateRequest) => ({
           id: request.id,
           sender: request.profiles,
           venue: request.venue,
@@ -191,6 +76,7 @@ const MessagingPage = () => {
           status: request.status,
           proposed_payment: request.proposed_payment || 0,
         }));
+      
 
         setDateRequests(formattedRequests);
       }
@@ -198,32 +84,41 @@ const MessagingPage = () => {
       console.error('Error fetching date requests:', error);
     } finally {
       setIsLoading(false);
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
     }
   };
 
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-  const getStatusColor = (status: DateStatus): string => {
-=======
-  const handleDateResponse = async (
-    requestId: string,
-    newStatus: 'accepted' | 'declined',
-  ) => {
+  const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
     try {
-      const { error } = await supabase
-        .from('date_requests')
-        .update({ status: newStatus })
-        .eq('id', requestId);
+      if (newStatus === 'accepted') {
+        const acceptedDate = dateRequests.find(request => request.id === requestId);
+        if (acceptedDate?.venue && VENUE_PAYMENT_LINKS[acceptedDate.venue]) {
+          // Store date info before redirect
+          sessionStorage.setItem('pendingDateId', requestId);
+          sessionStorage.setItem('paymentReturnTime', new Date().toISOString());
+          
+          const returnUrl = new URL('/payment-success', window.location.origin).toString();
+          const finalPaymentLink = `${VENUE_PAYMENT_LINKS[acceptedDate.venue]}?redirect=${encodeURIComponent(returnUrl)}`;
+          window.location.href = finalPaymentLink;
+          return;
+        }
+      }
 
-      if (error) throw error;
+      const response = await fetch('/api/date-requests', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: requestId, status: newStatus }),
+      });
 
-      // Update local state
-      setDateRequests((prev) =>
-        prev.map((request) =>
+      if (!response.ok) throw new Error('Failed to update date request');
+
+      setDateRequests(prev =>
+        prev.map(request =>
           request.id === requestId
             ? { ...request, status: newStatus }
-            : request,
-        ),
+            : request
+        )
       );
     } catch (error) {
       console.error('Error updating date request:', error);
@@ -235,174 +130,110 @@ const MessagingPage = () => {
     fetchDateRequests();
   }, []);
 
-  const getStatusColor = (status: string) => {
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
-    switch (status) {
-      case 'accepted':
-        return 'text-green-600';
-      case 'declined':
-        return 'text-[#cc0000]';
-      default:
-        return 'text-gray-600';
-    }
-  };
+  useEffect(() => {
+    const handlePaymentReturn = async () => {
+      const pendingDateId = sessionStorage.getItem('pendingDateId');
+      if (pendingDateId) {
+        sessionStorage.removeItem('pendingDateId');
+        sessionStorage.removeItem('paymentReturnTime');
+        
+        await handleDateResponse(pendingDateId, 'accepted');
+      }
+    };
 
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-  const getStatusText = (status: DateStatus): string => {
-    switch (status) {
-      case 'accepted':
-        return 'Accepted'
-      case 'declined':
-        return 'Declined'
-      default:
-        return 'Pending'
+    // Check if we're returning from payment
+    if (window.location.pathname === '/payment-success') {
+      handlePaymentReturn();
     }
-=======
+  }, []);
+
   if (isLoading) {
     return (
-      <div className='flex justify-center items-center min-h-screen'>
-        <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]'></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
       </div>
     );
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
   }
 
   return (
-    <div className='max-w-md mx-auto p-5'>
-      <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
+    <main className="max-w-md mx-auto p-5">
+      <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Your Date Requests
-      </h2>
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-      
-      {dateRequests.map(request => (
-        <div key={request.id} className="border border-gray-200 rounded-lg p-5 mb-5 shadow-sm">
-          <div className="flex items-center mb-4">
-            <img 
-              src={request.image}
-              alt={request.name} 
-              className="w-24 h-24 object-cover rounded-full mr-4"
-            />
-            <div>
-              <h3 className="text-[#cc0000] text-xl font-medium mb-1">
-                {request.name}, {request.age}
-              </h3>
-              <p className="text-gray-600 mb-1">{request.description}</p>
-              <p className="mb-1">
-                {request.venue} on {request.date} @ {request.time}
-              </p>
-              <p className="font-medium">Price: ${request.price}</p>
-            </div>
-          </div>
-          
-          {request.status === 'pending' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-                onClick={() => handleDateResponse(request.id, 'accepted')}
-              >
-                Accept & Pay
-              </button>
-              <button 
-                className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                onClick={() => handleDateResponse(request.id, 'declined')}
-              >
-                Decline
-              </button>
-            </div>
-          ) : (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className={`text-center font-medium ${getStatusColor(request.status)}`}>
-                {getStatusText(request.status)}
-              </p>
-            </div>
-          )}
-        </div>
-      ))}
-=======
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
+      </h1>
 
       {dateRequests.length === 0 ? (
-        <div className='text-center text-gray-600 py-8'>
+        <div className="text-center text-gray-600 py-8">
           No pending date requests
         </div>
       ) : (
-        dateRequests.map((request) => (
-          <div
-            key={request.id}
-            className='border border-gray-200 rounded-lg p-5 mb-5 shadow-sm'
-          >
-            <div className='flex items-center mb-4'>
-              <div className='relative w-24 h-24 mr-4'>
-                <Image
-                  src={request.sender.avatar_url || '/default-avatar.png'}
-                  alt={`${request.sender.first_name} ${request.sender.last_name}`}
-                  fill
-                  className='object-cover rounded-full'
-                  priority
-                />
-              </div>
-              <div>
-                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                  {request.sender.first_name} {request.sender.last_name},{' '}
-                  {request.sender.age}
-                </h3>
-                <p className='text-gray-600 mb-1'>{request.sender.bio}</p>
-                <p className='mb-1'>
-                  {request.venue} on{' '}
-                  {new Date(request.proposed_time).toLocaleDateString()} @{' '}
-                  {new Date(request.proposed_time).toLocaleTimeString()}
-                </p>
-                {request.proposed_payment > 0 && (
-                  <p className='font-medium'>
-                    Proposed Payment: ${request.proposed_payment}
+        <div className="space-y-5">
+          {dateRequests.map((request) => (
+            <div
+              key={request.id}
+              className="border border-gray-200 rounded-lg p-5 shadow-sm"
+            >
+              <div className="flex items-center mb-4">
+                <div className="relative w-24 h-24 mr-4">
+                  <Image
+                    src={request.sender.avatar_url || '/default-avatar.png'}
+                    alt={`${request.sender.first_name} ${request.sender.last_name}`}
+                    fill
+                    className="object-cover rounded-full"
+                    priority
+                  />
+                </div>
+                <div>
+                  <h2 className="text-[#cc0000] text-xl font-medium mb-1">
+                    {request.sender.first_name} {request.sender.last_name}, {request.sender.age}
+                  </h2>
+                  <p className="text-gray-600 mb-1">{request.sender.bio}</p>
+                  <p className="mb-1">
+                    {request.venue} on {new Date(request.proposed_time).toLocaleDateString()} @{' '}
+                    {new Date(request.proposed_time).toLocaleTimeString()}
                   </p>
-                )}
+                  {request.proposed_payment > 0 && (
+                    <p className="font-medium">
+                      Proposed Payment: ${request.proposed_payment}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {request.status === 'pending' ? (
-              <div className='grid grid-cols-2 gap-3'>
-                <button
-                  className='p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  onClick={() => handleDateResponse(request.id, 'accepted')}
-                >
-                  Accept
-                </button>
-                <button
-                  className='p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                  onClick={() => handleDateResponse(request.id, 'declined')}
-                >
-                  Decline
-                </button>
-              </div>
-            ) : (
-              <div className='bg-gray-50 p-3 rounded-lg'>
-                <p
-                  className={`text-center font-medium ${getStatusColor(
-                    request.status,
-                  )}`}
-                >
-                  {request.status.charAt(0).toUpperCase() +
-                    request.status.slice(1)}
-                </p>
-              </div>
-            )}
-          </div>
-        ))
+              {request.status === 'pending' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
+                    onClick={() => handleDateResponse(request.id, 'accepted')}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                    onClick={() => handleDateResponse(request.id, 'declined')}
+                  >
+                    Decline
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className={`text-center font-medium ${
+                    request.status === 'accepted' ? 'text-green-600' : 'text-[#cc0000]'
+                  }`}>
+                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
       <button
-        className='w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-        onClick={() => router.push('/dashboard')}
+        className="w-full p-3 mt-4 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+        onClick={() => router.push('/daterequests')}
       >
         Back to Dashboard
       </button>
-    </div>
+    </main>
   );
-};
-
-<<<<<<< HEAD:src/app/daterequests/page.tsx
-export default DateRequestsPage
-=======
-export default MessagingPage;
->>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34:src/app/messaging/page.tsx
+}

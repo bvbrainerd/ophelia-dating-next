@@ -1,84 +1,135 @@
-'use client'
-
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 
 interface DatingTypeQuizProps {
-  onComplete: (style: string) => void
+  onComplete: (style: string) => void;
 }
 
 const DatingTypeQuiz: React.FC<DatingTypeQuizProps> = ({ onComplete }) => {
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [scores, setScores] = useState({
+    cautious: 0,
+    hopeless: 0,
+    commitment: 0,
+    serial: 0,
+    fwb: 0
+  });
 
+  // Questions mapped to archetype tendencies
   const questions = [
     {
-      question: "On a first date, you prefer:",
+      question: "What is your Ideal Date?:",
       options: [
-        "A romantic dinner at a restaurant",
-        "An exciting activity like going somewhere",
-        "A casual coffee meet-up",
-        "A fun group activity with friends"
+        { text: "Dinner or Bar", scores: { cautious: 2, commitment: 1 } },
+        { text: "Sports Game", scores: { fwb: 2, serial: 1 } },
+        { text: "Concert/Activity", scores: { hopeless: 2, commitment: 1 } },
+        { text: "A fun group activity with friends", scores: { fwb: 2, serial: 1 } }
       ]
     },
     {
-      question: "Your ideal partner is someone who:",
+      question: "How often do you text or call/FaceTime?:",
       options: [
-        "Is romantic and golden-retriever like",
-        "Is ambitious and driven",
-        "Is happy, laid-back, and easy-going",
-        "Is intellectual and nerdy"
+        { text: "Once a day", scores: { cautious: 2, commitment: 1 } },
+        { text: "Every so often", scores: { fwb: 2, serial: 1 } },
+        { text: "Often", scores: { hopeless: 2, commitment: 1 } },
+        { text: "You won't hear from me", scores: { serial: 2, fwb: 1 } }
+      ]
+    },
+    {
+      question: "Do You Care if Your Partner has a Close Best Friend?:",
+      options: [
+        { text: "No, I don't care", scores: { fwb: 2, cautious: 1 } },
+        { text: "I'd be skeptical, but it's fine", scores: { commitment: 2, hopeless: 1 } },
+        { text: "Yes, I care", scores: { hopeless: 2, commitment: 1 } },
+        { text: "He's not allowed", scores: { serial: 2 } }
+      ]
+    },
+    {
+      question: "What do you do after fights?:",
+      options: [
+        { text: "Talk about it immediately", scores: { commitment: 2, hopeless: 1 } },
+        { text: "Walk away and talk about it later", scores: { cautious: 2, commitment: 1 } },
+        { text: "Act like nothing happened", scores: { fwb: 2, serial: 1 } },
+        { text: "Be passive aggressive until we fight again", scores: { serial: 2, hopeless: 1 } }
+      ]
+    },
+    {
+      question: "How would you describe yourself?:",
+      options: [
+        { text: "Outgoing", scores: { serial: 2, fwb: 1 } },
+        { text: "Reserved", scores: { cautious: 2, commitment: 1 } },
+        { text: "Outgoing around friends but reserved around strangers", scores: { hopeless: 2, commitment: 1 } },
+        { text: "Not really a people person...", scores: { cautious: 2 } }
+      ]
+    },
+    {
+      question: "How long before sex?:",
+      options: [
+        { text: "First Date", scores: { serial: 2, fwb: 1 } },
+        { text: "A couple of dates", scores: { fwb: 2, serial: 1 } },
+        { text: "The right moment for us", scores: { hopeless: 2, commitment: 1 } },
+        { text: "Waiting for marriage", scores: { cautious: 2, commitment: 1 } }
+      ]
+    },
+    {
+      question: "What's your usual type?:",
+      options: [
+        { text: "Golden Retriever", scores: { hopeless: 2, commitment: 1 } },
+        { text: "Nerd", scores: { cautious: 2, commitment: 1 } },
+        { text: "Indie", scores: { serial: 2, fwb: 1 } },
+        { text: "Preppy", scores: { fwb: 2, serial: 1 } }
       ]
     }
-  ]
+  ];
 
-  const handleAnswer = (answer: number) => {
-    setAnswers({...answers, [currentQuestion]: answer})
+  const handleAnswer = (optionIndex: number) => {
+    const option = questions[currentQuestion].options[optionIndex];
+    
+    // Update scores based on the selected option
+    const newScores = { ...scores };
+    Object.entries(option.scores).forEach(([style, points]) => {
+      newScores[style as keyof typeof scores] += points;
+    });
+    setScores(newScores);
+
     if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
+      setCurrentQuestion(currentQuestion + 1);
     } else {
-      const datingStyle = determineDatingStyle()
-      onComplete(datingStyle)
+      const result = determineDatingStyle(newScores);
+      onComplete(result);
     }
-  }
+  };
 
-  const determineDatingStyle = () => {
-    const styleScores = {
-      "Hopeless Romantic": 0,
-      "Serial Dater": 0,
-      "Commitment Seeker": 0,
-      "Cautious Dater": 0,
-      "Friends with Benefits": 0
-    }
+  const determineDatingStyle = (finalScores: typeof scores) => {
+    // Define relationship preferences based on archetypes shown in the image
+    const archetypePreferences = {
+      cautious: ['relationship'],
+      hopeless: ['relationship', 'hookup'],
+      commitment: ['relationship'],
+      serial: ['situationship', 'relationship', 'hookup'],
+      fwb: ['hookup', 'situationship']
+    };
 
-    Object.values(answers).forEach((answer) => {
-      switch(answer) {
-        case 0:
-          styleScores["Hopeless Romantic"] += 1
-          break
-        case 1:
-          styleScores["Serial Dater"] += 1
-          break
-        case 2:
-          styleScores["Friends with Benefits"] += 1
-          break
-        case 3:
-          styleScores["Cautious Dater"] += 1
-          break
-      }
-    })
-
-    let maxScore = 0
-    let resultStyle = "Cautious Dater"
-
-    Object.entries(styleScores).forEach(([style, score]) => {
+    // Get the highest scoring style
+    let maxScore = 0;
+    let primaryStyle = '';
+    Object.entries(finalScores).forEach(([style, score]) => {
       if (score > maxScore) {
-        maxScore = score
-        resultStyle = style
+        maxScore = score;
+        primaryStyle = style;
       }
-    })
+    });
 
-    return resultStyle
-  }
+    // Map the internal style names to display names
+    const styleDisplayNames = {
+      cautious: 'Cautious Dater',
+      hopeless: 'Hopeless Romantic',
+      commitment: 'Commitment Seeker',
+      serial: 'Serial Dater',
+      fwb: 'Friends with Benefits'
+    };
+
+    return styleDisplayNames[primaryStyle as keyof typeof styleDisplayNames];
+  };
 
   return (
     <div className="max-w-md mx-auto p-5">
@@ -98,12 +149,12 @@ const DatingTypeQuiz: React.FC<DatingTypeQuizProps> = ({ onComplete }) => {
             className="w-full p-2.5 bg-[#cc0000] text-white rounded-full cursor-pointer font-medium hover:bg-[#aa0000] transition-colors"
             onClick={() => handleAnswer(index)}
           >
-            {option}
+            {option.text}
           </button>
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DatingTypeQuiz
+export default DatingTypeQuiz;
