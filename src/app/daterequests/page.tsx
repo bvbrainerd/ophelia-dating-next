@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 type DateStatus = 'pending' | 'accepted' | 'declined'
 
@@ -17,12 +17,34 @@ interface DateType {
   description: string
 }
 
-interface MessagingPageProps {
+interface DateRequestsPageProps {
   onBack: () => void
   onDateAccepted: (date: DateType) => void
 }
 
-const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted }) => {
+// Map venues to their corresponding Stripe payment links
+const VENUE_PAYMENT_LINKS: Record<string, string> = {
+  'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
+  'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
+  'BC Hockey': 'https://buy.stripe.com/bIYcPb3iw6VT5mobIN',
+  'BC Basketball': 'https://buy.stripe.com/fZebL7bP24NL9CE9AB',
+  'Boston Commons': 'https://buy.stripe.com/eVaaH31ao2FDbKM3ck',
+  'Kured': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
+  'Private Helicopter Ride': 'https://buy.stripe.com/14k2ax7yM0xv6qs8wz',
+  'Barcelona Wine Bar': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Capo': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Locco Fenway': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'F1 Arcade': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Lucca North End': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Lolita Back Bay': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Blue Ribbon Sushi': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
+  'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0', // Added mapping for Boston Celtics Game
+} as const
+
+const DateRequestsPage: React.FC<DateRequestsPageProps> = ({ onBack, onDateAccepted }) => {
   const [dateRequests, setDateRequests] = useState<DateType[]>([
     {
       id: 1,
@@ -30,11 +52,11 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
       age: 19,
       image: '/images/adelaide_profile.jpg',
       description: 'Hopeless Romantic',
-      venue: 'Fenway Park',
+      venue: 'Boston Celtics Game',
       date: '2024-11-02',
       time: '8:00 PM',
       status: 'pending',
-      price: 50
+      price: 150 // Updated to match Celtics price
     },
     {
       id: 2,
@@ -46,25 +68,62 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
       date: '2024-11-01',
       time: '1:00 PM',
       status: 'pending',
-      price: 30
+      price: 10 // Updated to match Kured price
     }
   ])
 
-  const handleDateResponse = (id: number, newStatus: DateStatus) => {
-    const updatedRequests = dateRequests.map(request =>
-      request.id === id ? { ...request, status: newStatus } : request
-    )
-    setDateRequests(updatedRequests)
+  useEffect(() => {
+    const handlePaymentReturn = async () => {
+      const pendingDateId = localStorage.getItem('pendingDateId')
+      if (pendingDateId) {
+        // Clear the pending payment data
+        localStorage.removeItem('pendingDateId')
+        localStorage.removeItem('paymentReturnTime')
+        
+        // Update the date status
+        const dateId = parseInt(pendingDateId)
+        setDateRequests(prev => prev.map(request =>
+          request.id === dateId 
+            ? { ...request, status: 'accepted' }
+            : request
+        ))
+      }
+    }
 
+    handlePaymentReturn()
+  }, [])
+
+  const handleDateResponse = async (id: number, newStatus: DateStatus) => {
     if (newStatus === 'accepted') {
       const acceptedDate = dateRequests.find(request => request.id === id)
       if (acceptedDate) {
+        // Store the date ID before redirecting
+        localStorage.setItem('pendingDateId', id.toString())
+        localStorage.setItem('paymentReturnTime', new Date().toISOString())
+
+        // Notify parent component
         onDateAccepted(acceptedDate)
+
+        // Get payment link and redirect
+        const paymentLink = VENUE_PAYMENT_LINKS[acceptedDate.venue]
+        if (paymentLink) {
+          // Add return URL to payment link
+          const returnUrl = `${window.location.origin}/payment-success`
+          const finalPaymentLink = `${paymentLink}?redirect=${encodeURIComponent(returnUrl)}`
+          window.location.href = finalPaymentLink
+        } else {
+          console.error(`No payment link found for venue: ${acceptedDate.venue}`)
+        }
       }
+    } else {
+      // Handle decline
+      setDateRequests(prev => prev.map(request =>
+        request.id === id ? { ...request, status: newStatus } : request
+      ))
     }
   }
 
-  const getStatusColor = (status: DateStatus) => {
+  const getStatusColor = (status: DateStatus): string => {
     switch (status) {
       case 'accepted':
         return 'text-green-600'
@@ -75,7 +134,7 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
     }
   }
 
-  const getStatusText = (status: DateStatus) => {
+  const getStatusText = (status: DateStatus): string => {
     switch (status) {
       case 'accepted':
         return 'Accepted'
@@ -118,7 +177,7 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
                 className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
                 onClick={() => handleDateResponse(request.id, 'accepted')}
               >
-                Accept
+                Accept & Pay
               </button>
               <button 
                 className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
@@ -147,4 +206,4 @@ const MessagingPage: React.FC<MessagingPageProps> = ({ onBack, onDateAccepted })
   )
 }
 
-export default MessagingPage
+export default DateRequestsPage

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, type ButtonHTMLAttributes } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import type { DetailedHTMLProps } from 'react'
 
 interface UpcomingDate {
   id: number
@@ -18,11 +19,13 @@ interface UpcomingDate {
 }
 
 interface UpcomingDatesPageProps {
-  onBack: () => void
+  onBack?: () => void
 }
 
-export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
-  const router = useRouter() // Initialize router
+type ButtonProps = DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>
+
+export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps): React.JSX.Element {
+  const router = useRouter()
   const [upcomingDates] = useState<UpcomingDate[]>([
     {
       id: 1,
@@ -50,19 +53,41 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
     }
   ])
 
-  const handleStartDate = (dateId: number) => {
-    // Redirect to the messaging page when the date starts
-    router.push('/messaging')
+  const handleStartDate = (dateId: number): void => {
+    try {
+      router.push('/messaging')
+    } catch (error) {
+      console.error('Navigation error:', error)
+      window.location.href = '/messaging'
+    }
   }
 
-  const handleRescheduleOrCancel = (dateId: number) => {
-    const action = window.confirm('Would you like to reschedule or cancel this date?\nOK = Reschedule\nCancel = Cancel Date')
-    
-    if (action) {
-      alert('Reschedule feature coming soon!')
+  const handleRescheduleOrCancel = (dateId: number): void => {
+    try {
+      const action = window.confirm('Would you like to reschedule or cancel this date?\nOK = Reschedule\nCancel = Cancel Date')
+      
+      if (action) {
+        alert('Reschedule feature coming soon!')
+      } else {
+        if (window.confirm('Are you sure you want to cancel this date?')) {
+          alert('Date cancelled')
+        }
+      }
+    } catch (error) {
+      console.error('Action error:', error)
+      alert('An error occurred. Please try again.')
+    }
+  }
+
+  const handleBack = (): void => {
+    if (onBack) {
+      onBack()
     } else {
-      if (window.confirm('Are you sure you want to cancel this date?')) {
-        alert('Date cancelled')
+      try {
+        router.push('/dashboard')
+      } catch (error) {
+        console.error('Navigation error:', error)
+        window.location.href = '/dashboard'
       }
     }
   }
@@ -87,10 +112,11 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
               <div className="relative w-24 h-24 mr-4">
                 <Image 
                   src={date.image}
-                  alt={date.name}
+                  alt={`${date.name}'s profile picture`}
                   fill
                   className="object-cover rounded-full"
                   priority
+                  sizes="(max-width: 96px) 96px, 96px"
                 />
               </div>
               <div>
@@ -111,12 +137,14 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
               <button
                 onClick={() => handleStartDate(date.id)}
                 className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
+                type="button"
               >
                 Start Date
               </button>
               <button
                 onClick={() => handleRescheduleOrCancel(date.id)}
                 className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                type="button"
               >
                 Reschedule or Cancel Date
               </button>
@@ -127,7 +155,8 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
 
       <button 
         className="w-full p-2.5 mt-5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        onClick={onBack}
+        onClick={handleBack}
+        type="button"
       >
         Back to Dashboard
       </button>

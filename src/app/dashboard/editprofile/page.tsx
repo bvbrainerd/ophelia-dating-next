@@ -1,18 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import React, { type ChangeEvent } from 'react'
 
 interface EditProfilePageProps {
   onSave: () => void
   onBack: () => void
-  onPreviousDates: () => void // New prop for navigating to previous dates
+  onPreviousDates: () => void
 }
 
 export default function EditProfilePage({ onSave, onBack, onPreviousDates }: EditProfilePageProps) {
-  const [name, setName] = useState('')
-  const [age, setAge] = useState('')
-  const [daterArchetype, setDaterArchetype] = useState('')
-  const [school, setSchool] = useState('')
+  const [name, setName] = React.useState('')
+  const [age, setAge] = React.useState('')
+  const [daterArchetype, setDaterArchetype] = React.useState('')
+  const [school, setSchool] = React.useState('')
 
   const schools = [
     "Boston College",
@@ -21,7 +21,7 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
     "Northeastern",
     "BU",
     "N/A"
-  ]
+  ] as const
 
   const archetypes = [
     { value: "hopelessRomantic", label: "Hopeless Romantic" },
@@ -29,11 +29,27 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
     { value: "adventurous", label: "Commitment Seeker" },
     { value: "traditional", label: "Serial Dater" },
     { value: "independent", label: "Friends with Benefits" }
-  ]
+  ] as const
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     console.log('Saving profile:', { name, age, daterArchetype, school })
     onSave()
+  }
+
+  const handleNameChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setName(e.target.value)
+  }
+
+  const handleAgeChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setAge(e.target.value)
+  }
+
+  const handleArchetypeChange = (e: ChangeEvent<HTMLSelectElement>): void => {
+    setDaterArchetype(e.target.value)
+  }
+
+  const handleSchoolChange = (e: ChangeEvent<HTMLSelectElement>): void => {
+    setSchool(e.target.value)
   }
 
   return (
@@ -47,7 +63,7 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
         type="text"
         placeholder="Your Name"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={handleNameChange}
       />
 
       <input
@@ -55,13 +71,13 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
         type="number"
         placeholder="Your Age"
         value={age}
-        onChange={(e) => setAge(e.target.value)}
+        onChange={handleAgeChange}
       />
 
       <select
         className="w-full p-2.5 mb-4 border border-gray-200 rounded-full outline-none"
         value={daterArchetype}
-        onChange={(e) => setDaterArchetype(e.target.value)}
+        onChange={handleArchetypeChange}
       >
         <option value="">Select Dater Archetype</option>
         {archetypes.map((archetype) => (
@@ -74,7 +90,7 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
       <select
         className="w-full p-2.5 mb-4 border border-gray-200 rounded-full outline-none"
         value={school}
-        onChange={(e) => setSchool(e.target.value)}
+        onChange={handleSchoolChange}
       >
         <option value="">Select School</option>
         {schools.map((schoolOption) => (
@@ -93,15 +109,13 @@ export default function EditProfilePage({ onSave, onBack, onPreviousDates }: Edi
         />
       </div>
 
-      {/* Previous Dates Button */}
       <button 
         className="w-full p-2.5 mb-4 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-        onClick={onPreviousDates} // New button to navigate to Previous Dates
+        onClick={onPreviousDates}
       >
         Previous Dates
       </button>
 
-      {/* Save Profile Button */}
       <button 
         className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
         onClick={handleSave}

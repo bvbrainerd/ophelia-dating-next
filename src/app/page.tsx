@@ -6,10 +6,12 @@ import DatingTypeQuiz from '../components/DatingTypeQuiz'
 import ResultScreen from './dashboard/resultsscreen/ResultsPage'
 import Dashboard from './dashboard/Dashboard'
 import MatchingPage from './matching/page'
-import MessagingPage from './messaging/page'
+import MessagingPage from './daterequests/page'
 import PaymentPage from './dates/dates/payment/PaymentPage'
 import EditProfilePage from './dashboard/editprofile/page'
 import UpcomingDatesPage from './dates/dates/upcoming/page'
+
+import React, { FC } from 'react';
 
 type DateStatus = 'pending' | 'accepted' | 'declined'
 
@@ -115,6 +117,7 @@ export default function Home() {
         <EditProfilePage 
           onSave={() => navigateTo('dashboard')}
           onBack={() => navigateTo('dashboard')}
+          onPreviousDates={() => navigateTo('upcomingDates')}
         />
       )}
 

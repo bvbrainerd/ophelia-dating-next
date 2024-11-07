@@ -1,29 +1,28 @@
-//previousdates
-
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import EditProfilePage from './EditProfilePage'
+import EditProfilePage from '@/app/dashboard/editprofile/page'
 
-export default function ParentComponent() {
+// Parent Component
+export function ParentComponent() {
   const router = useRouter()
 
-  const navigateToPreviousDates = () => {
-    router.push('/previous-dates') // Ensure this path matches your actual Previous Dates route
+  const navigateToPreviousDates = (): void => {
+    router.push('/previous-dates')
   }
 
   return (
     <EditProfilePage
       onSave={() => console.log('Save profile')}
       onBack={() => router.back()}
-      onPreviousDates={navigateToPreviousDates} // Pass the navigation function here
+      onPreviousDates={navigateToPreviousDates}
     />
   )
 }
 
-
+// Types
 interface UpcomingDate {
   id: number
   name: string
@@ -45,8 +44,9 @@ interface UpcomingDatesPageProps {
   onBack: () => void
 }
 
-export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
-  const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([
+// Previous Dates Component
+export function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
+  const [upcomingDates, setUpcomingDates] = React.useState<UpcomingDate[]>([
     {
       id: 1,
       name: 'Adelaide',
@@ -73,25 +73,23 @@ export default function UpcomingDatesPage({ onBack }: UpcomingDatesPageProps) {
     }
   ])
 
-  const [previousDates, setPreviousDates] = useState<PreviousDate[]>([])
+  const [previousDates, setPreviousDates] = React.useState<PreviousDate[]>([])
 
-  const handleStartDate = (dateId: number) => {
+  const handleStartDate = (dateId: number): void => {
     const date = upcomingDates.find(d => d.id === dateId)
     if (!date) return
 
-    // Prompt for a rating after the date is completed
     const rating = parseInt(prompt(`Rate your date with ${date.name} from 1 to 5:`) || "0", 10)
     if (isNaN(rating) || rating < 1 || rating > 5) {
       alert("Please enter a valid rating between 1 and 5.")
       return
     }
 
-    // Move date to previous dates with the rating
     setPreviousDates(prev => [...prev, { ...date, rating }])
     setUpcomingDates(upcomingDates.filter(d => d.id !== dateId))
   }
 
-  const handleRescheduleOrCancel = (dateId: number) => {
+  const handleRescheduleOrCancel = (dateId: number): void => {
     const action = window.confirm('Would you like to reschedule or cancel this date?\nOK = Reschedule\nCancel = Cancel Date')
     
     if (action) {
