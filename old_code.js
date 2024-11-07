@@ -216,10 +216,10 @@ const MatchingPage = ({ onBack }) => {
   const [dateLocation, setDateLocation] = useState('');
   const [dateTime, setDateTime] = useState('');
 
-  const matches = [
-    { name: 'Claudia', age: 21, image: '/images/claudia_profile.jpg', description: 'Cautious Dater, Ideal Date: Restaurant, Humor: Witty' },
-    { name: 'Virginia', age: 20, image: '/images/Virginia_profile.jpg', description: 'Hopeless Romantic, Ideal Date: Concert, Favorite Genre: Alternative' },
-  ];
+  // const matches = [
+  //   { name: 'Claudia', age: 21, image: '/images/claudia_profile.jpg', description: 'Cautious Dater, Ideal Date: Restaurant, Humor: Witty' },
+  //   { name: 'Virginia', age: 20, image: '/images/Virginia_profile.jpg', description: 'Hopeless Romantic, Ideal Date: Concert, Favorite Genre: Alternative' },
+  // ];
 
   const venues = [
     "Red Sox @Fenway Park",

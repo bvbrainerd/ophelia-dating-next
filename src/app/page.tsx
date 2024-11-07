@@ -1,4 +1,5 @@
 'use client'
+<<<<<<< HEAD
 import { useState, useEffect } from 'react'
 import LoginSignup from '../components/auth/LoginSignup'
 import ProfileSetup from '../components/auth/ProfileSetup'
@@ -27,31 +28,33 @@ interface DateType {
   price: number
   description: string
 }
+=======
+
+import { useEffect } from 'react'
+import { supabase } from '@/supabase/client'
+import { useRouter } from 'next/navigation'
+>>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState('login')
-  const [selectedDate, setSelectedDate] = useState<DateType | null>(null)
-  const [userDatingStyle, setUserDatingStyle] = useState<string | null>(null)
+  const router = useRouter()
 
-  const navigateTo = (page: string) => setCurrentPage(page)
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/auth/login')
+      } else {
+          router.push('/dashboard')
+        }
+      }
+    
+    checkUser(); 
+  }, [])
 
-  const handleQuizComplete = (datingStyle: string) => {
-    setUserDatingStyle(datingStyle)
-    navigateTo('result')
-  }
-
-  const handleDateAccepted = (date: DateType) => {
-    setSelectedDate(date)
-    navigateTo('payment')
-  }
-
-  const handlePaymentConfirmed = () => {
-    alert('Payment successful! Your date has been confirmed.')
-    setSelectedDate(null)
-    navigateTo('dashboard')
-  }
-
+  // Show loading state while checking auth
   return (
+<<<<<<< HEAD
     <main className="min-h-screen">
       {currentPage === 'login' && (
         <LoginSignup 
@@ -126,6 +129,10 @@ export default function Home() {
           onBack={() => navigateTo('dashboard')}
         />
       )}
+=======
+    <main className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+>>>>>>> 2edcb43e39caf412ea71253ab4f339a618c7da34
     </main>
   )
 }
