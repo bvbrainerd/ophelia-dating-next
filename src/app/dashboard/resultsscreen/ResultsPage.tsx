@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
 interface ResultScreenProps {
-  datingStyle: string
-  onContinue: () => void
+  datingStyle: string;
+  onContinue: () => void;
 }
 
 export default function ResultScreen({ datingStyle, onContinue }: ResultScreenProps) {
@@ -17,15 +17,16 @@ export default function ResultScreen({ datingStyle, onContinue }: ResultScreenPr
       </p>
       
       <p className="text-center mb-8">
-        Let's start dating and find your perfect match!
+        Let&apos;s start dating and find your perfect match!
       </p>
       
       <button 
         className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
         onClick={onContinue}
+        type="button"
       >
         Continue to Dashboard
       </button>
     </div>
-  )
+  );
 }
