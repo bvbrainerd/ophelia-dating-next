@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={prompt.variable}>
-      <body>{children}</body>
+      <body className={`font-prompt ${prompt.variable}`}>{children}</body>
     </html>
   );
 }

@@ -9,6 +9,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        prompt: ['var(--font-prompt)', 'sans-serif'],
+      },
       colors: {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -19,4 +22,3 @@ module.exports = {
   },
   plugins: [],
 }
-
