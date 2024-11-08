@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 
-// Define interfaces to match the component's expectations
 interface Profile {
   id: string;
   first_name: string;
@@ -11,6 +14,15 @@ interface Profile {
   bio: string;
 }
 
+interface DateRequest {
+  id: string;
+  sender: Profile;
+  venue: string;
+  proposed_time: string;
+  status: 'pending' | 'accepted' | 'declined';
+  proposed_payment: number;
+}
+
 interface RawDateRequest {
   id: string;
   venue: string;
@@ -18,35 +30,6 @@ interface RawDateRequest {
   status: 'pending' | 'accepted' | 'declined';
   proposed_payment: number;
   profiles: Profile;
-}
-
-// Type for the raw Supabase response
-interface SupabaseRawResponse {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: 'pending' | 'accepted' | 'declined';
-  proposed_payment: number;
-  profiles: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    age: number;
-    avatar_url: string;
-    bio: string;
-  };
-}
-
-interface UpdateRequestBody {
-  id: string;
-  status: 'accepted' | 'declined';
-}
-
-interface SupabaseError {
-  message: string;
-  details: string;
-  hint: string;
-  code: string;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -71,124 +54,196 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
 };
 
-export async function GET() {
-  try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError) throw authError;
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+export default function DateRequests() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
 
-    const { data, error } = await supabase
-      .from('date_requests')
-      .select(`
-        id,
-        venue,
-        proposed_time,
-        status,
-        proposed_payment,
-        profiles!date_requests_sender_id_fkey (
-          id,
-          first_name,
-          last_name,
-          age,
-          avatar_url,
-          bio
+  const fetchDateRequests = async () => {
+    try {
+      const response = await fetch('/api/date-requests');
+      if (!response.ok) throw new Error('Failed to fetch date requests');
+      
+      const { data } = await response.json();
+      if (data) {
+        const formattedRequests: DateRequest[] = data.map((request: RawDateRequest) => ({
+          id: request.id,
+          sender: request.profiles,
+          venue: request.venue,
+          proposed_time: request.proposed_time,
+          status: request.status,
+          proposed_payment: request.proposed_payment || 0,
+        }));
+        
+        setDateRequests(formattedRequests);
+      }
+    } catch (error) {
+      console.error('Error fetching date requests:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
+    try {
+      if (newStatus === 'accepted') {
+        const acceptedDate = dateRequests.find(request => request.id === requestId);
+        if (acceptedDate?.venue && VENUE_PAYMENT_LINKS[acceptedDate.venue]) {
+          sessionStorage.setItem('pendingDateId', requestId);
+          sessionStorage.setItem('paymentReturnTime', new Date().toISOString());
+          
+          const returnUrl = new URL('/payment-success', window.location.origin).toString();
+          const finalPaymentLink = `${VENUE_PAYMENT_LINKS[acceptedDate.venue]}?redirect=${encodeURIComponent(returnUrl)}`;
+          window.location.href = finalPaymentLink;
+          return;
+        }
+      }
+
+      const response = await fetch('/api/date-requests', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: requestId, status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update date request');
+
+      setDateRequests(prev =>
+        prev.map(request =>
+          request.id === requestId
+            ? { ...request, status: newStatus }
+            : request
         )
-      `)
-      .eq('receiver_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      const supabaseError = error as SupabaseError;
-      console.error('Supabase error:', supabaseError);
-      return NextResponse.json(
-        { error: 'Failed to fetch date requests' },
-        { status: 500 }
       );
+    } catch (error) {
+      console.error('Error updating date request:', error);
+      alert('Failed to update date request. Please try again.');
     }
+  };
 
-    // First cast to unknown, then to our expected type
-    const rawData = data as unknown as SupabaseRawResponse[];
-    
-    // Transform the data to match the expected format
-    const transformedData: RawDateRequest[] = rawData.map(request => ({
-      id: request.id,
-      venue: request.venue,
-      proposed_time: request.proposed_time,
-      status: request.status,
-      proposed_payment: request.proposed_payment,
-      profiles: request.profiles
-    }));
+  useEffect(() => {
+    fetchDateRequests();
+  }, []);
 
-    return NextResponse.json({
-      data: transformedData
-    });
+  useEffect(() => {
+    const handlePaymentReturn = async () => {
+      const pendingDateId = sessionStorage.getItem('pendingDateId');
+      if (pendingDateId) {
+        sessionStorage.removeItem('pendingDateId');
+        sessionStorage.removeItem('paymentReturnTime');
+        await handleDateResponse(pendingDateId, 'accepted');
+      }
+    };
 
-  } catch (error) {
-    console.error('Error fetching date requests:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch date requests';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    if (window.location.pathname === '/payment-success') {
+      handlePaymentReturn();
+    }
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+      </div>
     );
   }
-}
 
-export async function PUT(request: Request) {
-  try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError) throw authError;
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  return (
+    <main className="max-w-md mx-auto p-5">
+      <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
+        Your Date Requests
+      </h1>
 
-    const body: UpdateRequestBody = await request.json();
-    
-    if (!body.id || !['accepted', 'declined'].includes(body.status)) {
-      return NextResponse.json(
-        { error: 'Invalid request body' },
-        { status: 400 }
-      );
-    }
+      {dateRequests.length === 0 ? (
+        <div className="text-center text-gray-600 py-8">
+          No pending date requests
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {dateRequests.map((request) => (
+            <div
+              key={request.id}
+              className="border border-gray-200 rounded-lg p-5 shadow-sm"
+            >
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
+                    <Image
+                      src={request.sender.avatar_url || '/default-avatar.png'}
+                      alt={`${request.sender.first_name} ${request.sender.last_name}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 128px"
+                      priority
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-[#cc0000] text-xl font-medium mb-1 truncate">
+                    {request.sender.first_name} {request.sender.last_name}, {request.sender.age}
+                  </h2>
+                  <p className="text-gray-600 text-sm mb-2 line-clamp-2">{request.sender.bio}</p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Venue:</span> {request.venue}
+                  </p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Date:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm mb-2">
+                    <span className="font-medium">Time:</span>{' '}
+                    {new Date(request.proposed_time).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit'
+                    })}
+                  </p>
+                  {request.proposed_payment > 0 && (
+                    <p className="text-sm font-medium">
+                      Proposed Payment: ${request.proposed_payment}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-    const { error } = await supabase
-      .from('date_requests')
-      .update({
-        status: body.status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', body.id)
-      .eq('receiver_id', user.id);
+              <div className="mt-4">
+                {request.status === 'pending' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
+                      onClick={() => handleDateResponse(request.id, 'accepted')}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                      onClick={() => handleDateResponse(request.id, 'declined')}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className={`text-center font-medium ${
+                      request.status === 'accepted' ? 'text-green-600' : 'text-[#cc0000]'
+                    }`}>
+                      {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-    if (error) {
-      const supabaseError = error as SupabaseError;
-      console.error('Supabase error:', supabaseError);
-      return NextResponse.json(
-        { error: 'Failed to update date request' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Date request updated successfully'
-    });
-
-  } catch (error) {
-    console.error('Error updating date request:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to update date request';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
-  }
+      <button
+        className="w-full p-3 mt-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+        onClick={() => router.push('/dashboard')}
+      >
+        Back to Dashboard
+      </button>
+    </main>
+  );
 }
