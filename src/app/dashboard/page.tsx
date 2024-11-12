@@ -4,7 +4,6 @@ import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-// Add type for user
 type User = {
   id: string;
   email?: string;
@@ -12,31 +11,34 @@ type User = {
 
 export default function Dashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<User>(null);
+  // Remove user state since we're not using it in this component
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkUser = async () => {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
+      try {
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
 
-      if (!currentUser) {
+        if (!currentUser) {
+          router.push('/auth/login');
+          return;
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error checking user:', error);
         router.push('/auth/login');
-        return;
       }
-      
-      setUser(currentUser);
-      setLoading(false);
     };
 
     checkUser();
-  }, [router]); // Add router to dependencies
+  }, [router]); 
 
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      setUser(null); // Clear user state
       router.push('/auth/login');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -51,17 +53,11 @@ export default function Dashboard() {
     );
   }
 
-  // Use the user state to conditionally render content or show a welcome message
   return (
     <div className='max-w-md mx-auto p-5'>
       <h1 className='text-center text-[#cc0000] font-bold text-4xl mb-8'>
         Ophelia
       </h1>
-      {user && (
-        <h2 className='text-[#cc0000] text-center text-lg font-medium mb-6 mt-2.5'>
-          Welcome Back{user.email ? `, ${user.email.split('@')[0]}` : ''}!
-        </h2>
-      )}
       <h2 className='text-[#cc0000] text-center text-lg font-medium mb-6 mt-2.5'>
         It All Starts with the First Date...
       </h2>

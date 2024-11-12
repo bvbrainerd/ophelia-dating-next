@@ -8,12 +8,34 @@ interface UpdateDateRequestBody {
   paymentTime?: string;
 }
 
-// Add this new interface for the update data
+// Define the update data interface
 interface DateRequestUpdateData {
   status: 'accepted' | 'declined';
   updated_at: string;
   payment_completed?: boolean;
   payment_completed_at?: string;
+}
+
+// Define the profile interface
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  age: number;
+  avatar_url: string;
+  bio: string;
+}
+
+// Define the date request interface
+interface DateRequest {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  status: 'accepted' | 'declined' | 'pending';
+  proposed_payment: number;
+  payment_completed: boolean;
+  payment_completed_at?: string;
+  profiles?: Profile;
 }
 
 export async function PUT(
@@ -40,7 +62,7 @@ export async function PUT(
       );
     }
 
-    // Replace any with the proper type
+    // Now using the proper type instead of any
     const updateData: DateRequestUpdateData = {
       status: body.status,
       updated_at: new Date().toISOString(),
@@ -82,4 +104,54 @@ export async function PUT(
   }
 }
 
-// GET function remains the same...
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from('date_requests')
+      .select(`
+        id,
+        venue,
+        proposed_time,
+        status,
+        proposed_payment,
+        payment_completed,
+        payment_completed_at,
+        profiles!date_requests_sender_id_fkey (
+          id,
+          first_name,
+          last_name,
+          age,
+          avatar_url,
+          bio
+        )
+      `)
+      .eq('id', id)
+      .eq('receiver_id', user.id)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error('Error fetching date request:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch date request' },
+      { status: 500 }
+    );
+  }
+}

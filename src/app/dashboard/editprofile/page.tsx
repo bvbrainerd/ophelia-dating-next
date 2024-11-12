@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
@@ -53,11 +53,8 @@ export default function EditProfilePage() {
     avatar_url: null,
   });
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  // Wrap fetchProfile in useCallback
+  const fetchProfile = useCallback(async () => {
     try {
       setError(null);
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -94,7 +91,12 @@ export default function EditProfilePage() {
       console.error('Error fetching profile:', error);
       setError('Failed to fetch profile. Please try again.');
     }
-  };
+  }, [router]);
+
+  // Update useEffect to include fetchProfile in dependencies
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

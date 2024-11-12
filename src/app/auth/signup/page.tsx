@@ -16,6 +16,29 @@ interface UserData {
   avatar_url: string | null;
 }
 
+interface AuthError {
+  message: string;
+  status?: number;
+}
+
+interface SupabaseError {
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}
+
+interface ProfileData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  age: number | null;
+  gender: string;
+  school: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
 export default function ProfileSetup() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -48,7 +71,7 @@ export default function ProfileSetup() {
     setError(null);
   };
 
-  const uploadImage = async (userId: string) => {
+  const uploadImage = async (userId: string): Promise<string | null> => {
     if (!avatarFile) return null;
 
     try {
@@ -73,7 +96,7 @@ export default function ProfileSetup() {
     }
   };
 
-  const validateBCEmail = (email: string) => {
+  const validateBCEmail = (email: string): boolean => {
     return email.toLowerCase().endsWith('@bc.edu');
   };
 
@@ -111,18 +134,20 @@ export default function ProfileSetup() {
       const avatarUrl = await uploadImage(signUpData.user.id);
 
       // Create profile
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: signUpData.user.id,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          age: userData.age,
-          gender: userData.gender,
-          school: userData.school,
-          avatar_url: avatarUrl,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      const profileData: ProfileData = {
+        id: signUpData.user.id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        age: userData.age,
+        gender: userData.gender,
+        school: userData.school,
+        avatar_url: avatarUrl,
+        created_at: new Date().toISOString(),
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([profileData]);
 
       if (profileError) throw profileError;
 
@@ -136,9 +161,16 @@ export default function ProfileSetup() {
 
       router.refresh();
       router.push('/quiz');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating account:', err);
-      setError(err.message || 'Error creating account. Please try again.');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (typeof err === 'object' && err !== null) {
+        const error = err as AuthError | SupabaseError;
+        setError(error.message || 'Error creating account. Please try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

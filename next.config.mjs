@@ -5,9 +5,9 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: process.env.NEXT_PUBLIC_SUPABASE_URL ? 
-          process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '') : 
-          'your-default-hostname.com',
+        hostname: process.env.NEXT_PUBLIC_SUPABASE_URL
+          ? process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '')
+          : 'your-default-hostname.com',
         port: '',
         pathname: '/**',
       },
@@ -16,18 +16,18 @@ const nextConfig = {
         hostname: 'raw.githubusercontent.com',
         port: '',
         pathname: '/**',
-      }
+      },
     ],
   },
   typescript: {
-    ignoreBuildErrors: true, // Changed to true
+    ignoreBuildErrors: true, // Ignores TypeScript errors during build
   },
   eslint: {
-    ignoreDuringBuilds: true, // Added this
+    ignoreDuringBuilds: true, // Ignores ESLint errors during build
   },
-  webpack(config) {
-    return config;
+  experimental: {
+    fallbackNodePolyfills: false,
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
