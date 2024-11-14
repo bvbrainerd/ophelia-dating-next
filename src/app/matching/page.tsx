@@ -12,8 +12,9 @@ interface Profile {
   age: number;
   avatar_url: string;
   bio: string;
-  gender: 'male' | 'female' | 'other';
+  gender: 'male' | 'female' | 'other',
   preferred_gender: 'male' | 'female' | 'other';
+  dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
 }
 
 export default function MatchingPage() {
@@ -50,10 +51,12 @@ export default function MatchingPage() {
           avatar_url,
           bio,
           gender,
-          preferred_gender
+          preferred_gender,
+          dater_archetype
         `)
         .neq('id', user.id)
-        .eq('gender', currentUserData.preferred_gender);
+        .eq('gender', currentUserData.preferred_gender)
+        .eq('dater_archetype', currentUserData.dater_archetype);
         
       if (error) throw error;
 
