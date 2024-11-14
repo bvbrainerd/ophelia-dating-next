@@ -11,6 +11,7 @@ interface ProfileData {
   last_name: string;
   age: number | null;
   gender: string;
+  preferred_gender: string;
   bio: string;
   dater_archetype: string;
   school: string;
@@ -47,6 +48,7 @@ export default function EditProfilePage() {
     last_name: '',
     age: null,
     gender: '',
+    preferred_gender: '',
     bio: '',
     dater_archetype: '',
     school: '',
@@ -78,6 +80,7 @@ export default function EditProfilePage() {
           last_name: data.last_name || '',
           age: data.age || null,
           gender: data.gender || '',
+          preferred_gender: data.preferred_gender || '',
           bio: data.bio || '',
           dater_archetype: data.dater_archetype || '',
           school: data.school || '',
@@ -286,6 +289,18 @@ export default function EditProfilePage() {
           <option value="male">Male</option>
           <option value="female">Female</option>
           <option value="other">Other</option>
+        </select>
+
+        <select
+          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+          name="preferred_gender"
+          value={profileData.preferred_gender}
+          onChange={handleChange}
+        >
+          <option value="">I'm interested in dating...</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">All</option>
         </select>
 
         <textarea

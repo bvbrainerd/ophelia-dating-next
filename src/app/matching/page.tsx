@@ -12,12 +12,15 @@ interface Profile {
   age: number;
   avatar_url: string;
   bio: string;
+  gender: 'male' | 'female' | 'other';
+  preferred_gender: 'male' | 'female' | 'other';
 }
 
 export default function MatchingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<Profile[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -28,7 +31,15 @@ export default function MatchingPage() {
         return;
       }
 
-      // Fetch all profiles except current user
+      const { data: currentUserData, error: currentUserError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (currentUserError) throw currentUserError;
+      setCurrentUser(currentUserData);
+
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -37,10 +48,13 @@ export default function MatchingPage() {
           last_name,
           age,
           avatar_url,
-          bio
+          bio,
+          gender,
+          preferred_gender
         `)
-        .neq('id', user.id);
-
+        .neq('id', user.id)
+        .eq('gender', currentUserData.preferred_gender);
+        
       if (error) throw error;
 
       if (data) {
