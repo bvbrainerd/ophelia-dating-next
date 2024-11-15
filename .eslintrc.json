@@ -1,15 +1,28 @@
 {
   "root": true,
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
   "extends": [
+    "next",
     "next/core-web-vitals",
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
     "plugin:react/recommended"
   ],
   "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
   "plugins": [
-    "@typescript-eslint",
     "react",
+    "@typescript-eslint",
     "react-hooks"
   ],
   "rules": {
@@ -18,19 +31,6 @@
     "react-hooks/exhaustive-deps": "off",
     "react/react-in-jsx-scope": "off",
     "react/no-unescaped-entities": "off"
-  },
-  "parserOptions": {
-    "ecmaVersion": 2020,
-    "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true
-    },
-    "project": "./tsconfig.json"
-  },
-  "env": {
-    "es6": true,
-    "browser": true,
-    "node": true
   },
   "settings": {
     "react": {

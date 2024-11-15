@@ -75,7 +75,7 @@ export default function MatchingPage() {
   }, []);
 
   const handleSendDateRequest = (userId: string) => {
-    router.push(`/send-request/${userId}`);
+    router.push(`/send-date-request/${userId}`);
   };
 
   if (isLoading) {

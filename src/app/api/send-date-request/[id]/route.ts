@@ -10,6 +10,8 @@ export async function GET(
     const { id } = params;
     
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('Authenticated User:', user); // Debugging user data
+    
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -19,10 +21,12 @@ export async function GET(
 
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, venues(*)')
       .eq('id', id)
       .single();
 
+    console.log('Profile data:', profileData);
+    
     if (profileError) {
       throw profileError;
     }
@@ -45,10 +49,11 @@ export async function POST(
     const { id: receiverId } = params;
     const { venue, proposed_time, proposed_payment } = await request.json();
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('Authentication failed:', userError);
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized: No valid user session' },
         { status: 401 }
       );
     }
