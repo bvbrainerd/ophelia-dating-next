@@ -16,6 +16,14 @@ interface Profile {
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
 }
 
+const archetypeMap = {
+  hopelessRomantic: "Hopeless Romantic",
+  cautiousDater: "Cautious Dater", 
+  adventurous: "Adventurous",
+  traditional: "Traditional",
+  independent: "Independent"
+};
+
 export default function UserProfile() {
   const { id } = useParams();
   const router = useRouter();
@@ -86,7 +94,7 @@ if (error) {
       <h1 className="text-3xl font-bold text-[#cc0000] mb-2">
         {profile.first_name} {profile.last_name}, {profile.age}
       </h1>
-      <h6>{profile.dater_archetype}</h6>
+      <h6>{archetypeMap[profile.dater_archetype]}</h6>
       <p className="text-gray-600 text-sm mb-4">{profile.bio}</p>
 
       <button
