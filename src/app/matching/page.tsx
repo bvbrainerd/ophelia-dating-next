@@ -53,7 +53,11 @@ export default function MatchingPage() {
           preferred_gender
         `)
         .neq('id', user.id)
-        .eq('gender', currentUserData.preferred_gender);
+        .in('gender', currentUserData.preferred_gender 
+          ? currentUserData.preferred_gender 
+          : (currentUserData.preferred_gender === 'male' 
+            ? ['female'] : ['male']));
+
         
       if (error) throw error;
 
@@ -72,7 +76,7 @@ export default function MatchingPage() {
   }, []);
 
   const handleSendDateRequest = (userId: string) => {
-    router.push(`/send-request/${userId}`);
+    router.push(`/send-date-request/${userId}`);
   };
 
   if (isLoading) {
