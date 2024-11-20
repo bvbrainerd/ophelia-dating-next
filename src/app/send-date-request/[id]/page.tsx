@@ -56,8 +56,13 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+<<<<<<< HEAD
         const response = await fetch(`/send-date-request/${params.id}`); // Removed /api prefix
         if (!response.ok) throw new Error('Failed to fetch profile');
+=======
+        const response = await fetch(`/api/send-date-request/${params.id}`); // Removed /api prefix
+        if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+>>>>>>> 2f97f79248480c4cd579aa078e5aff6cc9cab4e5
         
         const { data } = await response.json();
         setProfile(data);
