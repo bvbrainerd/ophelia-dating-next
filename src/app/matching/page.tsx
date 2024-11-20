@@ -25,22 +25,28 @@ export default function MatchingPage() {
 
   const fetchUsers = async () => {
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
         return;
       }
 
+      // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
 
-      if (currentUserError) throw currentUserError;
+      if (currentUserError) {
+        console.error('Current user error:', currentUserError);
+        throw currentUserError;
+      }
+
+      console.log('Current user preferences:', currentUserData);
       setCurrentUser(currentUserData);
 
+      // Get potential matches - specifically querying for male profiles
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -55,18 +61,15 @@ export default function MatchingPage() {
           dater_archetype
         `)
         .neq('id', user.id)
-<<<<<<< HEAD
-        .in('gender', currentUserData.preferred_gender 
-          ? currentUserData.preferred_gender 
-          : (currentUserData.preferred_gender === 'male' 
-            ? ['female'] : ['male']));
+        .eq('gender', 'male')  // Explicitly querying for male profiles
+        .order('created_at', { ascending: false });
 
-=======
-        .eq('gender', currentUserData.preferred_gender)
-        .eq('dater_archetype', currentUserData.dater_archetype);
->>>>>>> 2f97f79248480c4cd579aa078e5aff6cc9cab4e5
-        
-      if (error) throw error;
+      if (error) {
+        console.error('Profiles query error:', error);
+        throw error;
+      }
+
+      console.log('Fetched matches:', data);
 
       if (data) {
         setUsers(data);
