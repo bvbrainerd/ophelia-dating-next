@@ -56,18 +56,24 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-<<<<<<< HEAD
-        const response = await fetch(`/send-date-request/${params.id}`); // Removed /api prefix
-        if (!response.ok) throw new Error('Failed to fetch profile');
-=======
-        const response = await fetch(`/api/send-date-request/${params.id}`); // Removed /api prefix
-        if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
->>>>>>> 2f97f79248480c4cd579aa078e5aff6cc9cab4e5
+        const response = await fetch(`/api/send-date-request/${params.id}`);
+        
+        if (response.status === 404) {
+          // Redirect to matches page on 404
+          console.log('Profile not found, redirecting to matches');
+          router.push('/matching');
+          return;
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+        }
         
         const { data } = await response.json();
         setProfile(data);
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        console.error('Error in fetchProfile:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch profile');
       } finally {
         setIsLoading(false);
@@ -75,7 +81,7 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     };
 
     fetchProfile();
-  }, [params.id]);
+  }, [params.id, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>

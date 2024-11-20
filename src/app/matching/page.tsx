@@ -133,7 +133,7 @@ export default function MatchingPage() {
               <div className="space-y-2">
                 <button
                   className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  onClick={() => handleSendDateRequest(user.id)}
+                  onClick={() => router.push(`/send-date-request/${user.id}`)}
                 >
                   Send Date Request
                 </button>
