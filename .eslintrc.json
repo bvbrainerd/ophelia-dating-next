@@ -1,11 +1,4 @@
 {
-<<<<<<< HEAD
-  "extends": "next/core-web-vitals",
-  "rules": {
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off",
-    "react-hooks/exhaustive-deps": "warn"
-=======
   "root": true,
   "env": {
     "browser": true,
@@ -43,6 +36,5 @@
     "react": {
       "version": "detect"
     }
->>>>>>> 2f97f79248480c4cd579aa078e5aff6cc9cab4e5
   }
 }

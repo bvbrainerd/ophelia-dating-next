@@ -24,13 +24,12 @@ export default function MatchingPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
+   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push('/login');
+      return;
+    }
       // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
@@ -38,15 +37,9 @@ export default function MatchingPage() {
         .eq('id', user.id)
         .single();
 
-      if (currentUserError) {
-        console.error('Current user error:', currentUserError);
-        throw currentUserError;
-      }
-
-      console.log('Current user preferences:', currentUserData);
+      if (currentUserError) throw currentUserError;
       setCurrentUser(currentUserData);
 
-      // Get potential matches - specifically querying for male profiles
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -61,15 +54,10 @@ export default function MatchingPage() {
           dater_archetype
         `)
         .neq('id', user.id)
-        .eq('gender', 'male')  // Explicitly querying for male profiles
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Profiles query error:', error);
-        throw error;
-      }
-
-      console.log('Fetched matches:', data);
+        .eq('gender', currentUserData.preferred_gender)
+        .eq('dater_archetype', currentUserData.dater_archetype);
+        
+      if (error) throw error;
 
       if (data) {
         setUsers(data);
@@ -133,7 +121,7 @@ export default function MatchingPage() {
               <div className="space-y-2">
                 <button
                   className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  onClick={() => router.push(`/send-date-request/${user.id}`)}
+                  onClick={() => handleSendDateRequest(user.id)}
                 >
                   Send Date Request
                 </button>
@@ -158,7 +146,7 @@ export default function MatchingPage() {
         </button>
         <button
           className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-          onClick={() => router.push('/daterequests')}
+          onClick={() => router.push('/date-requests')}
         >
           View Date Requests
         </button>
