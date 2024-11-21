@@ -40,6 +40,7 @@ export default function MatchingPage() {
       if (currentUserError) throw currentUserError;
       setCurrentUser(currentUserData);
 
+      // Modified query to show all users that match the preferred gender
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -54,8 +55,8 @@ export default function MatchingPage() {
           dater_archetype
         `)
         .neq('id', user.id)
-        .eq('gender', currentUserData.preferred_gender)
-        .eq('dater_archetype', currentUserData.dater_archetype);
+        .eq('gender', currentUserData.preferred_gender);
+        // Removed the dater_archetype filter to show more matches
         
       if (error) throw error;
 
