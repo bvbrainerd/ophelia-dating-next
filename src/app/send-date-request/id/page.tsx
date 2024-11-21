@@ -62,36 +62,21 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', params.id)
-          .single();
+        const response = await fetch(`/api/send-date-request/${params.id}`);
+        if (!response.ok) throw new Error('Failed to fetch profile');
         
-        if (error) throw error;
-        
-        if (data) {
-          setProfile(data);
-        }
+        const { data } = await response.json();
+        setProfile(data);
       } catch (err) {
-        console.error('Error in fetchProfile:', err);
+        console.error('Error fetching profile:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch profile');
       } finally {
         setIsLoading(false);
       }
     };
 
-    const checkAuthAndFetch = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-      fetchProfile();
-    };
-
-    checkAuthAndFetch();
-  }, [params.id, router]);
+    fetchProfile();
+  }, [params.id]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -125,7 +110,6 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     try {
       const response = await fetch(`/api/send-date-request/${params.id}`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
