@@ -8,23 +8,34 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Authenticated User:', user); // Debugging user data
+    
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    const { data, error } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('*')
+      .select('*, venues(*)')
       .eq('id', id)
       .single();
 
-    if (error) throw error;
-    if (!data) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    console.log('Profile data:', profileData);
+    
+    if (profileError) {
+      throw profileError;
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: profileData });
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error fetching profile:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch profile' },
       { status: 500 }
     );
   }
@@ -35,35 +46,49 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const { id: receiverId } = params;
+    const { venue, proposed_time, proposed_payment } = await request.json();
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('Authentication failed:', userError);
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized: No valid user session' },
         { status: 401 }
       );
     }
 
-    const { error: insertError } = await supabase
+    const dateRequest = {
+      sender_id: user.id,
+      receiver_id: receiverId,
+      venue,
+      proposed_time,
+      proposed_payment,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
       .from('date_requests')
-      .insert({
-        sender_id: user.id,
-        receiver_id: id,
-        venue: body.venue,
-        proposed_time: body.proposed_time,
-        proposed_payment: body.proposed_payment,
-        status: 'pending'
-      });
+      .insert([dateRequest])
+      .select()
+      .single();
 
-    if (insertError) throw insertError;
+    if (error) {
+      throw error;
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      data,
+      message: 'Date request created successfully' 
+    });
+
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error creating date request:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create date request' },
       { status: 500 }
     );
   }
