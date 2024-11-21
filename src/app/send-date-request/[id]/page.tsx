@@ -1,9 +1,9 @@
 'use client';
 
-import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { createClient } from '@supabase/supabase-js';
 
 interface Profile {
   id: string;
@@ -17,7 +17,7 @@ interface Profile {
 interface DateRequestForm {
   venue: string;
   proposed_time: string;
-  proposed_payment: number | null;
+  proposed_payment: number | null; // Changed to allow null
 }
 
 const VENUES = [
@@ -40,13 +40,9 @@ const VENUES = [
   'Snowport @Seaport',
   'Boston Celtics Game',
   'The Clay Room',
-] as const;
+];
 
-export default function SendDateRequestPage({ 
-  params 
-}: { 
-  params: { id: string } 
-}): React.JSX.Element {
+export default function SendDateRequestPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -54,37 +50,57 @@ export default function SendDateRequestPage({
   const [formData, setFormData] = useState<DateRequestForm>({
     venue: '',
     proposed_time: '',
-    proposed_payment: null,
+    proposed_payment: null, // Initialize as null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await fetch(`/send-date-request/${params.id}`);
-        if (!response.ok) throw new Error('Failed to fetch profile');
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', params.id)
+          .single();
         
-        const { data } = await response.json();
-        setProfile(data);
+        if (error) throw error;
+        
+        if (data) {
+          setProfile(data);
+        }
       } catch (err) {
-        console.error('Error fetching profile:', err);
+        console.error('Error in fetchProfile:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch profile');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchProfile();
-  }, [params.id]);
+    const checkAuthAndFetch = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      fetchProfile();
+    };
+
+    checkAuthAndFetch();
+  }, [params.id, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ): void => {
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'proposed_payment' 
-        ? value ? parseFloat(value) : null
+        ? value ? parseFloat(value) : null // Allow empty payment field
         : value,
     }));
   };
@@ -95,7 +111,7 @@ export default function SendDateRequestPage({
     return proposedDate > now;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateDateTime(formData.proposed_time)) {
@@ -107,8 +123,9 @@ export default function SendDateRequestPage({
     setError(null);
 
     try {
-      const response = await fetch(`/send-date-request/${params.id}`, {
+      const response = await fetch(`/api/send-date-request/${params.id}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -123,7 +140,7 @@ export default function SendDateRequestPage({
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
-      router.push('/date-requests');
+      router.push('/daterequests');
     } catch (err) {
       console.error('Error sending date request:', err);
       setError(err instanceof Error ? err.message : 'Failed to send date request');
@@ -208,7 +225,7 @@ export default function SendDateRequestPage({
             value={formData.proposed_time}
             onChange={handleChange}
             required
-            min={new Date().toISOString().slice(0, 16)}
+            min={new Date().toISOString().slice(0, 16)} // Set minimum to current time
             className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-[#cc0000] focus:border-[#cc0000]"
           />
         </div>
@@ -220,7 +237,7 @@ export default function SendDateRequestPage({
           <input
             type="number"
             name="proposed_payment"
-            value={formData.proposed_payment ?? ''}
+            value={formData.proposed_payment ?? ''} // Use nullish coalescing for empty field
             onChange={handleChange}
             min="0"
             step="0.01"
