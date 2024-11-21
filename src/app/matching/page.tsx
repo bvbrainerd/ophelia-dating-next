@@ -158,7 +158,7 @@ export default function MatchingPage() {
         </button>
         <button
           className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-          onClick={() => router.push('/date-requests')}
+          onClick={() => router.push('/daterequests')}
         >
           View Date Requests
         </button>
