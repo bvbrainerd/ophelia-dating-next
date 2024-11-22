@@ -149,7 +149,8 @@ const UpcomingDatesPage: FC = () => {
   };
 
   const handleStartDate = (dateId: string) => {
-    router.push('/messaging');
+    console.log('Navigating to dateId:', dateId);
+    router.push(`upcoming/${dateId}/messaging`);
   };
 
   const handleRescheduleOrCancel = async (dateId: string) => {
@@ -210,7 +211,7 @@ const UpcomingDatesPage: FC = () => {
             <div className='flex items-center mb-4'>
               <div className='relative w-24 h-24 mr-4'>
                 <Image
-                  src={date.otherPerson.avatar_url || '/default-avatar.png'}
+                  src={date.otherPerson.avatar_url || 'images/default-avatar.png'}
                   alt={`${date.otherPerson.first_name} ${date.otherPerson.last_name}`}
                   fill
                   className='object-cover rounded-full'
