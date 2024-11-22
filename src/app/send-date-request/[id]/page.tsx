@@ -125,7 +125,6 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     try {
       const response = await fetch(`/api/send-date-request/${params.id}`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -140,7 +139,7 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
-      router.push('/daterequests');
+      router.push('/matching');
     } catch (err) {
       console.error('Error sending date request:', err);
       setError(err instanceof Error ? err.message : 'Failed to send date request');
