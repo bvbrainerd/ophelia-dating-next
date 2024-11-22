@@ -40,6 +40,7 @@ interface PaymentPageProps {
   onCancel: () => void;
 }
 
+
 export default function PaymentPage({ selectedDate, onConfirm, onCancel }: PaymentPageProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string>('');
@@ -88,6 +89,23 @@ export default function PaymentPage({ selectedDate, onConfirm, onCancel }: Payme
       setIsProcessing(false);
     }
   };
+
+  if (!selectedDate) {
+    return (
+      <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
+        <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
+          Error
+        </h2>
+        <p className="text-gray-600">Date details are missing. Please go back and select a date.</p>
+        <button
+          onClick={() => router.back()}
+          className="w-full py-4 px-6 bg-[#cc0000] text-white rounded-full font-medium mt-6"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
