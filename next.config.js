@@ -1,23 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  generateBuildId: () => 'build-' + Date.now(),
+  reactStrictMode: true,
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'oyjfhrqfufujmsnqevgr.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
-      },
+    domains: [
+      'raw.githubusercontent.com',
+      process.env.NEXT_PUBLIC_SUPABASE_URL ? 
+        process.env.NEXT_PUBLIC_SUPABASE_URL.replace('https://', '') : 
+        'your-default-hostname.com'
     ],
   },
-  // Add these configurations
-  eslint: {
-    ignoreDuringBuilds: true
-  },
   typescript: {
-    ignoreBuildErrors: true
-  }
-}
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
