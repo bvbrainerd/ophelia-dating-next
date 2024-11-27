@@ -6,17 +6,27 @@
         "use": "@vercel/next",
         "config": {
           "maxLambdaSize": "15mb",
-          "nodeVersion": "18.x"
+          "nodeVersion": "18.x",
+          "buildCommand": "npm run build"
         }
       }
     ],
-    "buildCommand": "npm run build",
     "build": {
       "env": {
         "NODE_OPTIONS": "--max-old-space-size=4096 --stack-size=65500",
         "NEXT_TELEMETRY_DISABLED": "1"
       }
     },
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/$1",
+        "continue": true,
+        "headers": {
+          "x-matched-path": "/$1"
+        }
+      }
+    ],
     "functions": {
       "api/*": {
         "memory": 3008,
@@ -26,23 +36,5 @@
         "memory": 3008,
         "maxDuration": 60
       }
-    },
-    "headers": [
-      {
-        "source": "/(.*)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "/$1",
-        "continue": true
-      }
-    ]
+    }
   }
