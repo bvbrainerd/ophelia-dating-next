@@ -260,11 +260,11 @@ const UpcomingDatesPage: FC = () => {
       )}
 
       <button
-        onClick={() => router.push('/dashboard')}
+        onClick={() => router.back()}
         className='w-full p-2.5 mt-5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
         type="button"
       >
-        Back to Dashboard
+        Back
       </button>
     </div>
   );
