@@ -42,7 +42,9 @@ const VENUES = [
   'The Clay Room',
 ];
 
-export default function SendDateRequestPage({ params }: { params: { id: string } }) {
+export default function SendDateRequestPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params);
+  const profileId = resolvedParams.id;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -54,9 +56,6 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const resolvedParams = React.use(params);
-  const profileId = resolvedParams.id;
-
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -152,7 +151,7 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     setError(null);
 
     try {
-      // Get the session
+      // Get the current session
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -163,11 +162,12 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           ...formData,
           proposed_time: new Date(formData.proposed_time).toISOString(),
+          sender_id: session.user.id,
         }),
       });
 
