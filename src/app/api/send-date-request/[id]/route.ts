@@ -1,6 +1,8 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/supabase/client';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function GET(
   request: Request,
@@ -8,34 +10,23 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('Authenticated User:', user); // Debugging user data
-    
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
-    const { data: profileData, error: profileError } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('*, venues(*)')
+      .select('*')
       .eq('id', id)
       .single();
 
-    console.log('Profile data:', profileData);
-    
-    if (profileError) {
-      throw profileError;
+    if (error) throw error;
+    if (!data) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ data: profileData });
+    return NextResponse.json({ data });
   } catch (error) {
-    console.error('Error fetching profile:', error);
+    console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch profile' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -46,49 +37,56 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id: receiverId } = params;
-    const { venue, proposed_time, proposed_payment } = await request.json();
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('Authentication failed:', userError);
+    const { id } = params;
+    const body = await request.json();
+
+    // Create server-side Supabase client
+    const supabase = createServerComponentClient({ cookies });
+
+    // Get the authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
       return NextResponse.json(
-        { error: 'Unauthorized: No valid user session' },
+        { error: 'No authorization header' },
         { status: 401 }
       );
     }
 
-    const dateRequest = {
-      sender_id: user.id,
-      receiver_id: receiverId,
-      venue,
-      proposed_time,
-      proposed_payment,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase
-      .from('date_requests')
-      .insert([dateRequest])
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
+    // Verify the session
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Invalid session' },
+        { status: 401 }
+      );
     }
 
-    return NextResponse.json({ 
-      success: true,
-      data,
-      message: 'Date request created successfully' 
-    });
+    const { error: insertError } = await supabase
+      .from('date_requests')
+      .insert({
+        sender_id: user.id,
+        receiver_id: id,
+        venue: body.venue,
+        proposed_time: body.proposed_time,
+        proposed_payment: body.proposed_payment,
+        status: 'pending'
+      });
 
+    if (insertError) {
+      console.error('Insert error:', insertError);
+      return NextResponse.json(
+        { error: insertError.message },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error creating date request:', error);
+    console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to create date request' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

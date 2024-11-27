@@ -8,6 +8,7 @@ export default function LoginSignup() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [error, setError] = useState('');
 
   const validateBCEmail = (email: string) => {
     return email.toLowerCase().endsWith('@bc.edu');
@@ -21,16 +22,18 @@ export default function LoginSignup() {
     setIsLoading(true);
     // Add your login logic here
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        alert(`Login failed: ${error.message}`);
-      } else {
-        // Redirect to the dashboard or handle login success
-        router.push('/dashboard'); // Assumes you're using react-router for navigation
+        setError(error.message);
+        return;
+      }
+
+      if (data?.session) {
+        router.push('/dashboard'); 
       }
     } catch (error) {
       alert(`Unexpected error`);

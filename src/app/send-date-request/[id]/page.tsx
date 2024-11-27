@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/supabase/client';
 
 interface Profile {
   id: string;
@@ -50,14 +50,12 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
   const [formData, setFormData] = useState<DateRequestForm>({
     venue: '',
     proposed_time: '',
-    proposed_payment: null, // Initialize as null
+    proposed_payment: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  
+  const resolvedParams = React.use(params);
+  const profileId = resolvedParams.id;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -65,7 +63,7 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', profileId)
           .single();
         
         if (error) throw error;
@@ -82,16 +80,47 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     };
 
     const checkAuthAndFetch = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setError('Session error: Please try logging in again');
+          router.push('/auth/login');
+          return;
+        }
+
+        if (!session) {
+          setError('No active session: Please log in');
+          router.push('/auth/login');
+          return;
+        }
+
+        // If we have a session, fetch the profile
+        fetchProfile();
+      } catch (err) {
+        console.error('Auth check error:', err);
+        setError('Authentication error');
+        router.push('/auth/login');
       }
-      fetchProfile();
     };
 
     checkAuthAndFetch();
-  }, [params.id, router]);
+  }, [profileId, router]);
+
+  useEffect(() => {
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/auth/login');
+      }
+    });
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -123,10 +152,18 @@ export default function SendDateRequestPage({ params }: { params: { id: string }
     setError(null);
 
     try {
-      const response = await fetch(`/api/send-date-request/${params.id}`, {
+      // Get the session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      const response = await fetch(`/api/send-date-request/${profileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           ...formData,
