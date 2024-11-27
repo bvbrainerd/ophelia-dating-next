@@ -1,7 +1,7 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/supabase/client';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
 export async function GET(
@@ -37,12 +37,6 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-    const body = await request.json();
-
-    // Create server-side Supabase client
-    const supabase = createServerComponentClient({ cookies });
-
     // Get the authorization header
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
@@ -52,13 +46,28 @@ export async function POST(
       );
     }
 
-    // Verify the session
+    // Create a new Supabase client
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+
+    // Get user from the token
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Invalid session' },
+        { status: 401 }
+      );
+    }
+
+    const { id } = params;
+    const body = await request.json();
+
+    // Verify that the sender_id matches the authenticated user
+    if (body.sender_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized: User ID mismatch' },
         { status: 401 }
       );
     }
