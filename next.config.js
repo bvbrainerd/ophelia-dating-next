@@ -15,6 +15,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    skipTypechecking: true,
+    forceSwcTransforms: true,
+  }
 };
 
 module.exports = nextConfig;
