@@ -17,11 +17,11 @@ interface Profile {
 }
 
 const archetypeMap = {
-  hopelessRomantic: "Hopeless Romantic",
-  cautiousDater: "Cautious Dater", 
-  adventurous: "Adventurous",
-  traditional: "Traditional",
-  independent: "Independent"
+  hopelessRomantic: 'Hopeless Romantic',
+  cautiousDater: 'Cautious Dater',
+  adventurous: 'Adventurous',
+  traditional: 'Traditional',
+  independent: 'Independent',
 };
 
 export default function UserProfile() {
@@ -29,33 +29,27 @@ export default function UserProfile() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
-
   const [error, setError] = useState<string | null>(null);
 
-const fetchUserProfile = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) throw error;
-    setProfile(data);
-    setError(null);
-  } catch (error) {
-    console.error('Error fetching profile:', error);
-    setError('Failed to load profile.');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-if (error) {
-  return <div className="text-center text-gray-600 py-8">{error}</div>;
-}
-
-
   useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .single();
+        if (error) throw error;
+        setProfile(data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        setError('Failed to load profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchUserProfile();
   }, [id]);
 
@@ -67,6 +61,14 @@ if (error) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-gray-600 py-8">
+        {error}
       </div>
     );
   }
@@ -89,7 +91,6 @@ if (error) {
           className="object-cover"
           onError={(e) => (e.currentTarget.src = '/images/default-avatar.png')}
         />
-
       </div>
       <h1 className="text-3xl font-bold text-[#cc0000] mb-2">
         {profile.first_name} {profile.last_name}, {profile.age}
