@@ -60,7 +60,7 @@ export default function PaymentPage({ selectedDate, onConfirm, onCancel }: Payme
       setError('');
 
       const paymentLink = VENUE_PAYMENT_LINKS[selectedDate.venue];
-      
+
       if (!paymentLink) {
         throw new Error(`No payment link found for venue: ${selectedDate.venue}`);
       }
@@ -72,13 +72,13 @@ export default function PaymentPage({ selectedDate, onConfirm, onCancel }: Payme
         venue: selectedDate.venue,
         price: selectedDate.price
       };
-      
+
       localStorage.setItem('paymentInfo', JSON.stringify(paymentInfo));
 
       // Construct return URL with date ID as query parameter
       const returnUrl = new URL(`${window.location.origin}/payment-success`);
       returnUrl.searchParams.set('dateId', selectedDate.id.toString());
-      
+
       // Redirect to Stripe
       const finalPaymentLink = `${paymentLink}?redirect=${encodeURIComponent(returnUrl.toString())}`;
       window.location.href = finalPaymentLink;
@@ -146,7 +146,7 @@ export default function PaymentPage({ selectedDate, onConfirm, onCancel }: Payme
       )}
 
       <div className="space-y-4">
-        <button 
+        <button
           onClick={handleCheckout}
           disabled={isProcessing}
           className={`w-full py-4 px-6 bg-[#cc0000] text-white rounded-full font-medium transition-colors
@@ -156,7 +156,7 @@ export default function PaymentPage({ selectedDate, onConfirm, onCancel }: Payme
           {isProcessing ? 'Processing...' : `Pay $${selectedDate.price}`}
         </button>
 
-        <button 
+        <button
           onClick={onCancel}
           disabled={isProcessing}
           className={`w-full py-4 px-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium
