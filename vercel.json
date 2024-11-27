@@ -10,15 +10,39 @@
         }
       }
     ],
+    "buildCommand": "npm run build",
     "build": {
       "env": {
-        "NODE_OPTIONS": "--max-old-space-size=4096 --stack-size=65500"
+        "NODE_OPTIONS": "--max-old-space-size=4096 --stack-size=65500",
+        "NEXT_TELEMETRY_DISABLED": "1"
       }
     },
     "functions": {
       "api/*": {
         "memory": 3008,
         "maxDuration": 60
+      },
+      "pages/*": {
+        "memory": 3008,
+        "maxDuration": 60
       }
-    }
+    },
+    "headers": [
+      {
+        "source": "/(.*)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/$1",
+        "continue": true
+      }
+    ]
   }
