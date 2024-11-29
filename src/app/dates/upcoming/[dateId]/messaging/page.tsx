@@ -37,40 +37,63 @@ export default function DateMessaging() {
   const [otherUserStatus, setOtherUserStatus] = useState<DateStatus>('Not Started');
   const [otherUserProfile, setOtherUserProfile] = useState<Profile | null>(null);
 
+  const fetchCurrentUserId = async () => {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('Error fetching current user:', error);
+      return null;
+    }
+    return user?.id;
+  };
+
+  
   const fetchOtherUserProfile = async () => {
+    const currentUserId = await fetchCurrentUserId();
+    if (!currentUserId) return;
+  
     try {
       const { data: dateRequestData, error: dateRequestError } = await supabase
         .from('date_requests')
         .select('sender_id, receiver_id')
         .eq('id', dateId)
         .single();
-
+  
       if (dateRequestError) throw dateRequestError;
-
-      const otherUserId = dateRequestData.sender_id === process.env.NEXT_PUBLIC_CURRENT_USER_ID! 
-        ? dateRequestData.receiver_id 
-        : dateRequestData.sender_id;
-
+  
+      const otherUserId =
+        dateRequestData.sender_id === currentUserId
+          ? dateRequestData.receiver_id
+          : dateRequestData.sender_id;
+  
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, avatar_url')
         .eq('id', otherUserId)
         .single();
-
+  
       if (profileError) throw profileError;
-
+  
       setOtherUserProfile(profileData);
     } catch (error) {
       console.error('Error fetching other user profile:', error);
     }
   };
+  
 
   const fetchMessagesAndStatuses = async () => {
+    const currentUserId = await fetchCurrentUserId();
+    if (!currentUserId) return []; // Return an empty array if user ID is not found
+
     const { data, error } = await supabase
       .from('messages')
-      .select('*')
+      .select('id, content, sender, timestamp, read, status, date_id') // Explicitly select only required columns
       .eq('date_id', dateId)
       .order('timestamp', { ascending: true });
+
 
     if (error) {
       console.error('Error fetching messages:', error);
@@ -88,8 +111,7 @@ export default function DateMessaging() {
 
       // Extract current user and other user statuses
       const currentUserMessages = data.filter(
-        msg => msg.sender === 'user' && 
-               msg.user_id === process.env.NEXT_PUBLIC_CURRENT_USER_ID!
+        (msg) => msg.sender === 'user' && msg.id === currentUserId
       );
       const otherUserMessages = data.filter(
         msg => msg.sender === 'other'
@@ -118,12 +140,14 @@ export default function DateMessaging() {
       const { error } = await supabase
         .from('messages')
         .insert({
-          date_id: dateId,
-          status,
-          sender: 'user',
-          user_id: process.env.NEXT_PUBLIC_CURRENT_USER_ID!,
-          timestamp: new Date().toISOString(),
-        });
+        content: newMessage,
+        sender: 'user',
+        status: currentUserStatus, // If needed, include status explicitly
+        timestamp: new Date().toISOString(),
+        date_id: dateId,
+        read: false,
+      });
+
   
       if (error) {
         console.error('Error updating status:', error);
