@@ -41,7 +41,29 @@ interface PaymentPageProps {
 }
 
 
-export default function PaymentPage({ selectedDate, onConfirm, onCancel }: PaymentPageProps) {
+'use client'
+
+interface PageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+  params: { [key: string]: string | string[] | undefined };
+}
+
+export default function PaymentPage(props: PageProps) {
+  const selectedDate: DateType = {
+    id: 0,
+    name: '',
+    price: 0,
+    venue: '',
+    date: '',
+    time: ''
+  };
+  const onConfirm = () => { /* define onConfirm function */ };
+  const onCancel = () => { /* define onCancel function */ };
+
+  return <PaymentPageContent selectedDate={selectedDate} onConfirm={onConfirm} onCancel={onCancel} />;
+}
+
+function PaymentPageContent({ selectedDate, onConfirm, onCancel }: PaymentPageProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string>('');
   const router = useRouter();

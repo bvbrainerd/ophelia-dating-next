@@ -60,13 +60,48 @@ export default function DateRequests() {
   const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
 
   const fetchDateRequests = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch('/api/date-requests');
-      if (!response.ok) throw new Error('Failed to fetch date requests');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      const { data } = await response.json();
-      if (data) {
-        const formattedRequests: DateRequest[] = data.map((request: RawDateRequest) => ({
+      if (sessionError || !session) {
+        console.log('Session error:', sessionError);
+        router.push('/login');
+        return;
+      }
+
+      const { data: dateRequests, error: queryError } = await supabase
+        .from('date_requests')
+        .select(`
+          id,
+          venue,
+          proposed_time,
+          status,
+          proposed_payment,
+          receiver_id,
+          sender_id,
+          profiles!date_requests_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            age,
+            avatar_url,
+            bio
+          )
+        `)
+        .eq('receiver_id', session.user.id)
+        .eq('status', 'pending');
+
+      if (queryError) {
+        console.log('Query error:', queryError);
+        setDateRequests([]);
+        return;
+      }
+
+      console.log('Raw response:', dateRequests);
+
+      if (dateRequests && Array.isArray(dateRequests)) {
+        const formattedRequests = dateRequests.map((request) => ({
           id: request.id,
           sender: request.profiles,
           venue: request.venue,
@@ -74,15 +109,35 @@ export default function DateRequests() {
           status: request.status,
           proposed_payment: request.proposed_payment || 0,
         }));
-        
+
         setDateRequests(formattedRequests);
+      } else {
+        setDateRequests([]);
       }
     } catch (error) {
-      console.error('Error fetching date requests:', error);
+      console.log('Error in fetchDateRequests:', error);
+      setDateRequests([]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const checkSessionAndFetchRequests = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log("Session Check:", session, error);
+      
+      if (error || !session) {
+        console.error('Session is invalid or expired:', error);
+        router.push('/login');
+      } else {
+        console.log('Fetching date requests...');
+        await fetchDateRequests();
+      }
+    };
+
+    checkSessionAndFetchRequests();
+  }, []);
 
   const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
     try {
@@ -121,10 +176,6 @@ export default function DateRequests() {
       alert('Failed to update date request. Please try again.');
     }
   };
-
-  useEffect(() => {
-    fetchDateRequests();
-  }, []);
 
   useEffect(() => {
     const handlePaymentReturn = async () => {
@@ -170,12 +221,16 @@ export default function DateRequests() {
                 <div className="flex-shrink-0">
                   <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
                     <Image
-                      src={request.sender.avatar_url || '/default-avatar.png'}
+                      src={request.sender.avatar_url || '/images/default-avatar.png'}
                       alt={`${request.sender.first_name} ${request.sender.last_name}`}
                       fill
+                      priority={true}
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, 128px"
-                      priority
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/images/default-avatar.png';
+                      }}
                     />
                   </div>
                 </div>
@@ -239,10 +294,16 @@ export default function DateRequests() {
       )}
 
       <button
-        className="w-full p-3 mt-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+        className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
         onClick={() => router.push('/dashboard')}
       >
         Back to Dashboard
+      </button>
+      <button
+        className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+        onClick={() => router.push('/matching')}
+      >
+        Return to Matches
       </button>
     </main>
   );
