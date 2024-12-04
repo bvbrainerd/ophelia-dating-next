@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image'; 
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
-import { createTransport } from 'nodemailer';
 
 interface Profile {
   id: string;
@@ -103,7 +102,7 @@ export default function DateRequests() {
       console.log('Raw response:', dateRequests);
 
       if (dateRequests && Array.isArray(dateRequests)) {
-        const formattedRequests = dateRequests.map((request) => ({
+        const formattedRequests: DateRequest[] = dateRequests.map((request) => ({
           id: request.id,
           sender: request.profiles,
           venue: request.venue,
