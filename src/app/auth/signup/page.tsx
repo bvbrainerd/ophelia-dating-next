@@ -14,6 +14,7 @@ interface UserData {
   gender: string;
   school: string;
   avatar_url: string | null;
+  preferred_gender: string; 
 }
 
 interface AuthError {
@@ -36,6 +37,7 @@ interface ProfileData {
   gender: string;
   school: string;
   avatar_url: string | null;
+  preferred_gender: string; 
   created_at: string;
 }
 
@@ -54,6 +56,7 @@ export default function ProfileSetup() {
     gender: '',
     school: 'Boston College',
     avatar_url: null,
+    preferred_gender: '' 
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,6 +145,7 @@ export default function ProfileSetup() {
         gender: userData.gender,
         school: userData.school,
         avatar_url: avatarUrl,
+        preferred_gender: userData.preferred_gender, 
         created_at: new Date().toISOString(),
       };
 
@@ -300,7 +304,21 @@ export default function ProfileSetup() {
           disabled={isLoading}
           required
         >
-          <option value=''>Select Gender</option>
+          <option value=''>Select Your Gender</option>
+          <option value='male'>Male</option>
+          <option value='female'>Female</option>
+          <option value='other'>Other</option>
+        </select>
+
+        <select
+          className='w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
+          name='preferred_gender'
+          value={userData.preferred_gender}
+          onChange={handleChange}
+          disabled={isLoading}
+          required
+        >
+          <option value=''>Select Partner's Preferred Gender</option>
           <option value='male'>Male</option>
           <option value='female'>Female</option>
           <option value='other'>Other</option>
