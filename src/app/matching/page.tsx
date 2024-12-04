@@ -83,32 +83,12 @@ export default function MatchingPage() {
         return;
       }
 
-      // Send the date request directly from here
-      const response = await fetch(`/api/send-date-request/${userId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          venue: 'Boston Commons', // Default venue or you can show a modal to select
-          proposed_time: new Date().toISOString(), // Default time or show modal
-          proposed_payment: null
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send date request');
-      }
-
-      // Show success message (optional)
-      alert('Date request sent successfully!');
-      
-      // Stay on the matching page
-      router.refresh(); // Refresh the page data
+      // Use the correct path format
+      router.push(`/send-date-request/${userId}`);
       
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to send date request. Please try again.');
+      alert('Failed to navigate to date request page');
     }
   };
 
