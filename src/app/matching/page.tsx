@@ -74,8 +74,42 @@ export default function MatchingPage() {
     fetchUsers();
   }, []);
 
-  const handleSendDateRequest = (userId: string) => {
-    router.push(`/send-date-request/${userId}`);
+  const handleSendDateRequest = async (userId: string) => {
+    try {
+      // Check auth first
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      // Send the date request directly from here
+      const response = await fetch(`/api/send-date-request/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          venue: 'Boston Commons', // Default venue or you can show a modal to select
+          proposed_time: new Date().toISOString(), // Default time or show modal
+          proposed_payment: null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send date request');
+      }
+
+      // Show success message (optional)
+      alert('Date request sent successfully!');
+      
+      // Stay on the matching page
+      router.refresh(); // Refresh the page data
+      
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to send date request. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -147,7 +181,7 @@ export default function MatchingPage() {
         </button>
         <button
           className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-          onClick={() => router.push('/date-requests')}
+          onClick={() => router.push('/daterequests')}
         >
           View Date Requests
         </button>

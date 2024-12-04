@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { supabase } from '@/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
 interface Profile {
   id: string;
@@ -42,9 +43,7 @@ const VENUES = [
   'The Clay Room',
 ];
 
-export default function SendDateRequestPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = React.use(params);
-  const profileId = resolvedParams.id;
+export default function SendDateRequestPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -52,17 +51,22 @@ export default function SendDateRequestPage({ params }: { params: Promise<{ id: 
   const [formData, setFormData] = useState<DateRequestForm>({
     venue: '',
     proposed_time: '',
-    proposed_payment: null,
+    proposed_payment: null, // Initialize as null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', profileId)
+          .eq('id', params.id)
           .single();
         
         if (error) throw error;
@@ -81,38 +85,20 @@ export default function SendDateRequestPage({ params }: { params: Promise<{ id: 
     const checkAuthAndFetch = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
         if (sessionError || !session) {
-          console.error('No valid session');
-          router.replace('/auth/login');
+          console.error('No valid session, redirecting to login');
+          router.push('/login');
           return;
         }
-
-        console.log('Access Token:', session.access_token);
-
-        await fetchProfile();
+        await fetchProfile(); // Fetch profile if session is valid
       } catch (err) {
         console.error('Auth check error:', err);
-        router.replace('/auth/login');
+        router.push('/login');
       }
     };
 
     checkAuthAndFetch();
-  }, [profileId, router]);
-
-  useEffect(() => {
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        router.push('/auth/login');
-      }
-    });
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
+  }, [params.id, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -144,33 +130,24 @@ export default function SendDateRequestPage({ params }: { params: Promise<{ id: 
     setError(null);
 
     try {
-      // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('No active session');
-      }
-
-      const response = await fetch(`/api/send-date-request/${profileId}`, {
+      const response = await fetch(`/api/send-date-request/${params.id}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           ...formData,
           proposed_time: new Date(formData.proposed_time).toISOString(),
-          sender_id: session.user.id,
         }),
       });
 
       if (!response.ok) {
-        console.error('Fetch error:', response.statusText);
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
-      router.push('/matching');
+      router.push('/daterequests');
     } catch (err) {
       console.error('Error sending date request:', err);
       setError(err instanceof Error ? err.message : 'Failed to send date request');

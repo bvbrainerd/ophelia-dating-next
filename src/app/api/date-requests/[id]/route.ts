@@ -78,7 +78,17 @@ export async function PUT(
       .update(updateData)
       .eq('id', id)
       .eq('receiver_id', user.id)
-      .select()
+      .select(`
+        *,
+        profiles!date_requests_sender_id_fkey (
+          id,
+          first_name,
+          last_name,
+          age,
+          avatar_url,
+          bio
+        )
+      `)
       .single();
 
     if (error) {
@@ -119,16 +129,14 @@ export async function GET(
       );
     }
 
+    // Add console.log to debug the query
+    console.log('Fetching date request with id:', id);
+    console.log('User id:', user.id);
+
     const { data, error } = await supabase
       .from('date_requests')
       .select(`
-        id,
-        venue,
-        proposed_time,
-        status,
-        proposed_payment,
-        payment_completed,
-        payment_completed_at,
+        *,
         profiles!date_requests_sender_id_fkey (
           id,
           first_name,
@@ -139,12 +147,15 @@ export async function GET(
         )
       `)
       .eq('id', id)
-      .eq('receiver_id', user.id)
+      .or(`receiver_id.eq.${user.id},status.eq.pending`)
       .single();
 
     if (error) {
+      console.error('Supabase query error:', error);
       throw error;
     }
+
+    console.log('Retrieved date request data:', data);
 
     return NextResponse.json({ data });
   } catch (error) {
