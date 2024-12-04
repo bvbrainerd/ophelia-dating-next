@@ -142,6 +142,21 @@ export default function DateRequests() {
 
   const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
     try {
+      if (newStatus === 'declined') {
+        const { error } = await supabase
+          .from('date_requests')
+          .update({ status: newStatus })
+          .eq('id', requestId);
+
+        if (error) throw error;
+
+        setDateRequests(prev =>
+          prev.filter(request => request.id !== requestId)
+        );
+        
+        return;
+      }
+
       if (newStatus === 'accepted') {
         const acceptedDate = dateRequests.find(request => request.id === requestId);
         if (acceptedDate?.venue && VENUE_PAYMENT_LINKS[acceptedDate.venue]) {
@@ -154,24 +169,6 @@ export default function DateRequests() {
           return;
         }
       }
-
-      const response = await fetch('/api/date-requests', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: requestId, status: newStatus }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update date request');
-
-      setDateRequests(prev =>
-        prev.map(request =>
-          request.id === requestId
-            ? { ...request, status: newStatus }
-            : request
-        )
-      );
     } catch (error) {
       console.error('Error updating date request:', error);
       alert('Failed to update date request. Please try again.');
