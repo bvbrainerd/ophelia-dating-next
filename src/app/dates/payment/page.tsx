@@ -40,9 +40,6 @@ interface PaymentPageProps {
   onCancel: () => void;
 }
 
-
-'use client'
-
 interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
   params: { [key: string]: string | string[] | undefined };
