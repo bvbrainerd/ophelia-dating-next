@@ -1,9 +1,11 @@
+// src/app/daterequests/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image'; 
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import { createTransport } from 'nodemailer';
 
 interface Profile {
   id: string;
@@ -307,4 +309,34 @@ export default function DateRequests() {
       </button>
     </main>
   );
+}
+
+
+
+export async function sendDateRequestEmail(senderId: string, recipientId: string, dateDetails: DateRequest) {
+  try {
+    const response = await fetch('/api/send-date-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderId,
+        recipientId,
+        dateDetails,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to send email');
+    }
+
+    console.log('Email sent successfully');
+    return true;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error('Error sending email:', error.message);
+    } else {
+      console.error('An unexpected error occurred:', error);
+    }    return false;
+  }
 }
