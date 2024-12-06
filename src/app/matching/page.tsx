@@ -77,21 +77,37 @@ export default function MatchingPage() {
 
   const handleSendDateRequest = async (userId: string) => {
     try {
-      // Check auth first
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
         return;
       }
 
-      // Use the correct path format
+      // Proceed with the date request
+      const response = await fetch(`/api/send-date-request/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          sender_id: session.user.id,
+          proposed_time: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send date request');
+      }
+
+      // Remove the requested user from the list
+      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== userId));
+
+      // Navigate to the Send Date Request page
       router.push(`/send-date-request/${userId}`);
-      
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to navigate to date request page');
+      alert('Failed to send date request');
     }
-  };
+};
+
 
   if (isLoading) {
     return (
