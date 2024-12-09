@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import BottomNav from '@/components/BottomNav';
 
+// Create supabase client with session persistence
 const supabase = createClientComponentClient();
 
 // Types
@@ -61,22 +62,29 @@ export default function EditProfilePage() {
   // Wrap fetchProfile in useCallback
   const fetchProfile = useCallback(async () => {
     try {
+      setIsLoading(true);
       setError(null);
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      // First check for active session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (authError) throw authError;
-      if (!user) {
-        router.push('/login');
+      if (sessionError || !session) {
+        router.replace('/auth/login');
         return;
       }
 
-      const { data, error } = await supabase
+      // Use session.user instead of separate getUser call
+      const { data, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single();
 
-      if (error) throw error;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw profileError;
+      }
+
       if (data) {
         setProfileData({
           first_name: data.first_name || '',
@@ -96,10 +104,12 @@ export default function EditProfilePage() {
     } catch (error) {
       console.error('Error fetching profile:', error);
       setError('Failed to fetch profile. Please try again.');
+      router.replace('/auth/login');
+    } finally {
+      setIsLoading(false);
     }
   }, [router]);
 
-  // Update useEffect to include fetchProfile in dependencies
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -209,12 +219,16 @@ export default function EditProfilePage() {
 
   const handleLogout = async () => {
     try {
+      setIsLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      router.push('/auth/login');
+      
+      router.replace('/auth/login');
     } catch (error) {
       console.error('Error logging out:', error);
       setError('Failed to log out. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -378,9 +392,10 @@ export default function EditProfilePage() {
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors"
+              disabled={isLoading}
+              className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
-              Logout
+              {isLoading ? 'Logging out...' : 'Logout'}
             </button>
           </div>
         </form>

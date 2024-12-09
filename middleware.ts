@@ -7,17 +7,18 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
-  // Refresh session if exists
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  // Allow access to auth-related pages
-  if (req.nextUrl.pathname.startsWith('/auth')) {
-    return res;
+  // If no session and trying to access protected route, redirect to login
+  if (!session && req.nextUrl.pathname !== '/auth/login') {
+    return NextResponse.redirect(new URL('/auth/login', req.url));
   }
 
-  // Protect other routes
-  if (!session) {
-    return NextResponse.redirect(new URL('/auth/login', req.url));
+  // If session exists and trying to access login page, redirect to dashboard
+  if (session && req.nextUrl.pathname === '/auth/login') {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   return res;
@@ -25,6 +26,11 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public|images|auth).*)',
-  ],
+    '/dashboard/:path*',
+    '/auth/login',
+    '/profile/:path*',
+    '/matching/:path*',
+    '/dates/:path*',
+    '/daterequests/:path*'
+  ]
 };

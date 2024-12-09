@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 import type { FC } from 'react';
 import BottomNav from '@/components/BottomNav';
 
@@ -50,41 +50,23 @@ const UpcomingDatesPage: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([]);
   const [previousDates, setPreviousDates] = useState<UpcomingDate[]>([]);
-  const supabase = createClientComponentClient();
-
-  useEffect(() => {
-    const checkAuthAndFetchDates = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          router.push('/auth/signin');
-          return;
-        }
-        
-        await fetchDates();
-      } catch (error) {
-        console.error('Auth check error:', error);
-        router.push('/auth/signin');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuthAndFetchDates();
-  }, [router]);
 
   const fetchDates = async () => {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (authError || !user) {
+      if (authError) {
         console.error('Auth error:', authError);
-        router.push('/auth/signin');
+        router.push('/login');
+        return;
+      }
+      
+      if (!user) {
+        router.push('/login');
         return;
       }
 
-      // Fetch all relevant dates
+      // Fetch all accepted dates
       const { data: receiverDates, error: receiverError } = await supabase
         .from('date_requests')
         .select(`
@@ -103,7 +85,7 @@ const UpcomingDatesPage: FC = () => {
           )
         `)
         .eq('receiver_id', user.id)
-        .in('status', ['accepted', 'completed', 'declined', 'pending'])
+        .in('status', ['accepted', 'completed'])
         .returns<ReceiverDateResponse[]>();
 
       if (receiverError) {
@@ -129,7 +111,7 @@ const UpcomingDatesPage: FC = () => {
           )
         `)
         .eq('sender_id', user.id)
-        .in('status', ['accepted', 'completed', 'declined', 'pending'])
+        .in('status', ['accepted', 'completed'])
         .returns<SenderDateResponse[]>();
 
       if (senderError) {
@@ -159,33 +141,21 @@ const UpcomingDatesPage: FC = () => {
         }))
       ];
 
+      // Split dates into upcoming and previous based on date
       const now = new Date();
-      
-      // Update the filtering logic
-      const upcoming = formattedDates.filter(date => 
-        new Date(date.proposed_time) > now && 
-        date.status === 'accepted'
-      );
-      
-      const previous = formattedDates.filter(date => 
-        new Date(date.proposed_time) < now || 
-        ['completed', 'declined'].includes(date.status) ||
-        (date.status === 'pending' && new Date(date.proposed_time) < now)  // Include expired pending requests
-      );
+      const upcoming = formattedDates.filter(date => new Date(date.proposed_time) > now && date.status === 'accepted');
+      const previous = formattedDates.filter(date => new Date(date.proposed_time) < now || date.status === 'completed');
 
-      // Sort dates
-      setUpcomingDates(upcoming.sort((a, b) => 
-        new Date(a.proposed_time).getTime() - new Date(b.proposed_time).getTime()
-      ));
-      
-      setPreviousDates(previous.sort((a, b) => 
-        new Date(b.proposed_time).getTime() - new Date(a.proposed_time).getTime()
-      ));
+      // Sort dates by time
+      setUpcomingDates(upcoming.sort((a, b) => new Date(a.proposed_time).getTime() - new Date(b.proposed_time).getTime()));
+      setPreviousDates(previous.sort((a, b) => new Date(b.proposed_time).getTime() - new Date(a.proposed_time).getTime()));
 
     } catch (error) {
       console.error('Error fetching dates:', error);
       if (error instanceof Error) {
-        router.push('/auth/signin');
+        if (error.message === 'No authenticated user') {
+          router.push('/login');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -223,6 +193,10 @@ const UpcomingDatesPage: FC = () => {
       }
     }
   };
+
+  useEffect(() => {
+    fetchDates();
+  }, [router]);
 
   if (isLoading) {
     return (
