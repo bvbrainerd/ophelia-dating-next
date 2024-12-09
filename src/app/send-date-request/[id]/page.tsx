@@ -136,8 +136,12 @@ export default function SendDateRequestPage() {
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
+      
+      if (!session) {
+        setError('Your session has expired. Please log in again.');
         router.replace('/auth/login');
         return;
       }
@@ -145,7 +149,7 @@ export default function SendDateRequestPage() {
       const { error: insertError } = await supabase
         .from('date_requests')
         .insert({
-          sender_id: user.id,
+          sender_id: session.user.id,
           receiver_id: profileId,
           venue: formData.venue,
           proposed_time: new Date(formData.proposed_time).toISOString(),
@@ -157,7 +161,11 @@ export default function SendDateRequestPage() {
 
       router.push('/matching');
     } catch (err) {
+      console.error('Submit error:', err);
       setError(err instanceof Error ? err.message : 'Failed to send date request');
+      if (err instanceof Error && err.message.includes('session')) {
+        router.replace('/auth/login');
+      }
     } finally {
       setIsSubmitting(false);
     }
