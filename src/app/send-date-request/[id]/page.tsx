@@ -174,38 +174,14 @@ export default function SendDateRequestPage() {
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
-      // Ensure profile exists before sending email
-      if (!profile) {
-        throw new Error('Profile not found');
-      }
-
-      const emailResponse = await fetch('/api/send-date-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          senderId: session.user.id,
-          recipientId: profile.id,
-          dateDetails: {
-            venue: formData.venue,
-            proposedTime: formData.proposed_time,
-            proposedPayment: formData.proposed_payment,
-          },
-        }),
-      });
-
-      if (!emailResponse.ok) {
-        throw new Error('Failed to send email notification');
-      }
-
+      // Remove the email notification part and directly redirect
       router.push('/matching');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send date request');
     } finally {
       setIsSubmitting(false);
     }
-};
-
-
+  };
 
   if (isLoading) {
     return (
