@@ -135,7 +135,7 @@ export default function SendDateRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateDateTime(formData.proposed_time)) {
       setError('Please select a future date and time');
       return;
@@ -145,13 +145,12 @@ export default function SendDateRequestPage() {
     setError(null);
 
     try {
-      // Get the current session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
         throw new Error('No active session');
       }
 
+      // Send the date request to the API
       const response = await fetch(`/api/send-date-request/${profileId}`, {
         method: 'POST',
         headers: {
@@ -161,24 +160,43 @@ export default function SendDateRequestPage() {
         body: JSON.stringify({
           ...formData,
           proposed_time: new Date(formData.proposed_time).toISOString(),
-          sender_id: session.user.id,
+          sender_id: session.user.id, // Use the logged-in user's ID
         }),
       });
 
       if (!response.ok) {
-        console.error('Fetch error:', response.statusText);
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
+      // Ensure profile and session details are available for the email
+      if (!profile) {
+        throw new Error('Profile not found');
+      }
+
+      const emailResponse = await fetch('/api/send-date-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: session.user.id, // Current user's ID
+          recipientId: profile.id,   // Profile's ID
+          dateDetails: {
+            venue: formData.venue,
+            proposedTime: formData.proposed_time,
+            proposedPayment: formData.proposed_payment,
+          },
+        }),
+      });
+
       router.push('/matching');
     } catch (err) {
-      console.error('Error sending date request:', err);
       setError(err instanceof Error ? err.message : 'Failed to send date request');
     } finally {
       setIsSubmitting(false);
     }
-  };
+};
+
+
 
   if (isLoading) {
     return (
