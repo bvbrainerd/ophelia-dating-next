@@ -82,24 +82,21 @@ export default function MatchingPage() {
       // Get current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        router.push('/auth/login');
-        return;
+      // If there's no session, try to refresh it
+      if (sessionError || !session) {
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (!refreshData.session) {
+          router.push('/auth/login');
+          return;
+        }
       }
 
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      // If we have a valid session, navigate to the date request page
+      // If we have a valid session, proceed with navigation
       router.push(`/send-date-request/${userId}`);
       
     } catch (error) {
       console.error('Error:', error);
-      // Show a more user-friendly error
-      alert('Please try again. If the problem persists, try logging in again.');
+      router.push('/auth/login');
     }
   };
 

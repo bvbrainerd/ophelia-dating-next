@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client'
 
 export default function LoginSignup() {
   const [email, setEmail] = useState('');
@@ -9,7 +9,6 @@ export default function LoginSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const [error, setError] = useState('');
-  const supabase = createClientComponentClient();
 
   const validateBCEmail = (email: string) => {
     return email.toLowerCase().endsWith('@bc.edu');

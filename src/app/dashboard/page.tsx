@@ -70,7 +70,6 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [rating, setRating] = useState<string>('1/1');
 
   const fetchDateRequests = useCallback(async () => {
     try {
@@ -179,44 +178,6 @@ export default function DashboardPage() {
     }
   };
 
-  const calculateRating = useCallback(async (userId: string) => {
-    try {
-      if (!userId) {
-        return '0/0';
-      }
-
-      // Query dates where both parties confirmed completion
-      const { data: completedDates, error: datesError } = await supabase
-        .from('date_requests')
-        .select('rating, status')
-        .eq('receiver_id', userId)
-        .eq('status', 'completed')  // Only get completed dates
-        .eq('date_confirmed', true); // Add this to check if date was confirmed
-
-      if (datesError) {
-        console.log('Error fetching ratings, using default');
-        return '0/0';
-      }
-
-      // Handle no data case
-      if (!completedDates || completedDates.length === 0) {
-        return '0/0';
-      }
-
-      // Calculate total confirmed dates
-      const totalConfirmedDates = completedDates.length;
-
-      // Calculate success rate (all confirmed dates are considered successful)
-      const successRate = totalConfirmedDates;
-
-      return `${successRate}/${totalConfirmedDates}`;
-
-    } catch (error) {
-      console.log('Error in rating calculation');
-      return '0/0';
-    }
-  }, []);
-
   useEffect(() => {
     const initializeDashboard = async () => {
       setLoading(true);
@@ -234,22 +195,6 @@ export default function DashboardPage() {
 
     initializeDashboard();
   }, [fetchDateRequests, fetchMatches]);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const userRating = await calculateRating(user.id);
-          setRating(userRating);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
-    fetchUserData();
-  }, [calculateRating]);
 
   const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
@@ -348,8 +293,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-3 gap-6 mb-8">
         {[
           { icon: Crown, value: 'Gold', label: 'Dater Status' },
-          { icon: Trophy, value: rating, label: 'Your Dater Rating' },
-          { icon: Heart, value: rating === '0/0' ? '0%' : '85%', label: 'Your Date Follow-Through' }
+          { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
+          { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
         ].map(({ icon: Icon, value, label }) => (
           <Card key={label} className="col-span-1 border-2 border-[#BA2525]/20">
             <CardContent className="p-4">
