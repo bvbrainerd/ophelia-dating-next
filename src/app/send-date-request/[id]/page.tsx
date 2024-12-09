@@ -43,6 +43,31 @@ const VENUES = [
   'The Clay Room',
 ];
 
+const generateTimeSlots = () => {
+  const slots = [];
+  for (let hour = 1; hour <= 12; hour++) {
+    for (let minute of ['00', '30']) {
+      // AM slots
+      slots.push({
+        display: `${hour}:${minute} AM`,
+        value: `${hour === 12 ? '00' : hour.toString().padStart(2, '0')}:${minute}`
+      });
+    }
+  }
+  for (let hour = 1; hour <= 12; hour++) {
+    for (let minute of ['00', '30']) {
+      // PM slots
+      slots.push({
+        display: `${hour}:${minute} PM`,
+        value: `${(hour === 12 ? 12 : hour + 12).toString().padStart(2, '0')}:${minute}`
+      });
+    }
+  }
+  return slots;
+};
+
+const DEFAULT_AVATAR = 'https://opheliadating.com/default-avatar.png'; // Replace with your actual default avatar URL
+
 export default function SendDateRequestPage() {
   const params = useParams();
   const profileId = params.id as string;
@@ -60,29 +85,31 @@ export default function SendDateRequestPage() {
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       try {
-        // Refresh the session first
-        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (refreshError || !session) {
-          console.error('No valid session');
-          router.replace('/auth/login');
+        if (!session?.user) {
+          console.log('No session found, redirecting to login');
+          router.push('/auth/login');
           return;
         }
 
-        // Fetch profile data
+        console.log('Session found, fetching profile');
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', profileId)
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Profile fetch error:', error);
+          throw error;
+        }
         
         if (data) {
           setProfile(data);
         }
       } catch (err) {
-        console.error('Error:', err);
+        console.error('Error in checkAuthAndFetch:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch profile');
       } finally {
         setIsLoading(false);
@@ -91,20 +118,6 @@ export default function SendDateRequestPage() {
 
     checkAuthAndFetch();
   }, [profileId, router]);
-
-  useEffect(() => {
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        router.push('/auth/login');
-      }
-    });
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -136,9 +149,10 @@ export default function SendDateRequestPage() {
     setError(null);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('No active session');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+        return;
       }
 
       // Send the date request to the API
@@ -146,12 +160,12 @@ export default function SendDateRequestPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           ...formData,
           proposed_time: new Date(formData.proposed_time).toISOString(),
-          sender_id: session.user.id, // Use the logged-in user's ID
+          sender_id: session.user.id,
         }),
       });
 
@@ -160,7 +174,7 @@ export default function SendDateRequestPage() {
         throw new Error(errorData.error || 'Failed to send date request');
       }
 
-      // Ensure profile and session details are available for the email
+      // Ensure profile exists before sending email
       if (!profile) {
         throw new Error('Profile not found');
       }
@@ -169,8 +183,8 @@ export default function SendDateRequestPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderId: session.user.id, // Current user's ID
-          recipientId: profile.id,   // Profile's ID
+          senderId: session.user.id,
+          recipientId: profile.id,
           dateDetails: {
             venue: formData.venue,
             proposedTime: formData.proposed_time,
@@ -178,6 +192,10 @@ export default function SendDateRequestPage() {
           },
         }),
       });
+
+      if (!emailResponse.ok) {
+        throw new Error('Failed to send email notification');
+      }
 
       router.push('/matching');
     } catch (err) {
@@ -220,7 +238,7 @@ export default function SendDateRequestPage() {
       <div className="mb-6 flex items-center space-x-4">
         <div className="relative w-24 h-24">
           <Image
-            src={profile.avatar_url || '/default-avatar.png'}
+            src={profile.avatar_url || DEFAULT_AVATAR}
             alt={`${profile.first_name}'s avatar`}
             fill
             className="rounded-full object-cover"
@@ -236,12 +254,13 @@ export default function SendDateRequestPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" id="date-request-form">
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="venue" className="block text-sm font-medium mb-1">
             Venue
           </label>
           <select
+            id="venue"
             name="venue"
             value={formData.venue}
             onChange={handleChange}
@@ -256,28 +275,64 @@ export default function SendDateRequestPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="proposed_time" className="block text-sm font-medium mb-1">
             Proposed Time
           </label>
-          <input
-            type="datetime-local"
-            name="proposed_time"
-            value={formData.proposed_time}
-            onChange={handleChange}
-            required
-            min={new Date().toISOString().slice(0, 16)} // Set minimum to current time
-            className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-[#cc0000] focus:border-[#cc0000]"
-          />
+          <div className="flex space-x-2">
+            <input
+              id="proposed_date"
+              type="date"
+              name="proposed_date"
+              value={formData.proposed_time.split('T')[0]}
+              onChange={(e) => {
+                const newDate = e.target.value;
+                const currentTime = formData.proposed_time.split('T')[1] || '00:00';
+                setFormData(prev => ({
+                  ...prev,
+                  proposed_time: `${newDate}T${currentTime}`
+                }));
+              }}
+              min={new Date().toISOString().split('T')[0]}
+              className="w-1/2 p-2.5 border border-gray-200 rounded-lg focus:ring-[#cc0000] focus:border-[#cc0000]"
+              required
+            />
+            <div className="relative w-1/2">
+              <input
+                id="proposed_time"
+                type="time"
+                name="proposed_time"
+                value={formData.proposed_time.split('T')[1] || ''}
+                onChange={(e) => {
+                  const currentDate = formData.proposed_time.split('T')[0] || new Date().toISOString().split('T')[0];
+                  setFormData(prev => ({
+                    ...prev,
+                    proposed_time: `${currentDate}T${e.target.value}`
+                  }));
+                }}
+                className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-[#cc0000] focus:border-[#cc0000]"
+                required
+                step="1800"
+              />
+              <datalist id="time-suggestions">
+                {generateTimeSlots().map((slot) => (
+                  <option key={slot.value} value={slot.value}>
+                    {slot.display}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="proposed_payment" className="block text-sm font-medium mb-1">
             Proposed Payment ($) - Optional
           </label>
           <input
+            id="proposed_payment"
             type="number"
             name="proposed_payment"
-            value={formData.proposed_payment ?? ''} // Use nullish coalescing for empty field
+            value={formData.proposed_payment ?? ''}
             onChange={handleChange}
             min="0"
             step="0.01"
@@ -287,6 +342,8 @@ export default function SendDateRequestPage() {
         </div>
 
         <button
+          id="submit-date-request"
+          name="submit-date-request"
           type="submit"
           disabled={isSubmitting}
           className="w-full p-2.5 bg-[#cc0000] text-white rounded-lg font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50"

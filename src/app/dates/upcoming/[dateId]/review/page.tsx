@@ -27,6 +27,7 @@ export default function DateReview() {
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
+            name={`rating-${star}`}
             onClick={() => setRating(star)}
             className={`text-3xl ${
               rating >= star ? 'text-yellow-400' : 'text-gray-300'
@@ -38,6 +39,7 @@ export default function DateReview() {
       </div>
 
       <textarea
+        name="review"
         value={review}
         onChange={(e) => setReview(e.target.value)}
         placeholder="Tell us about your date..."
@@ -46,6 +48,7 @@ export default function DateReview() {
       />
 
       <button 
+        name="submit-review"
         className="w-full p-3 bg-[#cc0000] text-white rounded"
         onClick={submitReview}
       >

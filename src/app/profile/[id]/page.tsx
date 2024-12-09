@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { supabase } from '@/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import BottomNav from '@/components/BottomNav';
 
 interface Profile {
@@ -33,6 +33,9 @@ export default function UserProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Create Supabase client once
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -56,8 +59,24 @@ export default function UserProfile() {
     fetchUserProfile();
   }, [id]);
 
-  const handleSendDateRequest = () => {
-    router.push(`/send-date-request/${id}`);
+  const handleSendDateRequest = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        // Store the intended destination
+        localStorage.setItem('redirectAfterLogin', `/send-date-request/${id}`);
+        router.push('/auth/login');
+        return;
+      }
+
+      // If user is authenticated, navigate directly to send date request page
+      router.push(`/send-date-request/${id}`);
+      
+    } catch (error) {
+      console.error('Error in handleSendDateRequest:', error);
+      setError('An error occurred. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -137,12 +156,23 @@ export default function UserProfile() {
         {/* Action Buttons */}
         <div>
           <button
+            type="button"
+            id="send-date-request"
+            name="send-date-request"
             onClick={handleSendDateRequest}
             className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors mb-3"
           >
             Send Date Request
           </button>
+          {error && (
+            <div className="text-red-600 text-sm mb-3">
+              {error}
+            </div>
+          )}
           <button
+            type="button"
+            id="back-to-matching"
+            name="back-to-matching"
             onClick={() => router.push('/matching')}
             className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
           >
