@@ -46,7 +46,7 @@ const VENUES = [
 const generateTimeSlots = () => {
   const slots = [];
   for (let hour = 1; hour <= 12; hour++) {
-    for (let minute of ['00', '30']) {
+    for (const minute of ['00', '30']) {
       // AM slots
       slots.push({
         display: `${hour}:${minute} AM`,
@@ -55,7 +55,7 @@ const generateTimeSlots = () => {
     }
   }
   for (let hour = 1; hour <= 12; hour++) {
-    for (let minute of ['00', '30']) {
+    for (const minute of ['00', '30']) {
       // PM slots
       slots.push({
         display: `${hour}:${minute} PM`,
