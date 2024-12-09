@@ -58,8 +58,18 @@ export default function SendDateRequestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
-    const fetchProfile = async () => {
+    const checkAuthAndFetch = async () => {
       try {
+        // Refresh the session first
+        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !session) {
+          console.error('No valid session');
+          router.replace('/auth/login');
+          return;
+        }
+
+        // Fetch profile data
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -72,29 +82,10 @@ export default function SendDateRequestPage() {
           setProfile(data);
         }
       } catch (err) {
-        console.error('Error in fetchProfile:', err);
+        console.error('Error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch profile');
       } finally {
         setIsLoading(false);
-      }
-    };
-
-    const checkAuthAndFetch = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          console.error('No valid session');
-          router.replace('/auth/login');
-          return;
-        }
-
-        console.log('Access Token:', session.access_token);
-
-        await fetchProfile();
-      } catch (err) {
-        console.error('Auth check error:', err);
-        router.replace('/auth/login');
       }
     };
 
