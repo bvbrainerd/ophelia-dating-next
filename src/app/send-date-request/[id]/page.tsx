@@ -146,7 +146,8 @@ export default function SendDateRequestPage() {
         return;
       }
 
-      const { error: insertError } = await supabase
+      // First insert the date request
+      const { data: dateRequest, error: insertError } = await supabase
         .from('date_requests')
         .insert({
           sender_id: session.user.id,
@@ -155,9 +156,60 @@ export default function SendDateRequestPage() {
           proposed_time: new Date(formData.proposed_time).toISOString(),
           proposed_payment: formData.proposed_payment,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Get receiver's profile for email
+      const { data: receiverProfile, error: receiverError } = await supabase
+        .from('profiles')
+        .select('email, first_name')
+        .eq('id', profileId)
+        .single();
+
+      if (receiverError || !receiverProfile) {
+        throw new Error('Failed to fetch receiver profile');
+      }
+
+      // Get sender's profile for email
+      const { data: senderProfile, error: senderError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', session.user.id)
+        .single();
+
+      if (senderError || !senderProfile) {
+        throw new Error('Failed to fetch sender profile');
+      }
+
+      // Send email notification
+      try {
+        const response = await fetch('/api/send-date-request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            senderId: session.user.id,
+            recipientId: profileId,
+            dateDetails: {
+              requestId: dateRequest.id,
+              venue: formData.venue,
+              proposedTime: formData.proposed_time,
+              proposedPayment: formData.proposed_payment
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to send email notification');
+        }
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        // Continue even if email fails
+      }
 
       router.push('/matching');
     } catch (err) {
