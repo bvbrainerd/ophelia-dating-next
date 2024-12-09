@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
+import { supabase } from '@/supabase/client';
 
 interface Profile {
   id: string;
@@ -20,23 +21,34 @@ interface Profile {
 
 export default function MatchingPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<Profile[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.replace('/auth/login');
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
+
   const fetchUsers = async () => {
-   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        router.push('/auth/login');
+        return;
+      }
+
       // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single();
 
       if (currentUserError) throw currentUserError;
@@ -56,7 +68,7 @@ export default function MatchingPage() {
           preferred_gender,
           dater_archetype
         `)
-        .neq('id', user.id)
+        .neq('id', session.user.id)
         .eq('gender', currentUserData.preferred_gender);
         // Removed the dater_archetype filter to show more matches
         
@@ -78,26 +90,13 @@ export default function MatchingPage() {
   }, []);
 
   const handleSendDateRequest = async (userId: string) => {
-    try {
-      // Get current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      // If there's no session, try to refresh it
-      if (sessionError || !session) {
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        if (!refreshData.session) {
-          router.push('/auth/login');
-          return;
-        }
-      }
-
-      // If we have a valid session, proceed with navigation
-      router.push(`/send-date-request/${userId}`);
-      
-    } catch (error) {
-      console.error('Error:', error);
-      router.push('/auth/login');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.replace('/auth/login');
+      return;
     }
+    
+    router.push(`/send-date-request/${userId}`);
   };
 
 

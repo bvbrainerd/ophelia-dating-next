@@ -7,7 +7,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { supabase } from '@/supabase/client';
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -61,6 +60,8 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
   'The Clay Room': 'https://buy.stripe.com/28o15p1ao0xv8yA6or',
 };
+
+const supabase = createClientComponentClient();
 
 export default function DashboardPage() {
   const router = useRouter();

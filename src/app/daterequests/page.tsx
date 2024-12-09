@@ -2,9 +2,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image'; 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 
 interface Profile {
@@ -23,15 +23,6 @@ interface DateRequest {
   proposed_time: string;
   status: 'pending' | 'accepted' | 'declined';
   proposed_payment: number;
-}
-
-interface RawDateRequest {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: 'pending' | 'accepted' | 'declined';
-  proposed_payment: number;
-  profiles: Profile;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -56,142 +47,97 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
 };
 
-const supabase = createClientComponentClient();
-
-export default function DateRequests() {
+export default function DateRequestsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [dateRequests, setDateRequests] = useState<DateRequest[]>([]);
-
-  const fetchDateRequests = async () => {
-    setIsLoading(true);
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.log('Session error:', sessionError);
-        router.push('/login');
-        return;
-      }
-
-      const { data: dateRequests, error: queryError } = await supabase
-        .from('date_requests')
-        .select(`
-          id,
-          venue,
-          proposed_time,
-          status,
-          proposed_payment,
-          receiver_id,
-          sender_id,
-          profiles!date_requests_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url,
-            bio
-          )
-        `)
-        .eq('receiver_id', session.user.id)
-        .eq('status', 'pending');
-
-      if (queryError) {
-        console.log('Query error:', queryError);
-        setDateRequests([]);
-        return;
-      }
-
-      console.log('Raw response:', dateRequests);
-
-      if (dateRequests && Array.isArray(dateRequests)) {
-        const formattedRequests: DateRequest[] = dateRequests.map((request: any) => ({
-          id: request.id,
-          sender: request.profiles,
-          venue: request.venue,
-          proposed_time: request.proposed_time,
-          status: request.status,
-          proposed_payment: request.proposed_payment
-        }));
-
-        setDateRequests(formattedRequests);
-      } else {
-        setDateRequests([]);
-      }
-    } catch (error) {
-      console.log('Error in fetchDateRequests:', error);
-      setDateRequests([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkSessionAndFetchRequests = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log("Session Check:", session, error);
-      
-      if (error || !session) {
-        console.error('Session is invalid or expired:', error);
-        router.push('/login');
-      } else {
-        console.log('Fetching date requests...');
-        await fetchDateRequests();
-      }
-    };
-
-    checkSessionAndFetchRequests();
-  }, []);
-
-  const handleDateResponse = async (requestId: string, newStatus: 'accepted' | 'declined') => {
-    try {
-      if (newStatus === 'declined') {
-        const { error } = await supabase
-          .from('date_requests')
-          .update({ status: newStatus })
-          .eq('id', requestId);
-
-        if (error) throw error;
-
-        setDateRequests(prev =>
-          prev.filter(request => request.id !== requestId)
-        );
+    const fetchDateRequests = async () => {
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
         
-        return;
-      }
-
-      if (newStatus === 'accepted') {
-        const acceptedDate = dateRequests.find(request => request.id === requestId);
-        if (acceptedDate?.venue && VENUE_PAYMENT_LINKS[acceptedDate.venue]) {
-          sessionStorage.setItem('pendingDateId', requestId);
-          sessionStorage.setItem('paymentReturnTime', new Date().toISOString());
-          
-          const returnUrl = new URL('/payment-success', window.location.origin).toString();
-          const finalPaymentLink = `${VENUE_PAYMENT_LINKS[acceptedDate.venue]}?redirect=${encodeURIComponent(returnUrl)}`;
-          window.location.href = finalPaymentLink;
+        if (authError || !user) {
+          console.error('Auth error:', authError);
+          router.replace('/auth/login');
           return;
         }
-      }
-    } catch (error) {
-      console.error('Error updating date request:', error);
-      alert('Failed to update date request. Please try again.');
-    }
-  };
 
-  useEffect(() => {
-    const handlePaymentReturn = async () => {
-      const pendingDateId = sessionStorage.getItem('pendingDateId');
-      if (pendingDateId) {
-        sessionStorage.removeItem('pendingDateId');
-        sessionStorage.removeItem('paymentReturnTime');
-        await handleDateResponse(pendingDateId, 'accepted');
+        const { data: requests, error: requestsError } = await supabase
+          .from('date_requests')
+          .select(`
+            id,
+            venue,
+            proposed_time,
+            status,
+            proposed_payment,
+            sender:profiles!date_requests_sender_id_fkey (
+              id,
+              first_name,
+              last_name,
+              age,
+              avatar_url,
+              bio
+            )
+          `)
+          .eq('receiver_id', user.id)
+          .eq('status', 'pending')
+          .order('proposed_time', { ascending: true });
+
+        if (requestsError) {
+          console.error('Error fetching requests:', requestsError);
+          setError('Failed to load date requests');
+          return;
+        }
+
+        const formattedRequests = requests?.map(request => ({
+          ...request,
+          sender: request.sender[0]
+        })) || [];
+
+        setDateRequests(formattedRequests);
+      } catch (error) {
+        console.error('Error:', error);
+        setError('An unexpected error occurred');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (window.location.pathname === '/payment-success') {
-      handlePaymentReturn();
+    fetchDateRequests();
+  }, [router]);
+
+  const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
+    try {
+      const { error } = await supabase
+        .from('date_requests')
+        .update({ status })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setDateRequests(prev =>
+        prev.filter(request => request.id !== requestId)
+      );
+    } catch (error) {
+      console.error('Error updating date request:', error);
+      setError('Failed to update date request');
     }
-  }, []);
+  };
+
+  const sendDateRequestEmail = async (senderId: string, recipientId: string, dateDetails: DateRequest) => {
+    try {
+      const response = await fetch('/api/send-date-request', {
+        method: 'POST',
+        // ... other options ...
+      });
+      // Handle response
+    } catch (error) {
+      console.error('An unexpected error occurred:', error);
+      return false;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -208,6 +154,12 @@ export default function DateRequests() {
           Your Date Requests
         </h1>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+
         {dateRequests.length === 0 ? (
           <div className="text-center text-gray-600 py-8">
             No pending date requests
@@ -215,10 +167,7 @@ export default function DateRequests() {
         ) : (
           <div className="space-y-5">
             {dateRequests.map((request) => (
-              <div
-                key={request.id}
-                className="border border-gray-200 rounded-lg p-5 shadow-sm"
-              >
+              <div key={request.id} className="border border-gray-200 rounded-lg p-5 shadow-sm">
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
                     <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
@@ -300,32 +249,3 @@ export default function DateRequests() {
   );
 }
 
-
-
-const sendDateRequestEmail = async (senderId: string, recipientId: string, dateDetails: DateRequest) => {
-  try {
-    const response = await fetch('/api/send-date-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        senderId,
-        recipientId,
-        dateDetails,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to send email');
-    }
-
-    console.log('Email sent successfully');
-    return true;
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error('Error sending email:', error.message);
-    } else {
-      console.error('An unexpected error occurred:', error);
-    }    return false;
-  }
-}

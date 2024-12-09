@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 
 interface Profile {
@@ -34,9 +34,6 @@ export default function UserProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  // Create Supabase client once
-  const supabase = createClientComponentClient();
-
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -64,15 +61,12 @@ export default function UserProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        // Store the intended destination
         localStorage.setItem('redirectAfterLogin', `/send-date-request/${id}`);
         router.push('/auth/login');
         return;
       }
 
-      // If user is authenticated, navigate directly to send date request page
       router.push(`/send-date-request/${id}`);
-      
     } catch (error) {
       console.error('Error in handleSendDateRequest:', error);
       setError('An error occurred. Please try again.');

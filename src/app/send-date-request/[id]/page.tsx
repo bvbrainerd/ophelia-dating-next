@@ -85,39 +85,32 @@ export default function SendDateRequestPage() {
   useEffect(() => {
     const checkAuthAndFetch = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (!session?.user) {
-          console.log('No session found, redirecting to login');
-          router.push('/auth/login');
+        if (!user) {
+          router.replace('/auth/login');
           return;
         }
 
-        console.log('Session found, fetching profile');
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', profileId)
           .single();
         
-        if (error) {
-          console.error('Profile fetch error:', error);
-          throw error;
-        }
+        if (error) throw error;
+        if (data) setProfile(data);
         
-        if (data) {
-          setProfile(data);
-        }
       } catch (err) {
-        console.error('Error in checkAuthAndFetch:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch profile');
+        console.error('Error:', err);
+        setError('Failed to load profile');
       } finally {
         setIsLoading(false);
       }
     };
 
     checkAuthAndFetch();
-  }, [profileId, router]);
+  }, [profileId]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -139,42 +132,29 @@ export default function SendDateRequestPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateDateTime(formData.proposed_time)) {
-      setError('Please select a future date and time');
-      return;
-    }
-
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/auth/login');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/auth/login');
         return;
       }
 
-      // Send the date request to the API
-      const response = await fetch(`/api/send-date-request/${profileId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          ...formData,
+      const { error: insertError } = await supabase
+        .from('date_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: profileId,
+          venue: formData.venue,
           proposed_time: new Date(formData.proposed_time).toISOString(),
-          sender_id: session.user.id,
-        }),
-      });
+          proposed_payment: formData.proposed_payment,
+          status: 'pending'
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send date request');
-      }
+      if (insertError) throw insertError;
 
-      // Remove the email notification part and directly redirect
       router.push('/matching');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send date request');
@@ -214,11 +194,11 @@ export default function SendDateRequestPage() {
       <div className="mb-6 flex items-center space-x-4">
         <div className="relative w-24 h-24">
           <Image
-            src={profile.avatar_url || DEFAULT_AVATAR}
+            src={profile.avatar_url || '/images/default-avatar.png'}
             alt={`${profile.first_name}'s avatar`}
             fill
             className="rounded-full object-cover"
-            sizes="96px"
+            sizes="(max-width: 768px) 96px, 96px"
             priority
           />
         </div>
