@@ -207,6 +207,17 @@ export default function EditProfilePage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      setError('Failed to log out. Please try again.');
+    }
+  };
+
   return (
     <>
       <div className="max-w-md mx-auto p-5 pb-24">
@@ -362,6 +373,14 @@ export default function EditProfilePage() {
               disabled={isLoading}
             >
               {isLoading ? 'Saving...' : 'Save Profile'}
+            </button>
+            
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors"
+            >
+              Logout
             </button>
           </div>
         </form>
