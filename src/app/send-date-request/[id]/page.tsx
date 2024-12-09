@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
+import BottomNav from '@/components/BottomNav';
 
 interface Profile {
   id: string;
@@ -42,9 +43,9 @@ const VENUES = [
   'The Clay Room',
 ];
 
-export default function SendDateRequestPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = React.use(params);
-  const profileId = resolvedParams.id;
+export default function SendDateRequestPage() {
+  const params = useParams();
+  const profileId = params.id as string;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -196,7 +197,7 @@ export default function SendDateRequestPage({ params }: { params: Promise<{ id: 
   }
 
   return (
-    <div className="max-w-md mx-auto p-5">
+    <div className="max-w-md mx-auto p-5 pb-24">
       <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Send Date Request
       </h1>
@@ -284,13 +285,7 @@ export default function SendDateRequestPage({ params }: { params: Promise<{ id: 
           {isSubmitting ? 'Sending...' : 'Send Date Request'}
         </button>
       </form>
-
-      <button
-        onClick={() => router.back()}
-        className="w-full p-2.5 mt-4 border-2 border-[#cc0000] text-[#cc0000] rounded-lg font-medium hover:bg-[#ffeeee] transition-colors"
-      >
-        Back
-      </button>
+      <BottomNav />
     </div>
   );
 }

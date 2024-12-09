@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Updated map of venues to their Stripe payment links
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -34,18 +34,10 @@ interface DateType {
   time: string;
 }
 
-interface PaymentPageProps {
-  selectedDate: DateType;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
-  params: { [key: string]: string | string[] | undefined };
-}
-
-export default function PaymentPage(props: PageProps) {
+// Update the props type
+export default function PaymentPage() {
+  const searchParams = useSearchParams();
+  
   const selectedDate: DateType = {
     id: 0,
     name: '',
@@ -54,13 +46,21 @@ export default function PaymentPage(props: PageProps) {
     date: '',
     time: ''
   };
+
   const onConfirm = () => { /* define onConfirm function */ };
   const onCancel = () => { /* define onCancel function */ };
 
   return <PaymentPageContent selectedDate={selectedDate} onConfirm={onConfirm} onCancel={onCancel} />;
 }
 
-function PaymentPageContent({ selectedDate, onConfirm, onCancel }: PaymentPageProps) {
+// Add this interface above PaymentPageContent
+interface PaymentPageContentProps {
+  selectedDate: DateType;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function PaymentPageContent({ selectedDate, onConfirm, onCancel }: PaymentPageContentProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string>('');
   const router = useRouter();
