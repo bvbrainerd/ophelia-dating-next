@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import Image from 'next/image';
-import { supabase } from '@/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import BottomNav from '@/components/BottomNav';
 
 interface Profile {
   id: string;
@@ -19,6 +20,7 @@ interface Profile {
 
 export default function MatchingPage() {
   const router = useRouter();
+  const supabase = createClientComponentClient();
   const [isLoading, setIsLoading] = useState(true);
   const [users, setUsers] = useState<Profile[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
@@ -102,71 +104,62 @@ export default function MatchingPage() {
   }
 
   return (
-    <div className='max-w-6xl mx-auto p-5'>
-      <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
-        Find Your Match
-      </h2>
+    <>
+      <div className='max-w-6xl mx-auto p-5 pb-24'>
+        <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
+          {users.length === 0 
+            ? 'No Matches Available' 
+            : `Your ${users.length} Matches Are Waiting...`
+          }
+        </h2>
 
-      {users.length === 0 ? (
-        <div className='text-center text-gray-600 py-8'>
-          No matches available at the moment
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users.map((user) => (
-            <div
-              key={user.id}
-              className='border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow'
-            >
-              <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
-                <Image
-                  src={user.avatar_url || '/images/default-avatar.png'}
-                  alt={`${user.first_name} ${user.last_name}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  priority
-                />
+        {users.length === 0 ? (
+          <div className='text-center text-gray-600 py-8'>
+            No matches available at the moment
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className='border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow'
+              >
+                <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
+                  <Image
+                    src={user.avatar_url || '/images/default-avatar.png'}
+                    alt={`${user.first_name} ${user.last_name}`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority
+                  />
+                </div>
+                
+                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
+                  {user.first_name} {user.last_name}, {user.age}
+                </h3>
+                <p className='text-gray-600 text-sm mb-4 line-clamp-3'>{user.bio}</p>
+                
+                <div className="space-y-2">
+                  <button
+                    className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
+                    onClick={() => handleSendDateRequest(user.id)}
+                  >
+                    Send Date Request
+                  </button>
+                  <button
+                    className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                    onClick={() => router.push(`/profile/${user.id}`)}
+                  >
+                    View Profile
+                  </button>
+                </div>
               </div>
-              
-              <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                {user.first_name} {user.last_name}, {user.age}
-              </h3>
-              <p className='text-gray-600 text-sm mb-4 line-clamp-3'>{user.bio}</p>
-              
-              <div className="space-y-2">
-                <button
-                  className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  onClick={() => handleSendDateRequest(user.id)}
-                >
-                  Send Date Request
-                </button>
-                <button
-                  className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                  onClick={() => router.push(`/profile/${user.id}`)}
-                >
-                  View Profile
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-6 flex gap-4 justify-center">
-        <button
-          className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-          onClick={() => router.push('/dashboard')}
-        >
-          Back to Dashboard
-        </button>
-        <button
-          className='px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-          onClick={() => router.push('/daterequests')}
-        >
-          View Date Requests
-        </button>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+      <BottomNav />
+    </>
   );
 }

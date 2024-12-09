@@ -3,7 +3,10 @@
 import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { supabase } from '@/supabase/client';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import BottomNav from '@/components/BottomNav';
+
+const supabase = createClientComponentClient();
 
 // Types
 interface ProfileData {
@@ -123,7 +126,7 @@ export default function EditProfilePage() {
     try {
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -162,209 +165,208 @@ export default function EditProfilePage() {
       if (authError) throw authError;
       if (!user) throw new Error('No user found');
 
-      // Validation
-      if (!profileData.first_name || !profileData.last_name) {
-        throw new Error('First and last name are required');
-      }
-
       // Upload new image if exists
       let avatarUrl = profileData.avatar_url;
       if (avatarFile) {
         avatarUrl = await uploadImage(user.id);
       }
 
+      // Update profile with new data
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          ...profileData,
+          first_name: profileData.first_name,
+          last_name: profileData.last_name,
+          age: profileData.age,
+          gender: profileData.gender,
+          preferred_gender: profileData.preferred_gender,
+          bio: profileData.bio,
+          dater_archetype: profileData.dater_archetype,
+          school: profileData.school,
           avatar_url: avatarUrl,
         })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Supabase update error:', updateError);
+        throw new Error(updateError.message);
+      }
 
+      // Success - redirect to dashboard
       router.push('/dashboard');
+
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update profile');
+      setError(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to update profile. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto p-5">
-      <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
-        Edit Your Profile
-      </h2>
+    <>
+      <div className="max-w-md mx-auto p-5 pb-24">
+        <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
+          Edit Your Profile
+        </h2>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
-        {/* Profile Picture Upload */}
-        <div className="flex items-center justify-center w-full mb-6">
-          <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
-            {previewUrl ? (
-              <div className="relative w-full h-full">
-                <Image
-                  src={previewUrl}
-                  alt="Profile preview"
-                  fill
-                  className="object-cover rounded-full"
-                  sizes="(max-width: 768px) 100vw, 128px"
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <svg
-                  className="w-8 h-8 mb-4 text-gray-500"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+          {/* Profile Picture Upload */}
+          <div className="flex items-center justify-center w-full mb-6">
+            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
+              {previewUrl ? (
+                <div className="relative w-full h-full">
+                  <Image
+                    src={previewUrl}
+                    alt="Profile preview"
+                    fill
+                    className="object-cover rounded-full"
+                    sizes="(max-width: 768px) 100vw, 128px"
                   />
-                </svg>
-                <p className="mb-2 text-xs text-gray-500 text-center">
-                  Click to upload
-                </p>
-              </div>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </label>
-        </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <svg
+                    className="w-8 h-8 mb-4 text-gray-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  <p className="mb-2 text-xs text-gray-500 text-center">
+                    Click to upload
+                  </p>
+                </div>
+              )}
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={handleImageUpload}
+              />
+            </label>
+          </div>
 
-        <input
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          type="text"
-          name="first_name"
-          placeholder="First Name"
-          value={profileData.first_name}
-          onChange={handleChange}
-          required
-        />
+          <input
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            type="text"
+            name="first_name"
+            placeholder="First Name"
+            value={profileData.first_name}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          type="text"
-          name="last_name"
-          placeholder="Last Name"
-          value={profileData.last_name}
-          onChange={handleChange}
-          required
-        />
+          <input
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            type="text"
+            name="last_name"
+            placeholder="Last Name"
+            value={profileData.last_name}
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          type="number"
-          name="age"
-          placeholder="Your Age"
-          value={profileData.age || ''}
-          onChange={handleChange}
-          min="18"
-          max="100"
-        />
+          <input
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            type="number"
+            name="age"
+            placeholder="Your Age"
+            value={profileData.age || ''}
+            onChange={handleChange}
+            min="18"
+            max="100"
+          />
 
-        <select
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          name="gender"
-          value={profileData.gender}
-          onChange={handleChange}
-        >
-          <option value="">Select Gender</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
-        </select>
-
-        <select
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          name="preferred_gender"
-          value={profileData.preferred_gender}
-          onChange={handleChange}
-        >
-          <option value="">I'm interested in dating...</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">All</option>
-        </select>
-
-        <textarea
-          className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
-          name="bio"
-          placeholder="Tell us about yourself..."
-          value={profileData.bio}
-          onChange={handleChange}
-        />
-
-        <select
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          name="dater_archetype"
-          value={profileData.dater_archetype}
-          onChange={handleChange}
-        >
-          <option value="">Select Dater Archetype</option>
-          {ARCHETYPES.map((archetype) => (
-            <option key={archetype.value} value={archetype.value}>
-              {archetype.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-          name="school"
-          value={profileData.school}
-          onChange={handleChange}
-        >
-          <option value="">Select School</option>
-          {SCHOOLS.map((school) => (
-            <option key={school} value={school}>
-              {school}
-            </option>
-          ))}
-        </select>
-
-        <div className="space-y-3 pt-4">
-          <button
-            type="button"
-            className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
-            onClick={() => router.push('/dashboard/previous-dates')}
+          <select
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            name="gender"
+            value={profileData.gender}
+            onChange={handleChange}
           >
-            Previous Dates
-          </button>
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
 
-          <button
-            type="submit"
-            className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isLoading}
+          <select
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            name="preferred_gender"
+            value={profileData.preferred_gender}
+            onChange={handleChange}
           >
-            {isLoading ? 'Saving...' : 'Save Profile'}
-          </button>
+            <option value="">I'm interested in dating...</option>
+            <option value="male">Men</option>
+            <option value="female">Women</option>
+            <option value="both">Both</option>
+          </select>
 
-          <button
-            type="button"
-            className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-            onClick={() => router.push('/dashboard')}
+          <textarea
+            className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
+            name="bio"
+            placeholder="Tell us about yourself..."
+            value={profileData.bio}
+            onChange={handleChange}
+          />
+
+          <select
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            name="dater_archetype"
+            value={profileData.dater_archetype}
+            onChange={handleChange}
           >
-            Back to Dashboard
-          </button>
-        </div>
-      </form>
-    </div>
+            <option value="">Select Dater Archetype</option>
+            {ARCHETYPES.map((archetype) => (
+              <option key={archetype.value} value={archetype.value}>
+                {archetype.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+            name="school"
+            value={profileData.school}
+            onChange={handleChange}
+          >
+            <option value="">Select School</option>
+            {SCHOOLS.map((school) => (
+              <option key={school} value={school}>
+                {school}
+              </option>
+            ))}
+          </select>
+
+          <div className="space-y-3 pt-4">
+            <button
+              type="submit"
+              className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Saving...' : 'Save Profile'}
+            </button>
+          </div>
+        </form>
+      </div>
+      <BottomNav />
+    </>
   );
 }

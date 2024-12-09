@@ -1,5 +1,5 @@
 // app/api/date-requests/[id]/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { supabase } from '@/supabase/client';
 
 interface UpdateDateRequestBody {
@@ -39,11 +39,10 @@ interface DateRequest {
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
   try {
-    const { id } = params;
+    const id = request.url.split('/').pop();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -115,54 +114,45 @@ export async function PUT(
 }
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
-  try {
-    const { id } = params;
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Add console.log to debug the query
-    console.log('Fetching date request with id:', id);
-    console.log('User id:', user.id);
-
-    const { data, error } = await supabase
-      .from('date_requests')
-      .select(`
-        *,
-        profiles!date_requests_sender_id_fkey (
-          id,
-          first_name,
-          last_name,
-          age,
-          avatar_url,
-          bio
-        )
-      `)
-      .eq('id', id)
-      .or(`receiver_id.eq.${user.id},status.eq.pending`)
-      .single();
-
-    if (error) {
-      console.error('Supabase query error:', error);
-      throw error;
-    }
-
-    console.log('Retrieved date request data:', data);
-
-    return NextResponse.json({ data });
-  } catch (error) {
-    console.error('Error fetching date request:', error);
+  const id = request.url.split('/').pop();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     return NextResponse.json(
-      { error: 'Failed to fetch date request' },
-      { status: 500 }
+      { error: 'Unauthorized' },
+      { status: 401 }
     );
   }
+
+  // Add console.log to debug the query
+  console.log('Fetching date request with id:', id);
+  console.log('User id:', user.id);
+
+  const { data, error } = await supabase
+    .from('date_requests')
+    .select(`
+      *,
+      profiles!date_requests_sender_id_fkey (
+        id,
+        first_name,
+        last_name,
+        age,
+        avatar_url,
+        bio
+      )
+    `)
+    .eq('id', id)
+    .or(`receiver_id.eq.${user.id},status.eq.pending`)
+    .single();
+
+  if (error) {
+    console.error('Supabase query error:', error);
+    throw error;
+  }
+
+  console.log('Retrieved date request data:', data);
+
+  return NextResponse.json({ data });
 }

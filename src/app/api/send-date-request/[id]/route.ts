@@ -5,12 +5,10 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
+  const id = request.url.split('/').pop();
   try {
-    const { id } = params;
-
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -33,10 +31,12 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: Request
 ) {
   try {
+    // Get id from URL instead of params
+    const id = request.url.split('/').pop();
+    
     // Get the authorization header
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
@@ -61,7 +61,6 @@ export async function POST(
       );
     }
 
-    const { id } = params;
     const body = await request.json();
 
     // Verify that the sender_id matches the authenticated user
@@ -76,7 +75,7 @@ export async function POST(
       .from('date_requests')
       .insert({
         sender_id: user.id,
-        receiver_id: id,
+        receiver_id: id,  // Using id from URL
         venue: body.venue,
         proposed_time: body.proposed_time,
         proposed_payment: body.proposed_payment,
