@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -60,8 +61,6 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
   'The Clay Room': 'https://buy.stripe.com/28o15p1ao0xv8yA6or',
 };
-
-const supabase = createClientComponentClient();
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -154,25 +153,17 @@ export default function DashboardPage() {
 
   const checkSession = async () => {
     try {
-      console.log('Checking session...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        router.push('/auth/login');
-        return false;
-      }
-
       if (!session) {
-        console.log('No session found');
+        console.log('No session found, redirecting to login');
         router.push('/auth/login');
         return false;
       }
 
-      console.log('Valid session found:', session);
       return true;
     } catch (error) {
-      console.error('Error in checkSession:', error);
+      console.error('Error checking session:', error);
       router.push('/auth/login');
       return false;
     }
