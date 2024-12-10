@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [avatarKey, setAvatarKey] = useState(Date.now());
 
   const fetchDateRequests = useCallback(async () => {
     try {
@@ -168,45 +169,64 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const fetchData = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        setIsLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (error) {
-          throw error;
-        }
-
-        if (!session) {
+        if (!user) {
           router.replace('/auth/login');
           return;
         }
 
-        // Session exists, initialize your dashboard data here
-        setIsLoading(false);
+        // Fetch current user profile
+        const { data: userProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        setCurrentUser(userProfile);
+
+        // Fetch potential matches based on gender preferences
+        const matchQuery = supabase
+          .from('profiles')
+          .select('*')
+          .neq('id', user.id);
+
+        // Handle gender preference filtering
+        if (userProfile.preferred_gender === 'both') {
+          // If user prefers both, no additional gender filter needed
+        } else {
+          matchQuery.eq('gender', userProfile.preferred_gender);
+        }
+
+        const { data: matchData, error: matchError } = await matchQuery
+          .limit(MAX_PREVIEW_MATCHES);
+
+        if (matchError) throw matchError;
+        setProfiles(matchData || []);
+
+        // Fetch date requests
+        await fetchDateRequests();
+
       } catch (error) {
-        console.error('Auth error:', error);
-        router.replace('/auth/login');
+        console.error('Error fetching data:', error);
+        setError('Failed to load data');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        router.replace('/auth/login');
-      } else if (event === 'SIGNED_IN' && session) {
-        // Handle sign in if needed
-      }
-    });
+    fetchData();
+  }, [fetchDateRequests]);
 
-    checkAuth();
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
+  useEffect(() => {
+    if (currentUser?.avatar_url) {
+      setAvatarKey(Date.now());
+    }
+  }, [currentUser?.avatar_url]);
 
   const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
@@ -281,7 +301,7 @@ export default function DashboardPage() {
                 {currentUser?.avatar_url ? (
                   <div className="relative w-10 h-10">
                     <Image
-                      key={currentUser?.avatar_url}
+                      key={avatarKey}
                       src={currentUser?.avatar_url || '/images/default-avatar.png'}
                       alt="Profile"
                       fill
