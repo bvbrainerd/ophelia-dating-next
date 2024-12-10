@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import type { FC } from 'react';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 interface Profile {
   id: string;
@@ -211,7 +212,8 @@ const UpcomingDatesPage: FC = () => {
   }
 
   return (
-    <div className='max-w-md mx-auto p-5 pb-24'>
+    <div className='max-w-2xl mx-auto p-5 pt-8 pb-24'>
+      <Header />
       {/* Upcoming Dates Section */}
       <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
         Your Upcoming Dates

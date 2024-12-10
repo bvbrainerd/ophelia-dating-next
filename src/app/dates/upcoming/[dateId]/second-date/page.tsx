@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
+import Header from '@/components/Header';
 
 export default function SecondDateProposal() {
   const params = useParams();
@@ -18,7 +19,8 @@ export default function SecondDateProposal() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-5">
+    <div className="max-w-md mx-auto p-5 pt-8">
+      <Header />
       <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Propose Second Date
       </h1>

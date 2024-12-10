@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 interface Message {
   id: string;
@@ -379,7 +380,8 @@ export default function DateMessaging() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-5 pb-24">
+    <div className="max-w-md mx-auto p-5 pt-8 pb-24">
+      <Header />
       <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Messaging for Your Date
       </h1>
