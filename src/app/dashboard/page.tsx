@@ -71,9 +71,9 @@ export default function DashboardPage() {
 
   const fetchDateRequests = useCallback(async () => {
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error('Auth error:', authError);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth/login');
         return;
       }
 
@@ -90,25 +90,24 @@ export default function DashboardPage() {
           )
         `)
         .eq('receiver_id', user.id)
-        .eq('status', 'pending')  // Only fetch pending requests
-        .order('proposed_time', { ascending: true }); // Order by date, earliest first
+        .eq('status', 'pending')
+        .order('proposed_time', { ascending: true });
 
-      if (requestsError) {
-        console.error('Raw error object:', requestsError);
-        return;
-      }
+      if (requestsError) throw requestsError;
 
-      console.log('Raw requests data:', requests);
       setDateRequests(requests || []);
     } catch (error) {
       console.error('Error in fetchDateRequests:', error);
     }
-  }, []);
+  }, [router]);
 
   const fetchMatches = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
 
       const { data: currentUserProfile, error: profileError } = await supabase
         .from('profiles')
@@ -116,10 +115,7 @@ export default function DashboardPage() {
         .eq('id', user.id)
         .single();
 
-      if (profileError) {
-        console.error('Error fetching current user profile:', profileError);
-        return;
-      }
+      if (profileError) throw profileError;
 
       setCurrentUser(currentUserProfile);
 
@@ -139,25 +135,27 @@ export default function DashboardPage() {
         .neq('id', user.id)
         .eq('gender', currentUserProfile.preferred_gender);
 
-      if (matchError) {
-        console.error('Error fetching matches:', matchError);
-        return;
-      }
+      if (matchError) throw matchError;
 
       setProfiles(matchData || []);
     } catch (error) {
       console.error('Error in fetchMatches:', error);
     }
-  }, []);
+  }, [router]);
 
   const checkSession = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log('No session found, redirecting to login');
-        router.push('/auth/login');
-        return false;
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        
+        if (!refreshedSession) {
+          console.log('No valid session found, redirecting to login');
+          router.push('/auth/login');
+          return false;
+        }
+        return true;
       }
 
       return true;
