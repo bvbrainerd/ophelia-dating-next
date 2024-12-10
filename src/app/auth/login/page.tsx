@@ -1,23 +1,20 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 
-const supabase = createClientComponentClient();
-
-export default function LoginSignup() {
+export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-  const [error, setError] = useState('');
-
-  const validateBCEmail = (email: string) => {
-    return email.toLowerCase().endsWith('@bc.edu');
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -27,11 +24,15 @@ export default function LoginSignup() {
       if (error) throw error;
 
       if (data.session) {
+        // Wait for session to be set
+        await supabase.auth.setSession(data.session);
         router.push('/dashboard');
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Login error:', error);
       setError('Invalid login credentials');
+    } finally {
+      setIsLoading(false);
     }
   };
 
