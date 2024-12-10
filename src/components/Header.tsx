@@ -42,9 +42,8 @@ export default function Header() {
   }, [currentUser?.avatar_url]);
 
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div className="flex-1"></div>
-      <div className="flex-1 text-center">
+    <div className="flex items-center mb-6 relative">
+      <div className="absolute left-0 right-0 text-center">
         <Link href="/dashboard">
           <h1 className="text-4xl font-bold text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity">
             Ophelia
@@ -52,7 +51,7 @@ export default function Header() {
         </Link>
       </div>
       {currentUser && (
-        <div className="flex-1 flex items-center justify-end gap-3">
+        <div className="ml-auto flex items-center gap-3 z-10">
           <div className="text-sm font-medium text-[#BA2525]">
             Welcome back, {currentUser.first_name}
           </div>
