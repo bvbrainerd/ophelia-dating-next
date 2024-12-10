@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 interface Profile {
   id: string;
@@ -149,7 +150,8 @@ export default function DateRequestsPage() {
 
   return (
     <>
-      <main className="max-w-md mx-auto p-5 pb-24">
+      <main className="max-w-2xl mx-auto p-5 pt-8 pb-24">
+        <Header />
         <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Your Date Requests
         </h1>

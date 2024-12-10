@@ -6,6 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import { supabase } from '@/supabase/client';
+import Header from '@/components/Header';
 
 interface Profile {
   id: string;
@@ -101,7 +102,8 @@ export default function MatchingPage() {
 
   return (
     <>
-      <div className='max-w-6xl mx-auto p-5 pb-24'>
+      <div className='max-w-6xl mx-auto p-5 pt-8 pb-24'>
+        <Header />
         <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
           {users.length === 0 
             ? 'No Matches Available' 

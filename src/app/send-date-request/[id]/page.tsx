@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 interface Profile {
   id: string;
@@ -241,6 +242,7 @@ export default function SendDateRequestPage() {
 
   return (
     <div className="max-w-md mx-auto p-5 pb-24">
+      <Header />
       <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Send Date Request
       </h1>
