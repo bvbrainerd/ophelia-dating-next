@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
-import Header from '@/components/Header';
-import type { HeaderProps } from '@/components/Header';
 
 // Types
 interface ProfileData {
@@ -244,7 +242,6 @@ export default function EditProfilePage() {
   return (
     <>
       <div className="max-w-2xl mx-auto p-5 pt-8 pb-24">
-        <Header hideProfile={true} />
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Edit Your Profile
         </h2>
