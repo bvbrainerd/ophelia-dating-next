@@ -1,14 +1,26 @@
 import Link from 'next/link';
 import { Home, Users, Calendar, UserCircle, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/supabase/client';
 
 export default function BottomNav() {
   const router = useRouter();
 
-  // Use onClick handlers instead of direct href to prevent auth issues
-  const handleNavigation = (path: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push(path);
+  const handleNavigation = async (path: string) => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        console.error('Auth error:', error);
+        router.push('/auth/login');
+        return;
+      }
+      
+      router.push(path);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      router.push('/auth/login');
+    }
   };
 
   return (
@@ -23,7 +35,7 @@ export default function BottomNav() {
         ].map(({ icon, label, path }) => (
           <button
             key={label}
-            onClick={handleNavigation(path)}
+            onClick={() => handleNavigation(path)}
             className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
           >
             {icon}
