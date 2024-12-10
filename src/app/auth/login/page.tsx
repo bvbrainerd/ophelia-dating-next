@@ -18,57 +18,20 @@ export default function LoginSignup() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateBCEmail(email)) {
-      setError('Please use a valid BC email address');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-
     try {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (signInError) {
-        setError(signInError.message);
-        return;
-      }
+      if (error) throw error;
 
-      if (!signInData.user) {
-        setError('No user found');
-        return;
-      }
-
-      // Check if user has a profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', signInData.user.id)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        setError('Error checking profile');
-        return;
-      }
-
-      // Redirect based on profile existence
-      if (!profileData) {
-        router.push('/dashboard/editprofile');
-      } else {
+      if (data.session) {
         router.push('/dashboard');
       }
-      
-      // Force router to refresh after navigation
-      router.refresh();
-
     } catch (error) {
-      console.error('Login error:', error);
-      setError('An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
+      console.error('Error:', error);
+      setError('Invalid login credentials');
     }
   };
 

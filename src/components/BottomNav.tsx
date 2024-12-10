@@ -1,28 +1,7 @@
 import Link from 'next/link';
 import { Home, Users, Calendar, UserCircle, Heart } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
 
 export default function BottomNav() {
-  const router = useRouter();
-
-  const handleNavigation = async (path: string) => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error || !session) {
-        console.error('Auth error:', error);
-        router.push('/auth/login');
-        return;
-      }
-      
-      router.push(path);
-    } catch (error) {
-      console.error('Navigation error:', error);
-      router.push('/auth/login');
-    }
-  };
-
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
       <div className="max-w-2xl mx-auto flex justify-around">
@@ -33,14 +12,14 @@ export default function BottomNav() {
           { icon: <Calendar size={24} />, label: 'Upcoming', path: '/dates/upcoming' },
           { icon: <UserCircle size={24} />, label: 'Profile', path: '/dashboard/editprofile' }
         ].map(({ icon, label, path }) => (
-          <button
+          <Link
             key={label}
-            onClick={() => handleNavigation(path)}
+            href={path}
             className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
           >
             {icon}
             <span className="text-xs mt-1">{label}</span>
-          </button>
+          </Link>
         ))}
       </div>
     </div>
