@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import Link from 'next/link';
 
 // Types
 interface ProfileData {
@@ -241,7 +242,18 @@ export default function EditProfilePage() {
 
   return (
     <>
-      <div className="max-w-2xl mx-auto p-5 pt-8 pb-24">
+      <div className="max-w-2xl mx-auto p-5 pt-12 pb-24">
+        {/* Ophelia Header */}
+        <div className="flex items-center mb-10 relative">
+          <div className="absolute left-0 right-0 text-center">
+            <Link href="/dashboard">
+              <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
+                Ophelia
+              </h1>
+            </Link>
+          </div>
+        </div>
+
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Edit Your Profile
         </h2>
