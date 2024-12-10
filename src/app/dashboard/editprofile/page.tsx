@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 // Types
 interface ProfileData {
@@ -135,7 +136,17 @@ export default function EditProfilePage() {
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      // Delete old avatar if exists
+      if (profileData.avatar_url) {
+        const oldFilePath = profileData.avatar_url.split('/').pop();
+        if (oldFilePath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([oldFilePath]);
+        }
+      }
+
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
         .upload(filePath, avatarFile);
 
@@ -194,10 +205,10 @@ export default function EditProfilePage() {
         })
         .eq('id', user.id);
 
-      if (updateError) {
-        console.error('Supabase update error:', updateError);
-        throw new Error(updateError.message);
-      }
+      if (updateError) throw updateError;
+
+      // Wait for the update to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Success - redirect to dashboard
       router.push('/dashboard');
@@ -231,7 +242,8 @@ export default function EditProfilePage() {
 
   return (
     <>
-      <div className="max-w-md mx-auto p-5 pb-24">
+      <div className="max-w-2xl mx-auto p-5 pt-8 pb-24">
+        <Header />
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Edit Your Profile
         </h2>
