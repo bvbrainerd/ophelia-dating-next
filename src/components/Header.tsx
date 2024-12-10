@@ -45,14 +45,14 @@ export default function Header() {
     <div className="flex items-center mb-6 relative">
       <div className="absolute left-0 right-0 text-center">
         <Link href="/dashboard">
-          <h1 className="text-4xl font-bold text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity">
+          <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
             Ophelia
           </h1>
         </Link>
       </div>
       {currentUser && (
         <div className="ml-auto flex items-center gap-3 z-10">
-          <div className="text-sm font-medium text-[#BA2525]">
+          <div className="text-sm font-medium text-[#cc0000]">
             Welcome back, {currentUser.first_name}
           </div>
           <Link href="/dashboard/editprofile">
