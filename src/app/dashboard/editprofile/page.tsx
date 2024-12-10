@@ -243,7 +243,7 @@ export default function EditProfilePage() {
   return (
     <>
       <div className="max-w-2xl mx-auto p-5 pt-8 pb-24">
-        <Header />
+        <Header hideProfile={true} />
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Edit Your Profile
         </h2>
