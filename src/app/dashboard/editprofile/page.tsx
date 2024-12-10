@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
+import type { HeaderProps } from '@/components/Header';
 
 // Types
 interface ProfileData {
