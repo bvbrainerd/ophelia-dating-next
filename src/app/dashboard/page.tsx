@@ -281,7 +281,8 @@ export default function DashboardPage() {
                 {currentUser?.avatar_url ? (
                   <div className="relative w-10 h-10">
                     <Image
-                      src={currentUser.avatar_url}
+                      key={currentUser?.avatar_url}
+                      src={currentUser?.avatar_url || '/images/default-avatar.png'}
                       alt="Profile"
                       fill
                       sizes="40px"
