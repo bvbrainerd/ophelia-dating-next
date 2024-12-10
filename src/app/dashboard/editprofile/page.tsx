@@ -3,11 +3,8 @@
 import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
-
-// Create supabase client with session persistence
-const supabase = createClientComponentClient();
 
 // Types
 interface ProfileData {
