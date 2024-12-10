@@ -36,7 +36,6 @@ export default function MatchingPage() {
         await fetchUsers();
       } catch (error) {
         console.error('Error:', error);
-        router.replace('/auth/login');
       }
     };
 
@@ -45,18 +44,14 @@ export default function MatchingPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        router.push('/auth/login');
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('id', user.id)
         .single();
 
       if (currentUserError) throw currentUserError;
@@ -76,7 +71,7 @@ export default function MatchingPage() {
           preferred_gender,
           dater_archetype
         `)
-        .neq('id', session.user.id)
+        .neq('id', user.id)
         .eq('gender', currentUserData.preferred_gender);
         // Removed the dater_archetype filter to show more matches
         
@@ -92,21 +87,8 @@ export default function MatchingPage() {
     }
   };
 
-  const handleSendDateRequest = async (userId: string) => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error || !session) {
-        console.error('Auth error:', error);
-        router.push('/auth/login');
-        return;
-      }
-      
-      router.push(`/send-date-request/${userId}`);
-    } catch (error) {
-      console.error('Error:', error);
-      router.push('/auth/login');
-    }
+  const handleSendDateRequest = (userId: string) => {
+    router.push(`/send-date-request/${userId}`);
   };
 
   if (isLoading) {
