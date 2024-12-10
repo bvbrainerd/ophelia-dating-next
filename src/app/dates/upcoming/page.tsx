@@ -53,16 +53,11 @@ const UpcomingDatesPage: FC = () => {
 
   const fetchDates = async () => {
     try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (authError) {
-        console.error('Auth error:', authError);
-        router.push('/login');
-        return;
-      }
-      
-      if (!user) {
-        router.push('/login');
+      if (sessionError || !session) {
+        console.error('Auth error:', sessionError);
+        router.push('/auth/login');
         return;
       }
 
@@ -84,7 +79,7 @@ const UpcomingDatesPage: FC = () => {
             bio
           )
         `)
-        .eq('receiver_id', user.id)
+        .eq('receiver_id', session.user.id)
         .in('status', ['accepted', 'completed'])
         .returns<ReceiverDateResponse[]>();
 
@@ -110,7 +105,7 @@ const UpcomingDatesPage: FC = () => {
             bio
           )
         `)
-        .eq('sender_id', user.id)
+        .eq('sender_id', session.user.id)
         .in('status', ['accepted', 'completed'])
         .returns<SenderDateResponse[]>();
 
@@ -152,19 +147,28 @@ const UpcomingDatesPage: FC = () => {
 
     } catch (error) {
       console.error('Error fetching dates:', error);
-      if (error instanceof Error) {
-        if (error.message === 'No authenticated user') {
-          router.push('/login');
-        }
+      if (error instanceof Error && error.message.includes('session')) {
+        router.push('/auth/login');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleStartDate = (dateId: string) => {
-    console.log('Navigating to dateId:', dateId);
-    router.push(`upcoming/${dateId}/messaging`);
+  const handleStartDate = async (dateId: string) => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        router.push('/auth/login');
+        return;
+      }
+      
+      router.push(`upcoming/${dateId}/messaging`);
+    } catch (error) {
+      console.error('Error:', error);
+      router.push('/auth/login');
+    }
   };
 
   const handleRescheduleOrCancel = async (dateId: string) => {

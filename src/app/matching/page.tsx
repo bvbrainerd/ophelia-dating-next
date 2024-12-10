@@ -26,20 +26,28 @@ export default function MatchingPage() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+    const checkAuthAndFetchUsers = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace('/auth/login');
+          return;
+        }
+        await fetchUsers();
+      } catch (error) {
+        console.error('Error:', error);
         router.replace('/auth/login');
       }
     };
-    
-    checkAuth();
-  }, [router]);
+
+    checkAuthAndFetchUsers();
+  }, []);
 
   const fetchUsers = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
         router.push('/auth/login');
         return;
       }
@@ -84,21 +92,22 @@ export default function MatchingPage() {
     }
   };
 
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const handleSendDateRequest = async (userId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.replace('/auth/login');
-      return;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
+        console.error('Auth error:', error);
+        router.push('/auth/login');
+        return;
+      }
+      
+      router.push(`/send-date-request/${userId}`);
+    } catch (error) {
+      console.error('Error:', error);
+      router.push('/auth/login');
     }
-    
-    router.push(`/send-date-request/${userId}`);
   };
-
 
   if (isLoading) {
     return (
