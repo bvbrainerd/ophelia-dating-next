@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/supabase/client';
 import DatingTypeQuiz from '@/components/DatingTypeQuiz';
+import { useRouter } from 'next/navigation';
 
 interface ProfileSetupProps {
   onComplete: () => void;
@@ -18,8 +19,10 @@ interface UserData {
 }
 
 export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData>({
     email: '',
@@ -52,70 +55,76 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
     }
     
     try {
-      console.log('Updating profile with dating style:', datingStyle);
-      // Update the profile with the dating style
-      const { error } = await supabase
-        .from('profiles')
-        .update({ dating_style: datingStyle })
-        .eq('id', userId);
-
-      if (error) {
-        console.error('Error updating profile:', error);
-        throw error;
-      }
+      setIsLoading(true);
       
-      // Complete the setup process
-      onComplete();
-    } catch (error) {
-      console.error('Error updating dating style:', error);
-      alert('Error saving quiz results. Please try again.');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent form submission
-    
-    if (!validateBCEmail(userData.email)) {
-      alert('Please use a valid BC email address');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      console.log('Creating auth account...');
-      // First create the auth account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('No user data returned');
-
-      console.log('Auth account created, creating profile...');
-      // Then insert the profile data
-      const { error: profileError } = await supabase.from('profiles').insert([
-        {
-          id: authData.user.id,
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert([{
+          id: userId,
           first_name: userData.first_name,
           last_name: userData.last_name,
           age: userData.age,
           gender: userData.gender,
           school: userData.school,
+          dater_archetype: datingStyle,
           created_at: new Date().toISOString(),
-        },
-      ]);
+          bio: '',
+          preferred_gender: '',
+          avatar_url: null
+        }], {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        });
 
-      if (profileError) throw profileError;
-
-      console.log('Profile created, showing quiz...');
-      // Store the user ID and show the quiz
-      setUserId(authData.user.id);
-      setShowQuiz(true);
-      setIsLoading(false);
+      if (upsertError) throw upsertError;
+      
+      // Wait for database to process changes
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Call onComplete before navigation
+      await onComplete();
+      
+      // Navigate to dashboard
+      router.push('/dashboard');
+      
     } catch (error) {
-      console.error('Error creating account:', error);
-      alert('Error creating account. Please try again.');
+      console.error('Error updating profile:', error);
+      alert('Error saving quiz results. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('No user found');
+
+      // Remove updated_at from the update operation
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          age: userData.age,
+          gender: userData.gender,
+          school: 'Boston College'
+        })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Redirect to quiz
+      router.push('/quiz');
+
+    } catch (error: any) {
+      console.error('Profile setup error:', error);
+      setError(error.message || 'Failed to update profile');
+    } finally {
       setIsLoading(false);
     }
   };

@@ -4,6 +4,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/supabase/client';
 
 export default function PaymentSuccessHandler() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function PaymentSuccessHandler() {
   const [isProcessing, setIsProcessing] = useState(true);
 
   useEffect(() => {
-    const handlePaymentReturn = async () => {
+    const handlePaymentSuccess = async () => {
       try {
         const dateId = localStorage.getItem('pendingDateId');
         const returnTime = localStorage.getItem('paymentReturnTime');
@@ -24,47 +25,38 @@ export default function PaymentSuccessHandler() {
         localStorage.removeItem('pendingDateId');
         localStorage.removeItem('paymentReturnTime');
 
-        const response = await fetch(`/api/date-requests/${dateId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        // Update the date request status and payment info
+        const { error: updateError } = await supabase
+          .from('date_requests')
+          .update({
             status: 'accepted',
-            paymentCompleted: true,
-            paymentTime: returnTime
-          }),
-        });
+            payment_completed: true,
+            payment_completed_at: returnTime
+          })
+          .eq('id', dateId);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update date status');
-        }
+        if (updateError) throw updateError;
 
         setIsProcessing(false);
         
-        // Redirect after showing success message
+        // Redirect after success
         setTimeout(() => {
-          router.push('/date-requests');
+          router.push('/dates/upcoming');
         }, 2000);
 
       } catch (err) {
         console.error('Error processing payment success:', err);
-        setError(
-          err instanceof Error 
-            ? err.message 
-            : 'Failed to confirm payment. Please contact support.'
-        );
+        setError(err instanceof Error ? err.message : 'Failed to confirm payment');
         setIsProcessing(false);
         
-        // Redirect to date requests after showing error
+        // Redirect after error
         setTimeout(() => {
-          router.push('/date-requests');
-        }, 5000);
+          router.push('/daterequests');
+        }, 3000);
       }
     };
 
-    handlePaymentReturn();
+    handlePaymentSuccess();
   }, [router]);
 
   return (

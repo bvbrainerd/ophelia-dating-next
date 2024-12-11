@@ -234,11 +234,15 @@ const UpcomingDatesPage: FC = () => {
                 <div className='relative w-24 h-24 mr-4'>
                   <Image
                     src={date.otherPerson.avatar_url || '/images/default-avatar.png'}
-                    alt={`${date.otherPerson.first_name} ${date.otherPerson.last_name}`}
+                    alt={`${date.otherPerson.first_name}'s profile`}
                     fill
-                    className='object-cover rounded-full'
-                    priority
-                    sizes="96px"
+                    loading="lazy"
+                    sizes="(max-width: 768px) 96px, 96px"
+                    className="object-cover rounded-full"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/images/default-avatar.png';
+                    }}
                   />
                 </div>
                 <div>
@@ -305,11 +309,15 @@ const UpcomingDatesPage: FC = () => {
               <div className='relative w-24 h-24 mr-4'>
                 <Image
                   src={date.otherPerson.avatar_url || '/images/default-avatar.png'}
-                  alt={`${date.otherPerson.first_name} ${date.otherPerson.last_name}`}
+                  alt={`${date.otherPerson.first_name}'s profile`}
                   fill
-                  className='object-cover rounded-full'
-                  priority
-                  sizes="96px"
+                  loading="lazy"
+                  sizes="(max-width: 768px) 96px, 96px"
+                  className="object-cover rounded-full"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/images/default-avatar.png';
+                  }}
                 />
               </div>
               <div>

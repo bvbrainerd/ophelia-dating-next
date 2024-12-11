@@ -45,21 +45,29 @@ export default function MatchingPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) {
+        router.replace('/auth/login');
+        return;
+      }
 
       // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single();
 
-      if (currentUserError) throw currentUserError;
+      if (currentUserError) {
+        console.error('Error fetching current user:', currentUserError);
+        throw currentUserError;
+      }
+
       setCurrentUser(currentUserData);
 
-      // Modified query to show all users that match the preferred gender
-      const { data, error } = await supabase
+      // Fetch matching users with improved query
+      const { data: matchingUsers, error: matchError } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -70,17 +78,25 @@ export default function MatchingPage() {
           bio,
           gender,
           preferred_gender,
-          dater_archetype
+          dater_archetype,
+          school
         `)
-        .neq('id', user.id)
-        .eq('gender', currentUserData.preferred_gender);
-        // Removed the dater_archetype filter to show more matches
-        
-      if (error) throw error;
+        .neq('id', session.user.id)
+        .eq('school', currentUserData.school)
+        .in('gender', [currentUserData.preferred_gender, 'both'])
+        .or(
+          `preferred_gender.eq.${currentUserData.gender},preferred_gender.eq.both`
+        )
+        .order('created_at', { ascending: false });
 
-      if (data) {
-        setUsers(data);
+      if (matchError) {
+        console.error('Error fetching matches:', matchError);
+        throw matchError;
       }
+
+      console.log('Found matches:', matchingUsers?.length || 0);
+      setUsers(matchingUsers || []);
+
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 interface UserData {
   email: string;
@@ -14,7 +15,8 @@ interface UserData {
   gender: string;
   school: string;
   avatar_url: string | null;
-  preferred_gender: string; 
+  preferred_gender: string;
+  dater_archetype: string | null;
 }
 
 interface AuthError {
@@ -56,7 +58,8 @@ export default function ProfileSetup() {
     gender: '',
     school: 'Boston College',
     avatar_url: null,
-    preferred_gender: '' 
+    preferred_gender: '',
+    dater_archetype: null
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,69 +115,63 @@ export default function ProfileSetup() {
     setError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateBCEmail(userData.email)) {
-      setError('Please use a valid BC email address');
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      // Sign up the user
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
+      if (!validateBCEmail(userData.email)) {
+        setError('Please use your BC email address (@bc.edu)');
+        return;
+      }
+
+      // Create auth user
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: userData.email.toLowerCase().trim(),
+        password: userData.password.trim(),
       });
 
       if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error('No user data returned');
+      if (!authData.user) throw new Error('No user data returned');
 
-      // Upload image if exists
-      const avatarUrl = await uploadImage(signUpData.user.id);
+      // Upload avatar if exists
+      let avatarUrl = null;
+      if (avatarFile) {
+        avatarUrl = await uploadImage(authData.user.id);
+      }
 
-      // Create profile
-      const profileData: ProfileData = {
-        id: signUpData.user.id,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
+      const profileData = {
+        id: authData.user.id,
+        email: userData.email.toLowerCase().trim(),
+        first_name: userData.first_name.trim(),
+        last_name: userData.last_name.trim(),
         age: userData.age,
         gender: userData.gender,
-        school: userData.school,
+        preferred_gender: userData.preferred_gender,
+        bio: '',
+        school: 'Boston College',
         avatar_url: avatarUrl,
-        preferred_gender: userData.preferred_gender, 
-        created_at: new Date().toISOString(),
+        dater_archetype: userData.dater_archetype,
+        profile_completed: false
       };
+
+      console.log('Creating profile with data:', profileData);
 
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([profileData]);
 
-      if (profileError) throw profileError;
-
-      // Sign in the user
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (signInError) throw signInError;
-
-      router.refresh();
-      router.push('/quiz');
-    } catch (err) {
-      console.error('Error creating account:', err);
-      if (err instanceof Error) {
-        setError(err.message);
-      } else if (typeof err === 'object' && err !== null) {
-        const error = err as AuthError | SupabaseError;
-        setError(error.message || 'Error creating account. Please try again.');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
       }
+
+      router.push('/dashboard');
+
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      setError(error.message || 'An error occurred during signup');
     } finally {
       setIsLoading(false);
     }
@@ -189,10 +186,20 @@ export default function ProfileSetup() {
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
           {error}
+          {error.includes('already exists') && (
+            <div className="mt-2">
+              <Link 
+                href="/auth/login" 
+                className="text-[#cc0000] hover:underline"
+              >
+                Click here to log in
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSignUp} className="space-y-4">
         {/* Profile Picture */}
         <div className="flex items-center justify-center w-full mb-6">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">

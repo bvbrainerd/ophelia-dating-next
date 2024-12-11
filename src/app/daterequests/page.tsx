@@ -112,16 +112,34 @@ export default function DateRequestsPage() {
 
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
-      const { error } = await supabase
-        .from('date_requests')
-        .update({ status })
-        .eq('id', requestId);
+      if (status === 'declined') {
+        // Directly decline the date request
+        const { error } = await supabase
+          .from('date_requests')
+          .update({ status: 'declined' })
+          .eq('id', requestId);
 
-      if (error) throw error;
-
-      setDateRequests(prev =>
-        prev.filter(request => request.id !== requestId)
-      );
+        if (error) throw error;
+        
+        setDateRequests(prev =>
+          prev.filter(request => request.id !== requestId)
+        );
+      } else if (status === 'accepted') {
+        // For acceptance, store the request ID in localStorage and redirect to payment
+        const request = dateRequests.find(req => req.id === requestId);
+        if (request && request.venue) {
+          const paymentLink = VENUE_PAYMENT_LINKS[request.venue];
+          if (paymentLink) {
+            // Store the pending date request ID
+            localStorage.setItem('pendingDateId', requestId);
+            localStorage.setItem('paymentReturnTime', new Date().toISOString());
+            
+            // Redirect to payment
+            window.location.href = paymentLink;
+            return;
+          }
+        }
+      }
     } catch (error) {
       console.error('Error updating date request:', error);
       setError('Failed to update date request');
