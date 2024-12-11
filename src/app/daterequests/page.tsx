@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
+import { Coffee } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -94,7 +95,7 @@ export default function DateRequestsPage() {
 
         const formattedRequests = requests?.map(request => ({
           ...request,
-          sender: request.sender[0]
+          sender: request.sender as unknown as Profile
         })) || [];
 
         setDateRequests(formattedRequests);
@@ -174,8 +175,8 @@ export default function DateRequestsPage() {
                   <div className="flex-shrink-0">
                     <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
                       <Image
-                        src={request.sender.avatar_url || '/images/default-avatar.png'}
-                        alt={`${request.sender.first_name} ${request.sender.last_name}`}
+                        src={request.sender?.avatar_url || '/images/default-avatar.png'}
+                        alt={request.sender ? `${request.sender.first_name}'s profile` : 'Profile'}
                         fill
                         priority={true}
                         className="object-cover"
@@ -187,31 +188,29 @@ export default function DateRequestsPage() {
                       />
                     </div>
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-[#cc0000] text-xl font-medium mb-1 truncate">
-                      {request.sender.first_name} {request.sender.last_name}, {request.sender.age}
-                    </h2>
-                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">{request.sender.bio}</p>
-                    <p className="text-sm mb-2">
-                      <span className="font-medium">Venue:</span> {request.venue}
+                  <div className="flex-1">
+                    <div className="font-medium mb-1">
+                      {request.sender 
+                        ? `${request.sender.first_name}, ${request.sender.age}`
+                        : 'Unknown User'
+                      }
+                    </div>
+                    <div className="flex items-center gap-1 text-gray-600 mb-2">
+                      <Coffee size={14} />
+                      <span className="text-sm">
+                        {request.venue} • {
+                          request.proposed_time 
+                            ? new Date(request.proposed_time).toLocaleString('en-US', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short'
+                              })
+                            : 'No date specified'
+                        }
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                      {request.sender?.bio || 'No bio available'}
                     </p>
-                    <p className="text-sm mb-2">
-                      <span className="font-medium">Date:</span>{' '}
-                      {new Date(request.proposed_time).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm mb-2">
-                      <span className="font-medium">Time:</span>{' '}
-                      {new Date(request.proposed_time).toLocaleTimeString([], { 
-                        hour: '2-digit', 
-                        minute: '2-digit'
-                      })}
-                    </p>
-                    {request.proposed_payment > 0 && (
-                      <p className="text-sm font-medium">
-                        Proposed Payment: ${request.proposed_payment}
-                      </p>
-                    )}
                   </div>
                 </div>
 
