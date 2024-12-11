@@ -59,42 +59,28 @@ export default function MatchingPage() {
         .eq('id', session.user.id)
         .single();
 
-      if (currentUserError) {
-        console.error('Error fetching current user:', currentUserError);
-        throw currentUserError;
-      }
+      if (currentUserError) throw currentUserError;
 
       setCurrentUser(currentUserData);
 
-      // Fetch matching users with improved query
-      const { data: matchingUsers, error: matchError } = await supabase
+      // Build the base query
+      let query = supabase
         .from('profiles')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          age,
-          avatar_url,
-          bio,
-          gender,
-          preferred_gender,
-          dater_archetype,
-          school
-        `)
+        .select('*')
         .neq('id', session.user.id)
-        .eq('school', currentUserData.school)
-        .in('gender', [currentUserData.preferred_gender, 'both'])
-        .or(
-          `preferred_gender.eq.${currentUserData.gender},preferred_gender.eq.both`
-        )
-        .order('created_at', { ascending: false });
+        .eq('school', currentUserData.school);
 
-      if (matchError) {
-        console.error('Error fetching matches:', matchError);
-        throw matchError;
+      // Handle gender preferences
+      if (currentUserData.preferred_gender && currentUserData.preferred_gender !== 'both') {
+        query = query.eq('gender', currentUserData.preferred_gender);
       }
 
-      console.log('Found matches:', matchingUsers?.length || 0);
+      // Get all matches without any limit
+      const { data: matchingUsers, error: matchError } = await query;
+
+      if (matchError) throw matchError;
+
+      console.log('Total matches found:', matchingUsers?.length);
       setUsers(matchingUsers || []);
 
     } catch (error) {

@@ -27,6 +27,27 @@ const archetypeMap = {
   independent: 'Independent',
 };
 
+const getSignedUrl = async (filePath: string) => {
+  try {
+    if (!filePath || filePath.includes('default-avatar')) {
+      return '/images/default-avatar.png';
+    }
+
+    const fileName = filePath.split('/').pop();
+    if (!fileName) return '/images/default-avatar.png';
+
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
+
+    if (error) throw error;
+    return data.signedUrl;
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
 export default function UserProfile() {
   const { id } = useParams();
   const router = useRouter();
@@ -42,8 +63,18 @@ export default function UserProfile() {
           .select('*')
           .eq('id', id)
           .single();
+
         if (error) throw error;
-        setProfile(data);
+
+        // Get signed URL for avatar if it exists
+        if (data) {
+          const signedAvatarUrl = await getSignedUrl(data.avatar_url);
+          setProfile({
+            ...data,
+            avatar_url: signedAvatarUrl
+          });
+        }
+        
         setError(null);
       } catch (error) {
         console.error('Error fetching profile:', error);

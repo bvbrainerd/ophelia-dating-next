@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Heart, Calendar, MessageCircle, UserCircle, Trophy, Crown, Users, Coffee, Home } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
+import Image from 'next/image';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -63,6 +64,23 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'The Clay Room': 'https://buy.stripe.com/28o15p1ao0xv8yA6or',
 };
 
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) return '/images/default-avatar.png';
+  if (typeof avatarPath === 'string' && avatarPath.startsWith('/images/')) return avatarPath;
+  
+  try {
+    const { data } = await supabase
+      .storage
+      .from('avatars')
+      .createSignedUrl(avatarPath, 3600);
+      
+    return data?.signedUrl || '/images/default-avatar.png';
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +89,11 @@ export default function DashboardPage() {
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [avatarKey, setAvatarKey] = useState(Date.now());
+  const [imageKey, setImageKey] = useState(Date.now());
+  const [imageLoadError, setImageLoadError] = useState<Record<string, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+  const [profileAvatarUrls, setProfileAvatarUrls] = useState<Record<string, string>>({});
 
   const fetchDateRequests = useCallback(async () => {
     try {
@@ -98,7 +121,20 @@ export default function DashboardPage() {
 
       if (requestsError) throw requestsError;
 
-      setDateRequests(requests || []);
+      if (requests) {
+        // Process each request's sender avatar URL
+        const processedRequests = await Promise.all(
+          requests.map(async (request) => ({
+            ...request,
+            sender: request.sender ? {
+              ...request.sender,
+              avatar_url: await getAvatarUrl(request.sender.avatar_url)
+            } : null
+          }))
+        );
+        setDateRequests(processedRequests);
+      }
+
     } catch (error) {
       console.error('Error in fetchDateRequests:', error);
     }
@@ -112,49 +148,46 @@ export default function DashboardPage() {
         return;
       }
 
-      // Get current user's profile
-      const { data: currentUserProfile, error: profileError } = await supabase
+      // First get current user's preferences
+      const { data: currentUser, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .maybeSingle();
+        .single();
 
-      if (profileError) throw profileError;
-      if (!currentUserProfile) return;
+      if (currentUserError) throw currentUserError;
 
-      setCurrentUser(currentUserProfile);
-
-      // Fetch potential matches with preference filtering
+      // Then fetch matching profiles with gender preference filtering
       const { data: matchData, error: matchError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          age,
-          avatar_url,
-          bio,
-          gender,
-          preferred_gender,
-          dater_archetype,
-          school
-        `)
+        .select('*')
         .neq('id', user.id)
-        .eq('school', currentUserProfile.school)
-        .in('gender', [currentUserProfile.preferred_gender, 'both'])
+        .eq('school', currentUser.school)
+        .in('gender', [currentUser.preferred_gender, 'both'])
         .or(
-          `preferred_gender.eq.${currentUserProfile.gender},preferred_gender.eq.both`
+          `preferred_gender.eq.${currentUser.gender},preferred_gender.eq.both`
         )
-        .order('created_at', { ascending: false })
-        .limit(MAX_PREVIEW_MATCHES);
+        .limit(6);
 
-      if (matchError) throw matchError;
-      setProfiles(matchData || []);
+      if (matchError) {
+        setProfiles([]);
+        return;
+      }
 
+      if (matchData) {
+        setProfiles(matchData);
+        
+        // Load avatar URLs separately
+        const urlPromises = matchData.map(async (profile) => {
+          const url = await getAvatarUrl(profile.avatar_url);
+          return [profile.id, url];
+        });
+        
+        const urlResults = await Promise.all(urlPromises);
+        setProfileAvatarUrls(Object.fromEntries(urlResults));
+      }
     } catch (error) {
-      console.error('Error in fetchMatches:', error);
-    } finally {
-      setIsLoading(false);
+      setProfiles([]);
     }
   }, [router]);
 
@@ -226,6 +259,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (currentUser?.avatar_url) {
       setAvatarKey(Date.now());
+    }
+  }, [currentUser?.avatar_url]);
+
+  useEffect(() => {
+    if (currentUser?.avatar_url) {
+      setImageKey(Date.now());
     }
   }, [currentUser?.avatar_url]);
 
@@ -337,19 +376,16 @@ export default function DashboardPage() {
           {profiles.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-                {profiles.slice(0, MAX_PREVIEW_MATCHES).map((profile) => (
+                {profiles.slice(0, MAX_PREVIEW_MATCHES).map((profile, index) => (
                   <Link key={profile.id} href={`/profile/${profile.id}`}>
                     <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg border border-gray-200">
                       <CardContent className="p-0">
-                        <div className="relative w-full rounded-t-lg overflow-hidden" style={{ paddingTop: '56.25%' }}>
+                        <div className="relative w-full rounded-t-lg overflow-hidden" style={{ paddingTop: '100%' }}>
                           <Image
                             src={profile.avatar_url || '/images/default-avatar.png'}
                             alt={`${profile.first_name}'s profile`}
                             fill
-                            priority={false}
-                            loading="lazy"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover rounded-t-lg"
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/default-avatar.png';
@@ -396,13 +432,12 @@ export default function DashboardPage() {
             <Card key={request.id} className="mb-3">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
                     <Image
                       src={request.sender?.avatar_url || '/images/default-avatar.png'}
                       alt={`${request.sender?.first_name || 'User'}'s profile`}
                       width={64}
                       height={64}
-                      loading="lazy"
                       className="object-cover w-16 h-16"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
