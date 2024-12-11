@@ -15,24 +15,61 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
 
+    // Validate email and password
+    if (!email.trim()) {
+      setError('Email is required');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate BC email domain
+    if (!email.toLowerCase().endsWith('@bc.edu')) {
+      setError('Please use your BC email address (@bc.edu)');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Password is required');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim().toLowerCase(),
+        password: password.trim()
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('Invalid login')) {
+          setError('Invalid email or password');
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
 
       if (data.session) {
-        // Wait for session to be set
         await supabase.auth.setSession(data.session);
         router.push('/dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError('Invalid login credentials');
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Update the email input to enforce BC email domain
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim().toLowerCase();
+    setEmail(value);
+    if (value && !value.endsWith('@bc.edu')) {
+      setError('Please use your BC email address (@bc.edu)');
+    } else {
+      setError(null);
     }
   };
 
@@ -56,9 +93,9 @@ export default function LoginPage() {
           autoComplete="email"
           className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
           type='email'
-          placeholder='BC Email'
+          placeholder='BC Email (@bc.edu)'
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleEmailChange}
           disabled={isLoading}
         />
 

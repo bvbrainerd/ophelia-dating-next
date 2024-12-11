@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import { useRouter } from 'next/navigation'
 import { commonStyles } from '../commonStyles'
 
 interface ResultScreenProps {
@@ -9,6 +10,13 @@ interface ResultScreenProps {
 }
 
 const ResultScreen: React.FC<ResultScreenProps> = ({ datingStyle, onContinue }) => {
+  const router = useRouter()
+
+  const handleContinue = async () => {
+    await onContinue()
+    router.push('/dashboard')
+  }
+
   return (
     <div style={commonStyles.container}>
       <h2 style={{...commonStyles.h2, color: '#cc0000', fontWeight: 'bold', textAlign: 'center', marginBottom: '20px'}}>
@@ -20,7 +28,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ datingStyle, onContinue }) 
       <p style={{textAlign: 'center', marginBottom: '30px'}}>
         Let's start dating and find your perfect match!
       </p>
-      <button style={commonStyles.button} onClick={onContinue}>
+      <button style={commonStyles.button} onClick={handleContinue}>
         Continue to Dashboard
       </button>
     </div>

@@ -63,18 +63,28 @@ export default function EditProfilePage() {
       setIsLoading(true);
       setError(null);
 
-      // First check for active session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
+      if (sessionError) throw sessionError;
+      if (!session) {
         router.replace('/auth/login');
         return;
       }
 
-      // Use session.user instead of separate getUser call
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          age,
+          gender,
+          preferred_gender,
+          bio,
+          dater_archetype,
+          school,
+          avatar_url,
+          profile_completed
+        `)
         .eq('id', session.user.id)
         .single();
 
@@ -95,14 +105,10 @@ export default function EditProfilePage() {
           school: data.school || '',
           avatar_url: data.avatar_url || null,
         });
-        if (data.avatar_url) {
-          setPreviewUrl(data.avatar_url);
-        }
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-      setError('Failed to fetch profile. Please try again.');
-      router.replace('/auth/login');
+      setError(error instanceof Error ? error.message : 'Failed to load profile');
     } finally {
       setIsLoading(false);
     }
@@ -146,12 +152,16 @@ export default function EditProfilePage() {
         }
       }
 
+      // Upload new avatar
       const { error: uploadError, data } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile);
+        .upload(filePath, avatarFile, {
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
@@ -164,9 +174,11 @@ export default function EditProfilePage() {
   };
 
   const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    console.log(`Updating ${name} to:`, value);
+    
     setProfileData((prev) => ({
       ...prev,
       [name]: name === 'age' ? (value ? parseInt(value) : null) : value,
@@ -174,7 +186,8 @@ export default function EditProfilePage() {
     setError(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
     setError(null);
 
@@ -183,42 +196,75 @@ export default function EditProfilePage() {
       if (authError) throw authError;
       if (!user) throw new Error('No user found');
 
-      // Upload new image if exists
-      let avatarUrl = profileData.avatar_url;
+      // Handle avatar upload first if there's a new file
+      let newAvatarUrl = profileData.avatar_url;
       if (avatarFile) {
-        avatarUrl = await uploadImage(user.id);
+        try {
+          newAvatarUrl = await uploadImage(user.id);
+        } catch (error) {
+          console.error('Error uploading avatar:', error);
+          throw new Error('Failed to upload profile picture');
+        }
       }
 
-      // Update profile with new data
-      const { error: updateError } = await supabase
+      // Prepare the update data
+      const updates = {
+        id: user.id,
+        first_name: profileData.first_name?.trim(),
+        last_name: profileData.last_name?.trim(),
+        age: profileData.age,
+        gender: profileData.gender,
+        preferred_gender: profileData.preferred_gender,
+        bio: profileData.bio?.trim() || '',
+        dater_archetype: profileData.dater_archetype,
+        school: profileData.school || 'Boston College',
+        avatar_url: newAvatarUrl,
+        profile_completed: true
+      };
+
+      console.log('Attempting to save profile with data:', updates);
+
+      // Use upsert instead of update/insert
+      const { data, error: upsertError } = await supabase
         .from('profiles')
-        .update({
-          first_name: profileData.first_name,
-          last_name: profileData.last_name,
-          age: profileData.age,
-          gender: profileData.gender,
-          preferred_gender: profileData.preferred_gender,
-          bio: profileData.bio,
-          dater_archetype: profileData.dater_archetype,
-          school: profileData.school,
-          avatar_url: avatarUrl,
+        .upsert(updates, {
+          onConflict: 'id',
+          ignoreDuplicates: false
         })
-        .eq('id', user.id);
+        .select(`
+          id, 
+          first_name, 
+          last_name, 
+          age, 
+          gender, 
+          preferred_gender, 
+          bio, 
+          dater_archetype, 
+          school, 
+          avatar_url, 
+          profile_completed
+        `);
 
-      if (updateError) throw updateError;
+      if (upsertError) {
+        console.error('Profile upsert error:', upsertError);
+        throw new Error(upsertError.message || 'Failed to save profile');
+      }
 
-      // Wait for the update to complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('Profile saved successfully');
+      
+      // Force a refresh of the data
+      await fetchProfile();
+      
+      // Show success message
+      alert('Profile updated successfully!');
+      
+      // Navigate to matching page
+      router.push('/matching');
 
-      // Success - redirect to dashboard
-      router.push('/dashboard');
-
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
-          : 'Failed to update profile. Please try again.'
+        error.message || 'Failed to save profile. Please try again.'
       );
     } finally {
       setIsLoading(false);
@@ -264,18 +310,22 @@ export default function EditProfilePage() {
           </div>
         )}
 
-        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+        <form onSubmit={handleSave} className="space-y-4">
           {/* Profile Picture Upload */}
           <div className="flex items-center justify-center w-full mb-6">
             <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
-              {previewUrl ? (
+              {(previewUrl || profileData.avatar_url) ? (
                 <div className="relative w-full h-full">
                   <Image
-                    src={previewUrl}
+                    src={previewUrl || profileData.avatar_url || '/images/default-avatar.png'}
                     alt="Profile preview"
                     fill
                     className="object-cover rounded-full"
                     sizes="(max-width: 768px) 100vw, 128px"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/images/default-avatar.png';
+                    }}
                   />
                 </div>
               ) : (
@@ -356,6 +406,7 @@ export default function EditProfilePage() {
             name="preferred_gender"
             value={profileData.preferred_gender}
             onChange={handleChange}
+            required
           >
             <option value="">I'm interested in dating...</option>
             <option value="male">Men</option>

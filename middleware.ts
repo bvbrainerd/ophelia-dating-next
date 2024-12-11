@@ -5,22 +5,36 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  
+  const supabase = createMiddlewareClient(
+    { req, res },
+    {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      cookieOptions: {
+        name: 'sb-auth',
+        domain: '',
+        path: '/',
+        sameSite: 'lax'
+      }
+    }
+  );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  // If no session and trying to access protected route, redirect to login
-  if (!session && !req.nextUrl.pathname.startsWith('/auth/')) {
-    return NextResponse.redirect(new URL('/auth/login', req.url));
-  }
+  // Refresh session if expired
+  await supabase.auth.getSession();
 
   return res;
 }
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|images|auth).*)',
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/|api/).*)',
   ],
 };

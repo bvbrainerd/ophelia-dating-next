@@ -163,62 +163,35 @@ export default function SendDateRequestPage() {
 
       if (insertError) throw insertError;
 
-      // Get receiver's profile for email
-      const { data: receiverProfile, error: receiverError } = await supabase
-        .from('profiles')
-        .select('email, first_name')
-        .eq('id', profileId)
-        .single();
-
-      if (receiverError || !receiverProfile) {
-        throw new Error('Failed to fetch receiver profile');
-      }
-
-      // Get sender's profile for email
-      const { data: senderProfile, error: senderError } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', session.user.id)
-        .single();
-
-      if (senderError || !senderProfile) {
-        throw new Error('Failed to fetch sender profile');
-      }
-
-      // Send email notification
+      // Send email notification with correct endpoint
       try {
-        const response = await fetch('/api/send-date-request', {
+        const response = await fetch(`/api/send-date-request/${profileId}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
-            senderId: session.user.id,
-            recipientId: profileId,
-            dateDetails: {
-              requestId: dateRequest.id,
-              venue: formData.venue,
-              proposedTime: formData.proposed_time,
-              proposedPayment: formData.proposed_payment
-            }
+            sender_id: session.user.id,
+            venue: formData.venue,
+            proposed_time: formData.proposed_time,
+            proposed_payment: formData.proposed_payment,
+            requestId: dateRequest.id
           }),
         });
 
         if (!response.ok) {
-          console.error('Failed to send email notification');
+          throw new Error('Failed to send email notification');
         }
       } catch (emailError) {
         console.error('Email notification error:', emailError);
-        // Continue even if email fails
+        // Continue with the flow even if email fails
       }
 
-      router.push('/matching');
-    } catch (err) {
-      console.error('Submit error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send date request');
-      if (err instanceof Error && err.message.includes('session')) {
-        router.replace('/auth/login');
-      }
+      router.push('/daterequests');
+    } catch (error) {
+      setError('Failed to send date request');
+      console.error('Error:', error);
     } finally {
       setIsSubmitting(false);
     }

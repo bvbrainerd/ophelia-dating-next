@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import Header from '@/components/Header';
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -111,16 +112,19 @@ export default function DashboardPage() {
         return;
       }
 
+      // Get current user's profile
       const { data: currentUserProfile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
+      if (!currentUserProfile) return;
 
       setCurrentUser(currentUserProfile);
 
+      // Fetch potential matches with preference filtering
       const { data: matchData, error: matchError } = await supabase
         .from('profiles')
         .select(`
@@ -132,16 +136,25 @@ export default function DashboardPage() {
           bio,
           gender,
           preferred_gender,
-          dater_archetype
+          dater_archetype,
+          school
         `)
         .neq('id', user.id)
-        .eq('gender', currentUserProfile.preferred_gender);
+        .eq('school', currentUserProfile.school)
+        .in('gender', [currentUserProfile.preferred_gender, 'both'])
+        .or(
+          `preferred_gender.eq.${currentUserProfile.gender},preferred_gender.eq.both`
+        )
+        .order('created_at', { ascending: false })
+        .limit(MAX_PREVIEW_MATCHES);
 
       if (matchError) throw matchError;
-
       setProfiles(matchData || []);
+
     } catch (error) {
       console.error('Error in fetchMatches:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, [router]);
 
@@ -172,55 +185,43 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
         
-        if (!user) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+        
+        if (!session?.user) {
           router.replace('/auth/login');
           return;
         }
 
-        // Fetch current user profile
-        const { data: userProfile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
-          .single();
+          .eq('id', session.user.id)
+          .maybeSingle();
 
         if (profileError) throw profileError;
-        setCurrentUser(userProfile);
 
-        // Fetch potential matches based on gender preferences
-        const matchQuery = supabase
-          .from('profiles')
-          .select('*')
-          .neq('id', user.id);
-
-        // Handle gender preference filtering
-        if (userProfile.preferred_gender === 'both') {
-          // If user prefers both, no additional gender filter needed
-        } else {
-          matchQuery.eq('gender', userProfile.preferred_gender);
+        if (!profile) {
+          console.log('No profile found, redirecting to quiz');
+          router.replace('/quiz');
+          return;
         }
 
-        const { data: matchData, error: matchError } = await matchQuery
-          .limit(MAX_PREVIEW_MATCHES);
-
-        if (matchError) throw matchError;
-        setProfiles(matchData || []);
-
-        // Fetch date requests
-        await fetchDateRequests();
-
+        setCurrentUser(profile);
+        // Continue with other fetches...
+        
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load data');
+        console.error('Error in fetchData:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load data');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [fetchDateRequests]);
+  }, [router]);
 
   useEffect(() => {
     if (currentUser?.avatar_url) {
@@ -272,57 +273,42 @@ export default function DashboardPage() {
     }
   };
 
-  if (isLoading) {
+  useEffect(() => {
+    fetchMatches();
+    fetchDateRequests();
+  }, [fetchMatches, fetchDateRequests]);
+
+  if (!currentUser) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Loading profile...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000] mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-[#cc0000] text-white rounded-full"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="max-w-4xl mx-auto p-5 pb-24 pt-8">
-        {/* Header */}
-        <div className="flex items-center mb-12 relative">
-          <div className="absolute left-0 right-0 text-center">
-            <Link href="/dashboard">
-              <h1 className="text-4xl font-bold text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity">
-                Ophelia
-              </h1>
-            </Link>
-          </div>
-          <div className="ml-auto flex items-center gap-3 z-10">
-            <div className="text-sm font-medium text-[#BA2525]">
-              Welcome back, {currentUser?.first_name}
-            </div>
-            <Link href="/dashboard/editprofile">
-              <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full cursor-pointer overflow-hidden">
-                {currentUser?.avatar_url ? (
-                  <div className="relative w-10 h-10">
-                    <Image
-                      key={avatarKey}
-                      src={currentUser?.avatar_url || '/images/default-avatar.png'}
-                      alt="Profile"
-                      fill
-                      sizes="40px"
-                      className="object-cover rounded-full"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/default-avatar.png';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center w-10 h-10 bg-gray-50 rounded-full">
-                    <UserCircle className="w-6 h-6 text-gray-400" />
-                  </div>
-                )}
-              </div>
-            </Link>
-          </div>
-        </div>
-
+      <div className="max-w-6xl mx-auto p-5 pb-24">
+        <Header />
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-6 mb-8">
           {[
@@ -360,9 +346,10 @@ export default function DashboardPage() {
                             src={profile.avatar_url || '/images/default-avatar.png'}
                             alt={`${profile.first_name}'s profile`}
                             fill
+                            priority={false}
+                            loading="lazy"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             className="object-cover rounded-t-lg"
-                            priority
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/default-avatar.png';
@@ -415,6 +402,7 @@ export default function DashboardPage() {
                       alt={`${request.sender?.first_name || 'User'}'s profile`}
                       width={64}
                       height={64}
+                      loading="lazy"
                       className="object-cover w-16 h-16"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
