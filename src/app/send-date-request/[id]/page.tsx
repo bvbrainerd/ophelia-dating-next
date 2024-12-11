@@ -67,7 +67,7 @@ const generateTimeSlots = () => {
   return slots;
 };
 
-const DEFAULT_AVATAR = 'https://opheliadating.com/default-avatar.png'; // Replace with your actual default avatar URL
+const DEFAULT_AVATAR = 'https://opheliadating.com/default-avatar.png'; 
 
 export default function SendDateRequestPage() {
   const params = useParams();
@@ -176,7 +176,8 @@ export default function SendDateRequestPage() {
             venue: formData.venue,
             proposed_time: formData.proposed_time,
             proposed_payment: formData.proposed_payment,
-            requestId: dateRequest.id
+            requestId: dateRequest.id,
+            emailType: 'date_request'
           }),
         });
 
