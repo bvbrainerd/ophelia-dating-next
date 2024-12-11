@@ -38,13 +38,14 @@ const ARCHETYPES = [
   { value: 'independent', label: 'Friends with Benefits' },
 ] as const;
 
+const DEFAULT_AVATAR = '/images/default-avatar.png';
+
 export default function EditProfilePage() {
   const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     first_name: '',
     last_name: '',
@@ -56,14 +57,31 @@ export default function EditProfilePage() {
     school: '',
     avatar_url: null,
   });
+  const [imageKey, setImageKey] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  // Add this function to get a signed URL for an existing file
+  const getSignedUrl = async (filePath: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      return null;
+    }
+  };
 
   // Wrap fetchProfile in useCallback
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
-      setError(null);
-
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
       if (sessionError) throw sessionError;
       if (!session) {
         router.replace('/auth/login');
@@ -72,38 +90,23 @@ export default function EditProfilePage() {
 
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          age,
-          gender,
-          preferred_gender,
-          bio,
-          dater_archetype,
-          school,
-          avatar_url,
-          profile_completed
-        `)
+        .select('*')
         .eq('id', session.user.id)
         .single();
 
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        throw profileError;
-      }
+      if (profileError) throw profileError;
 
       if (data) {
+        // If there's an avatar_url, get a signed URL
+        let signedAvatarUrl = data.avatar_url;
+        if (signedAvatarUrl && !signedAvatarUrl.includes('default-avatar')) {
+          const fileName = signedAvatarUrl.split('/').pop();
+          signedAvatarUrl = await getSignedUrl(fileName);
+        }
+
         setProfileData({
-          first_name: data.first_name || '',
-          last_name: data.last_name || '',
-          age: data.age || null,
-          gender: data.gender || '',
-          preferred_gender: data.preferred_gender || '',
-          bio: data.bio || '',
-          dater_archetype: data.dater_archetype || '',
-          school: data.school || '',
-          avatar_url: data.avatar_url || null,
+          ...data,
+          avatar_url: signedAvatarUrl || '/images/default-avatar.png'
         });
       }
     } catch (error) {
@@ -122,17 +125,30 @@ export default function EditProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // File size validation (e.g., 5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size should be less than 5MB');
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    // Clean up previous preview URL if it exists
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    // Create new preview URL
+    const url = URL.createObjectURL(file);
     setAvatarFile(file);
-    setError(null);
+    setPreviewUrl(url);
+    setImageError(false);
   };
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const uploadImage = async (userId: string): Promise<string | null> => {
     if (!avatarFile) return null;
@@ -140,33 +156,24 @@ export default function EditProfilePage() {
     try {
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
 
-      // Delete old avatar if exists
-      if (profileData.avatar_url) {
-        const oldFilePath = profileData.avatar_url.split('/').pop();
-        if (oldFilePath) {
-          await supabase.storage
-            .from('avatars')
-            .remove([oldFilePath]);
-        }
-      }
-
-      // Upload new avatar
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile, {
+        .upload(fileName, avatarFile, {
+          cacheControl: '0',
           upsert: true
         });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL immediately after upload
+      const { data: signedData, error: signedError } = await supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath);
+        .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
 
-      return publicUrl;
+      if (signedError) throw signedError;
+
+      return signedData.signedUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
@@ -196,76 +203,59 @@ export default function EditProfilePage() {
       if (authError) throw authError;
       if (!user) throw new Error('No user found');
 
-      // Handle avatar upload first if there's a new file
       let newAvatarUrl = profileData.avatar_url;
+      console.log('Starting avatar URL:', newAvatarUrl);
+
       if (avatarFile) {
-        try {
-          newAvatarUrl = await uploadImage(user.id);
-        } catch (error) {
-          console.error('Error uploading avatar:', error);
-          throw new Error('Failed to upload profile picture');
-        }
+        newAvatarUrl = await uploadImage(user.id);
+        console.log('After upload, new avatar URL:', newAvatarUrl);
       }
 
-      // Prepare the update data
       const updates = {
         id: user.id,
-        first_name: profileData.first_name?.trim(),
-        last_name: profileData.last_name?.trim(),
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
         age: profileData.age,
         gender: profileData.gender,
         preferred_gender: profileData.preferred_gender,
-        bio: profileData.bio?.trim() || '',
+        bio: profileData.bio,
         dater_archetype: profileData.dater_archetype,
-        school: profileData.school || 'Boston College',
+        school: profileData.school,
         avatar_url: newAvatarUrl,
         profile_completed: true
       };
 
-      console.log('Attempting to save profile with data:', updates);
+      console.log('Saving with updates:', updates);
 
-      // Use upsert instead of update/insert
-      const { data, error: upsertError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('profiles')
-        .upsert(updates, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        })
-        .select(`
-          id, 
-          first_name, 
-          last_name, 
-          age, 
-          gender, 
-          preferred_gender, 
-          bio, 
-          dater_archetype, 
-          school, 
-          avatar_url, 
-          profile_completed
-        `);
+        .upsert([updates])
+        .select();
 
-      if (upsertError) {
-        console.error('Profile upsert error:', upsertError);
-        throw new Error(upsertError.message || 'Failed to save profile');
+      if (updateError) throw updateError;
+
+      setProfileData(prev => ({
+        ...prev,
+        avatar_url: newAvatarUrl
+      }));
+      
+      setImageKey(prev => prev + 1);
+      setImageError(false);
+
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
       }
+      setAvatarFile(null);
 
-      console.log('Profile saved successfully');
-      
-      // Force a refresh of the data
-      await fetchProfile();
-      
-      // Show success message
+      console.log('Final profile data:', data);
+
       alert('Profile updated successfully!');
-      
-      // Navigate to matching page
       router.push('/matching');
 
-    } catch (error: any) {
-      console.error('Error saving profile:', error);
-      setError(
-        error.message || 'Failed to save profile. Please try again.'
-      );
+    } catch (error) {
+      console.error('Save error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save profile');
     } finally {
       setIsLoading(false);
     }
@@ -285,6 +275,32 @@ export default function EditProfilePage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const refreshImage = async () => {
+      if (profileData.avatar_url) {
+        // Force browser to reload the image
+        setImageKey(prev => prev + 1);
+        
+        // Verify the image exists
+        try {
+          const response = await fetch(profileData.avatar_url);
+          if (!response.ok) {
+            setImageError(true);
+            setProfileData(prev => ({
+              ...prev,
+              avatar_url: '/images/default-avatar.png'
+            }));
+          }
+        } catch (error) {
+          console.error('Error verifying image:', error);
+          setImageError(true);
+        }
+      }
+    };
+
+    refreshImage();
+  }, [profileData.avatar_url]);
 
   return (
     <>
@@ -314,18 +330,24 @@ export default function EditProfilePage() {
           {/* Profile Picture Upload */}
           <div className="flex items-center justify-center w-full mb-6">
             <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
-              {(previewUrl || profileData.avatar_url) ? (
+              {(previewUrl || profileData.avatar_url) && !imageError ? (
                 <div className="relative w-full h-full">
                   <Image
-                    src={previewUrl || profileData.avatar_url || '/images/default-avatar.png'}
+                    key={imageKey}
+                    src={previewUrl || (profileData.avatar_url || '/images/default-avatar.png')}
                     alt="Profile preview"
                     fill
-                    className="object-cover rounded-full"
-                    sizes="(max-width: 768px) 100vw, 128px"
+                    className="object-cover"
                     onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/images/default-avatar.png';
+                      console.error('Image load error for:', profileData.avatar_url);
+                      setImageError(true);
+                      setProfileData(prev => ({
+                        ...prev,
+                        avatar_url: '/images/default-avatar.png'
+                      }));
                     }}
+                    unoptimized
+                    priority
                   />
                 </div>
               ) : (
