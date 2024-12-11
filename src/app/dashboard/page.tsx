@@ -66,14 +66,33 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
 
 const getAvatarUrl = async (avatarPath: string | null) => {
   if (!avatarPath) return '/images/default-avatar.png';
-  if (typeof avatarPath === 'string' && avatarPath.startsWith('/images/')) return avatarPath;
+  if (avatarPath.startsWith('/images/')) return avatarPath;
   
   try {
-    const { data } = await supabase
+    // Clean up the path - remove any full URLs or duplicate paths
+    let fileName = avatarPath;
+    
+    // Remove any existing storage URLs
+    const storageUrl = 'storage/v1/object/public/avatars/';
+    if (fileName.includes(storageUrl)) {
+      fileName = fileName.split(storageUrl).pop() || '';
+    }
+    
+    // Remove any query parameters
+    fileName = fileName.split('?')[0];
+    
+    // Remove any leading/trailing slashes
+    fileName = fileName.replace(/^\/+|\/+$/g, '');
+    
+    // If filename is empty after cleanup, return default
+    if (!fileName) return '/images/default-avatar.png';
+
+    const { data, error } = await supabase
       .storage
       .from('avatars')
-      .createSignedUrl(avatarPath, 3600);
+      .createSignedUrl(fileName, 3600);
       
+    if (error) throw error;
     return data?.signedUrl || '/images/default-avatar.png';
   } catch (error) {
     console.error('Error getting avatar URL:', error);

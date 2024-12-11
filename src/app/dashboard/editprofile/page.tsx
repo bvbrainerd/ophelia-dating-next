@@ -63,16 +63,39 @@ export default function EditProfilePage() {
 
   // Add this function to get a signed URL for an existing file
   const getSignedUrl = async (filePath: string) => {
+    if (!filePath || filePath.includes('default-avatar')) {
+      return '/images/default-avatar.png';
+    }
+
     try {
-      const { data, error } = await supabase.storage
+      // Clean up the path - remove any full URLs or duplicate paths
+      let fileName = filePath;
+      
+      // Remove any existing storage URLs
+      const storageUrl = 'storage/v1/object/public/avatars/';
+      if (fileName.includes(storageUrl)) {
+        fileName = fileName.split(storageUrl).pop() || '';
+      }
+      
+      // Remove any query parameters
+      fileName = fileName.split('?')[0];
+      
+      // Remove any leading/trailing slashes
+      fileName = fileName.replace(/^\/+|\/+$/g, '');
+      
+      // If filename is empty after cleanup, return default
+      if (!fileName) return '/images/default-avatar.png';
+
+      const { data, error } = await supabase
+        .storage
         .from('avatars')
-        .createSignedUrl(filePath, 60 * 60); // 1 hour expiry
+        .createSignedUrl(fileName, 3600);
 
       if (error) throw error;
-      return data.signedUrl;
+      return data?.signedUrl || '/images/default-avatar.png';
     } catch (error) {
       console.error('Error getting signed URL:', error);
-      return null;
+      return '/images/default-avatar.png';
     }
   };
 
@@ -97,16 +120,12 @@ export default function EditProfilePage() {
       if (profileError) throw profileError;
 
       if (data) {
-        // If there's an avatar_url, get a signed URL
-        let signedAvatarUrl = data.avatar_url;
-        if (signedAvatarUrl && !signedAvatarUrl.includes('default-avatar')) {
-          const fileName = signedAvatarUrl.split('/').pop();
-          signedAvatarUrl = await getSignedUrl(fileName);
-        }
-
+        // Get signed URL for avatar if it exists
+        const avatarUrl = data.avatar_url ? await getSignedUrl(data.avatar_url) : '/images/default-avatar.png';
+        
         setProfileData({
           ...data,
-          avatar_url: signedAvatarUrl || '/images/default-avatar.png'
+          avatar_url: avatarUrl
         });
       }
     } catch (error) {
@@ -166,14 +185,8 @@ export default function EditProfilePage() {
 
       if (uploadError) throw uploadError;
 
-      // Get signed URL immediately after upload
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from('avatars')
-        .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
-
-      if (signedError) throw signedError;
-
-      return signedData.signedUrl;
+      // Just return the filename
+      return fileName;
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
@@ -203,12 +216,10 @@ export default function EditProfilePage() {
       if (authError) throw authError;
       if (!user) throw new Error('No user found');
 
-      let newAvatarUrl = profileData.avatar_url;
-      console.log('Starting avatar URL:', newAvatarUrl);
+      let avatarFileName = profileData.avatar_url;
 
       if (avatarFile) {
-        newAvatarUrl = await uploadImage(user.id);
-        console.log('After upload, new avatar URL:', newAvatarUrl);
+        avatarFileName = await uploadImage(user.id);
       }
 
       const updates = {
@@ -221,24 +232,24 @@ export default function EditProfilePage() {
         bio: profileData.bio,
         dater_archetype: profileData.dater_archetype,
         school: profileData.school,
-        avatar_url: newAvatarUrl,
+        avatar_url: avatarFileName, // Store just the filename
         profile_completed: true
       };
 
-      console.log('Saving with updates:', updates);
-
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('profiles')
-        .upsert([updates])
-        .select();
+        .upsert([updates]);
 
       if (updateError) throw updateError;
 
+      // Get the signed URL for display
+      const signedUrl = await getSignedUrl(avatarFileName || '');
+      
       setProfileData(prev => ({
         ...prev,
-        avatar_url: newAvatarUrl
+        avatar_url: signedUrl
       }));
-      
+
       setImageKey(prev => prev + 1);
       setImageError(false);
 
@@ -247,8 +258,6 @@ export default function EditProfilePage() {
         setPreviewUrl(null);
       }
       setAvatarFile(null);
-
-      console.log('Final profile data:', data);
 
       alert('Profile updated successfully!');
       router.push('/matching');
@@ -334,12 +343,12 @@ export default function EditProfilePage() {
                 <div className="relative w-full h-full">
                   <Image
                     key={imageKey}
-                    src={previewUrl || (profileData.avatar_url || '/images/default-avatar.png')}
+                    src={previewUrl || profileData.avatar_url || '/images/default-avatar.png'}
                     alt="Profile preview"
                     fill
-                    className="object-cover"
+                    className="object-cover rounded-full"
                     onError={(e) => {
-                      console.error('Image load error for:', profileData.avatar_url);
+                      console.error('Image load error');
                       setImageError(true);
                       setProfileData(prev => ({
                         ...prev,
