@@ -166,7 +166,8 @@ export default function ProfileSetup() {
         throw profileError;
       }
 
-      router.push('/dashboard');
+      // Redirect to quiz page after successful signup
+      router.push('/quiz');
 
     } catch (error: any) {
       console.error('Signup error:', error);

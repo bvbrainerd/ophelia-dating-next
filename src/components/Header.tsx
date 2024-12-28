@@ -42,22 +42,21 @@ export default function Header() {
   }, [currentUser?.avatar_url]);
 
   return (
-    <div className="flex items-center justify-between mb-6 px-4">
-      <div className="w-32"></div>
-      
-      <Link href="/dashboard">
-        <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
-          Ophelia
-        </h1>
-      </Link>
-      
+    <div className="flex items-center mb-6 relative">
+      <div className="absolute left-0 right-0 text-center">
+        <Link href="/dashboard">
+          <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
+            Ophelia
+          </h1>
+        </Link>
+      </div>
       {currentUser && (
-        <div className="flex items-center gap-3 w-32">
-          <div className="text-sm font-medium text-[#cc0000] truncate">
+        <div className="ml-auto flex items-center gap-3 z-10">
+          <div className="text-sm font-medium text-[#cc0000]">
             {currentUser.first_name}
           </div>
           <Link href="/dashboard/editprofile">
-            <div className="flex-shrink-0 w-10 h-10 rounded-full cursor-pointer overflow-hidden">
+            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full cursor-pointer overflow-hidden">
               {currentUser.avatar_url ? (
                 <div className="relative w-10 h-10">
                   <Image
