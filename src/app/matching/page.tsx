@@ -20,6 +20,45 @@ interface Profile {
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
 }
 
+const getAvatarUrl = async (avatarPath: string | null) => {
+  console.log('Getting avatar URL for path:', avatarPath);
+
+  if (!avatarPath) return '/images/default-avatar.png';
+  if (avatarPath.startsWith('/images/')) return avatarPath;
+  if (avatarPath.startsWith('http')) {
+    try {
+      const url = new URL(avatarPath);
+      const pathParts = url.pathname.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+
+      const { data } = supabase
+        .storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch {
+      return avatarPath;
+    }
+  }
+
+  // For direct paths, just get the filename
+  const fileName = avatarPath.split('/').pop() || '';
+  if (!fileName) return '/images/default-avatar.png';
+
+  try {
+    const { data } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
 export default function MatchingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -80,8 +119,18 @@ export default function MatchingPage() {
 
       if (matchError) throw matchError;
 
-      console.log('Total matches found:', matchingUsers?.length);
-      setUsers(matchingUsers || []);
+      if (matchingUsers) {
+        // Process avatar URLs
+        const processedUsers = await Promise.all(
+          matchingUsers.map(async (user) => ({
+            ...user,
+            avatar_url: await getAvatarUrl(user.avatar_url)
+          }))
+        );
+
+        console.log('Processed users with URLs:', processedUsers); // Debug log
+        setUsers(processedUsers);
+      }
 
     } catch (error) {
       console.error('Error fetching users:', error);
