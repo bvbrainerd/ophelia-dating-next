@@ -83,19 +83,18 @@ export default function ProfileSetup() {
     try {
       const fileExt = avatarFile.name.split('.').pop();
       const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, avatarFile);
+        .upload(fileName, avatarFile);
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('avatars')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
-      return publicUrl;
+      return data?.publicUrl || null;
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;

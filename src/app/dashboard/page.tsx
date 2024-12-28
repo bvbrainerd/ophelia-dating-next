@@ -39,7 +39,7 @@ interface DateRequestResponse {
     last_name: string;
     age: number;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -65,39 +65,115 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
 };
 
 const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) return '/images/default-avatar.png';
-  if (avatarPath.startsWith('/images/')) return avatarPath;
-  
-  try {
-    // Clean up the path - remove any full URLs or duplicate paths
-    let fileName = avatarPath;
-    
-    // Remove any existing storage URLs
-    const storageUrl = 'storage/v1/object/public/avatars/';
-    if (fileName.includes(storageUrl)) {
-      fileName = fileName.split(storageUrl).pop() || '';
-    }
-    
-    // Remove any query parameters
-    fileName = fileName.split('?')[0];
-    
-    // Remove any leading/trailing slashes
-    fileName = fileName.replace(/^\/+|\/+$/g, '');
-    
-    // If filename is empty after cleanup, return default
-    if (!fileName) return '/images/default-avatar.png';
-
-    const { data, error } = await supabase
-      .storage
-      .from('avatars')
-      .createSignedUrl(fileName, 3600);
-      
-    if (error) throw error;
-    return data?.signedUrl || '/images/default-avatar.png';
-  } catch (error) {
-    console.error('Error getting avatar URL:', error);
+  if (!avatarPath) {
     return '/images/default-avatar.png';
   }
+
+  try {
+    // If it's already a full URL, we'll use it directly
+    if (avatarPath.startsWith('http')) {
+      return avatarPath;
+    }
+
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('avatars')  // Matches the bucket name exactly
+      .getPublicUrl(avatarPath);
+
+    return publicUrlData.publicUrl;
+
+  } catch (error) {
+    console.error('Error processing avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
+const ProfileImage = ({ 
+  src, 
+  alt, 
+  className = '', 
+  style = {},
+  priority = false,
+  width,
+  height 
+}: { 
+  src: string | null, 
+  alt: string, 
+  className?: string,
+  style?: React.CSSProperties,
+  priority?: boolean,
+  width?: number,
+  height?: number
+}) => {
+  const [imageUrl, setImageUrl] = useState<string>('/images/default-avatar.png');
+  const [isError, setIsError] = useState(false);
+
+  useEffect(() => {
+    const loadImage = async () => {
+      console.log('ProfileImage - Initial src:', src); // Debug log
+
+      if (!src) {
+        console.log('No src provided, using default'); // Debug log
+        setImageUrl('/images/default-avatar.png');
+        return;
+      }
+
+      try {
+        // If it's already a complete URL, use it directly
+        if (src.startsWith('http') || src.startsWith('/images/')) {
+          console.log('Using direct URL:', src); // Debug log
+          setImageUrl(src);
+          return;
+        }
+
+        // For Supabase storage paths
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('avatars')
+          .getPublicUrl(src);
+
+        console.log('Supabase public URL result:', publicUrlData); // Debug log
+
+        if (publicUrlData?.publicUrl) {
+          console.log('Setting image URL to:', publicUrlData.publicUrl); // Debug log
+          setImageUrl(publicUrlData.publicUrl);
+          setIsError(false);
+        } else {
+          console.log('No public URL found, using default'); // Debug log
+          setImageUrl('/images/default-avatar.png');
+          setIsError(true);
+        }
+      } catch (err) {
+        console.error('Error loading image:', err);
+        setImageUrl('/images/default-avatar.png');
+        setIsError(true);
+      }
+    };
+
+    loadImage();
+  }, [src]);
+
+  return (
+    <div 
+      className={`relative ${className}`} 
+      style={{ 
+        width: width ? `${width}px` : '100%',
+        height: height ? `${height}px` : '100%',
+        ...style
+      }}
+    >
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="absolute inset-0 w-full h-full object-cover rounded-lg"
+        onError={(e) => {
+          console.log('Image load error:', imageUrl); // Debug log
+          setImageUrl('/images/default-avatar.png');
+          setIsError(true);
+        }}
+      />
+    </div>
+  );
 };
 
 export default function DashboardPage() {
@@ -113,49 +189,65 @@ export default function DashboardPage() {
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
   const [profileAvatarUrls, setProfileAvatarUrls] = useState<Record<string, string>>({});
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   const fetchDateRequests = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.log('No user found');
         router.push('/auth/login');
         return;
       }
 
+      // Step 2: Basic query first with status filter
       const { data: requests, error: requestsError } = await supabase
         .from('date_requests')
-        .select(`
-          *,
-          sender:profiles!sender_id(
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('receiver_id', user.id)
-        .eq('status', 'pending')
-        .order('proposed_time', { ascending: true });
+        .eq('status', 'pending');
 
-      if (requestsError) throw requestsError;
-
-      if (requests) {
-        // Process each request's sender avatar URL
-        const processedRequests = await Promise.all(
-          requests.map(async (request) => ({
-            ...request,
-            sender: request.sender ? {
-              ...request.sender,
-              avatar_url: await getAvatarUrl(request.sender.avatar_url)
-            } : null
-          }))
-        );
-        setDateRequests(processedRequests);
+      if (requestsError) {
+        console.log('Basic query error:', requestsError);
+        throw requestsError;
       }
 
-    } catch (error) {
-      console.error('Error in fetchDateRequests:', error);
+      console.log('Basic requests found:', requests);
+
+      // Step 3: Get sender details separately
+      const processedRequests = await Promise.all((requests || []).map(async (request) => {
+        const { data: senderData } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, age, avatar_url')
+          .eq('id', request.sender_id)
+          .single();
+
+        const avatarUrl = await getAvatarUrl(senderData?.avatar_url);
+        return {
+          id: request.id,
+          status: request.status,
+          venue: request.venue,
+          proposed_time: request.proposed_time,
+          dating_style: request.dating_style,
+          sender: senderData ? {
+            ...senderData,
+            avatar_url: avatarUrl
+          } : null
+        };
+      }));
+
+      setDateRequests(processedRequests);
+
+    } catch (err) {
+      if (err instanceof Error) {
+        console.error('Detailed error:', {
+          name: err.name,
+          message: err.message,
+          details: err
+        });
+      } else {
+        console.error('Unknown error:', err);
+      }
     }
   }, [router]);
 
@@ -167,7 +259,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // First get current user's preferences
       const { data: currentUser, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
@@ -176,36 +267,38 @@ export default function DashboardPage() {
 
       if (currentUserError) throw currentUserError;
 
-      // Then fetch matching profiles with gender preference filtering
       const { data: matchData, error: matchError } = await supabase
         .from('profiles')
         .select('*')
         .neq('id', user.id)
         .eq('school', currentUser.school)
         .in('gender', [currentUser.preferred_gender, 'both'])
-        .or(
-          `preferred_gender.eq.${currentUser.gender},preferred_gender.eq.both`
-        )
+        .or(`preferred_gender.eq.${currentUser.gender},preferred_gender.eq.both`)
         .limit(6);
 
       if (matchError) {
+        console.error('Match error:', matchError);
         setProfiles([]);
         return;
       }
 
       if (matchData) {
-        setProfiles(matchData);
+        const processedProfiles = await Promise.all(
+          matchData.map(async (profile) => {
+            console.log(`Profile ${profile.first_name}'s avatar_url:`, profile.avatar_url);
+            const avatarUrl = await getAvatarUrl(profile.avatar_url);
+            console.log(`Processed URL for ${profile.first_name}:`, avatarUrl);
+            return {
+              ...profile,
+              avatar_url: avatarUrl
+            };
+          })
+        );
         
-        // Load avatar URLs separately
-        const urlPromises = matchData.map(async (profile) => {
-          const url = await getAvatarUrl(profile.avatar_url);
-          return [profile.id, url];
-        });
-        
-        const urlResults = await Promise.all(urlPromises);
-        setProfileAvatarUrls(Object.fromEntries(urlResults));
+        setProfiles(processedProfiles);
       }
     } catch (error) {
+      console.error('Error in fetchMatches:', error);
       setProfiles([]);
     }
   }, [router]);
@@ -215,16 +308,17 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        // Try to refresh the session
+        const { data: { session: refreshedSession }, error: refreshError } = 
+          await supabase.auth.refreshSession();
         
-        if (!refreshedSession) {
-          console.log('No valid session found, redirecting to login');
+        if (refreshError || !refreshedSession) {
+          console.log('Session refresh failed, redirecting to login');
           router.push('/auth/login');
           return false;
         }
         return true;
       }
-
       return true;
     } catch (error) {
       console.error('Error checking session:', error);
@@ -238,11 +332,12 @@ export default function DashboardPage() {
       try {
         setIsLoading(true);
         
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const isSessionValid = await checkSession();
+        if (!isSessionValid) return;
+
+        const { data: { user } } = await supabase.auth.getUser();
         
-        if (sessionError) throw sessionError;
-        
-        if (!session?.user) {
+        if (!user) {
           router.replace('/auth/login');
           return;
         }
@@ -250,7 +345,7 @@ export default function DashboardPage() {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('id', user.id)
           .maybeSingle();
 
         if (profileError) throw profileError;
@@ -262,17 +357,32 @@ export default function DashboardPage() {
         }
 
         setCurrentUser(profile);
-        // Continue with other fetches...
         
       } catch (error) {
         console.error('Error in fetchData:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load data');
+        if (error instanceof Error && error.message.includes('Invalid Refresh Token')) {
+          router.replace('/auth/login');
+        } else {
+          setError(error instanceof Error ? error.message : 'Failed to load data');
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
+  }, [router]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        router.replace('/auth/login');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   useEffect(() => {
@@ -399,16 +509,11 @@ export default function DashboardPage() {
                   <Link key={profile.id} href={`/profile/${profile.id}`}>
                     <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg border border-gray-200">
                       <CardContent className="p-0">
-                        <div className="relative w-full rounded-t-lg overflow-hidden" style={{ paddingTop: '100%' }}>
-                          <Image
-                            src={profile.avatar_url || '/images/default-avatar.png'}
+                        <div className="relative w-full" style={{ height: '300px' }}>
+                          <ProfileImage
+                            src={profile.avatar_url}
                             alt={`${profile.first_name}'s profile`}
-                            fill
-                            className="object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = '/images/default-avatar.png';
-                            }}
+                            className="rounded-t-lg"
                           />
                         </div>
                         <div className="p-5">
@@ -430,7 +535,7 @@ export default function DashboardPage() {
                     href="/matching"
                     className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
                   >
-                    View More Matches →
+                    View More Matches
                   </Link>
                 </div>
               )}
@@ -447,21 +552,17 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-[#cc0000] mb-6">
             Your Story Starts Here...
           </h2>
-          {dateRequests.map((request) => (
+          {dateRequests.map((request, index) => (
             <Card key={request.id} className="mb-3">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-                    <Image
-                      src={request.sender?.avatar_url || '/images/default-avatar.png'}
+                  <div className="relative w-16 h-16">
+                    <ProfileImage
+                      src={request.sender?.avatar_url || null}
                       alt={`${request.sender?.first_name || 'User'}'s profile`}
                       width={64}
                       height={64}
-                      className="object-cover w-16 h-16"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/default-avatar.png';
-                      }}
+                      className="rounded-lg"
                     />
                   </div>
                   <div className="flex-1">
