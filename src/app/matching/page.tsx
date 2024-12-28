@@ -21,33 +21,20 @@ interface Profile {
 }
 
 const getAvatarUrl = async (avatarPath: string | null) => {
-  console.log('Getting avatar URL for path:', avatarPath);
-
   if (!avatarPath) return '/images/default-avatar.png';
-  if (avatarPath.startsWith('/images/')) return avatarPath;
-  if (avatarPath.startsWith('http')) {
-    try {
-      const url = new URL(avatarPath);
-      const pathParts = url.pathname.split('/');
-      const fileName = pathParts[pathParts.length - 1];
-
-      const { data } = supabase
-        .storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      return data.publicUrl;
-    } catch {
-      return avatarPath;
-    }
+  
+  // If it's already a full URL or a local image path, return it directly
+  if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    return avatarPath;
   }
 
-  // For direct paths, just get the filename
-  const fileName = avatarPath.split('/').pop() || '';
-  if (!fileName) return '/images/default-avatar.png';
-
   try {
-    const { data } = supabase
+    // Clean up the path - remove any storage URLs and get just the filename
+    const fileName = avatarPath.split('/').pop() || '';
+    
+    if (!fileName) return '/images/default-avatar.png';
+
+    const { data } = await supabase
       .storage
       .from('avatars')
       .getPublicUrl(fileName);
@@ -57,6 +44,65 @@ const getAvatarUrl = async (avatarPath: string | null) => {
     console.error('Error getting avatar URL:', error);
     return '/images/default-avatar.png';
   }
+};
+
+const ProfileImage = ({ user, className, width, height, style, alt }: { user: Profile, className?: string, width?: number, height?: number, style?: React.CSSProperties, alt?: string }) => {
+  const [imageUrl, setImageUrl] = useState<string>('/images/default-avatar.png');
+
+  useEffect(() => {
+    const loadImage = async () => {
+      try {
+        if (!user.avatar_url) {
+          setImageUrl('/images/default-avatar.png');
+          return;
+        }
+
+        // If it's a signed URL, get a fresh public URL
+        if (user.avatar_url.includes('?token=')) {
+          const filename = user.avatar_url.split('avatars/')[1]?.split('?')[0];
+          if (filename) {
+            const { data } = supabase
+              .storage
+              .from('avatars')
+              .getPublicUrl(filename);
+            
+            if (data?.publicUrl) {
+              setImageUrl(data.publicUrl);
+              return;
+            }
+          }
+        }
+
+        // If it's already a public URL, use it directly
+        setImageUrl(user.avatar_url);
+
+      } catch (error) {
+        console.error('Error loading image for user:', user.id, error);
+        setImageUrl('/images/default-avatar.png');
+      }
+    };
+
+    loadImage();
+  }, [user.avatar_url, user.id]);
+
+  return (
+    <div 
+      className={`relative h-[250px] w-full ${className}`}
+      style={style}
+    >
+      <Image
+        src={imageUrl}
+        alt={alt || `Profile picture of ${user.first_name}`}
+        fill
+        priority={true}
+        sizes="(max-width: 640px) 100vw, 
+               (max-width: 1024px) 50vw,
+               33vw"
+        className="object-cover rounded-lg"
+        unoptimized={imageUrl.startsWith('http')}
+      />
+    </div>
+  );
 };
 
 export default function MatchingPage() {
@@ -84,14 +130,12 @@ export default function MatchingPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.replace('/auth/login');
         return;
       }
 
-      // Get current user's data
       const { data: currentUserData, error: currentUserError } = await supabase
         .from('profiles')
         .select('*')
@@ -100,36 +144,31 @@ export default function MatchingPage() {
 
       if (currentUserError) throw currentUserError;
 
-      setCurrentUser(currentUserData);
-
-      // Build the base query
       let query = supabase
         .from('profiles')
         .select('*')
         .neq('id', session.user.id)
         .eq('school', currentUserData.school);
 
-      // Handle gender preferences
       if (currentUserData.preferred_gender && currentUserData.preferred_gender !== 'both') {
         query = query.eq('gender', currentUserData.preferred_gender);
       }
 
-      // Get all matches without any limit
       const { data: matchingUsers, error: matchError } = await query;
 
       if (matchError) throw matchError;
 
       if (matchingUsers) {
-        // Process avatar URLs
-        const processedUsers = await Promise.all(
-          matchingUsers.map(async (user) => ({
-            ...user,
-            avatar_url: await getAvatarUrl(user.avatar_url)
+        // Debug log to see what URLs we're getting
+        console.log('Matching users with their avatar URLs:', 
+          matchingUsers.map(user => ({
+            id: user.id,
+            name: user.first_name,
+            avatar_url: user.avatar_url
           }))
         );
-
-        console.log('Processed users with URLs:', processedUsers); // Debug log
-        setUsers(processedUsers);
+        
+        setUsers(matchingUsers);
       }
 
     } catch (error) {
@@ -167,20 +206,16 @@ export default function MatchingPage() {
             No matches available at the moment
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {users.map((user) => (
               <div
                 key={user.id}
-                className='border border-gray-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow'
+                className='border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow'
               >
-                <div className="relative w-full h-48 mb-4 rounded-lg overflow-hidden">
-                  <Image
-                    src={user.avatar_url || '/images/default-avatar.png'}
-                    alt={`${user.first_name} ${user.last_name}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    priority
+                <div className="aspect-[4/3] w-full mb-4">
+                  <ProfileImage 
+                    user={user}
+                    className="w-full h-full"
                   />
                 </div>
                 

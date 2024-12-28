@@ -31,11 +31,11 @@ const SCHOOLS = [
 ] as const;
 
 const ARCHETYPES = [
-  { value: 'hopelessRomantic', label: 'Hopeless Romantic' },
-  { value: 'cautiousDater', label: 'Cautious Dater' },
-  { value: 'adventurous', label: 'Commitment Seeker' },
-  { value: 'traditional', label: 'Serial Dater' },
-  { value: 'independent', label: 'Friends with Benefits' },
+  { value: 'Hopeless Romantic', label: 'Hopeless Romantic' },
+  { value: 'Cautious Dater', label: 'Cautious Dater' },
+  { value: 'Commitment Seeker', label: 'Commitment Seeker' },
+  { value: 'Serial Dater', label: 'Serial Dater' },
+  { value: 'Friends with Benefits', label: 'Friends with Benefits' },
 ] as const;
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
@@ -232,7 +232,7 @@ export default function EditProfilePage() {
         bio: profileData.bio,
         dater_archetype: profileData.dater_archetype,
         school: profileData.school,
-        avatar_url: avatarFileName, // Store just the filename
+        avatar_url: avatarFileName,
         profile_completed: true
       };
 
@@ -456,7 +456,7 @@ export default function EditProfilePage() {
           <select
             className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
             name="dater_archetype"
-            value={profileData.dater_archetype}
+            value={profileData.dater_archetype || ''}
             onChange={handleChange}
           >
             <option value="">Select Dater Archetype</option>

@@ -25,39 +25,42 @@ export default function QuizPage() {
       }
 
       // Get existing profile first
-      const { data: existingProfile } = await supabase
+      const { data: existingProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('first_name, last_name, age, gender')
+        .select('*')
         .eq('id', user.id)
-        .maybeSingle();
+        .single();
 
-      // Prepare profile data using existing data or defaults
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        throw profileError;
+      }
+
+      // Prepare profile data, preserving existing data
       const profileData = {
+        ...existingProfile,
         id: user.id,
+        dater_archetype: datingStyle,
+        profile_completed: true,
         first_name: existingProfile?.first_name || 'Anonymous',
         last_name: existingProfile?.last_name || 'User',
         age: existingProfile?.age || 18,
         gender: existingProfile?.gender || 'other',
-        school: 'Boston College',
-        dater_archetype: datingStyle,
-        profile_completed: true,
-        bio: '',
-        preferred_gender: 'other',
-        avatar_url: null,
-        created_at: new Date().toISOString()
+        school: existingProfile?.school || 'Boston College',
+        bio: existingProfile?.bio || '',
+        preferred_gender: existingProfile?.preferred_gender || 'other',
+        avatar_url: existingProfile?.avatar_url || null,
       };
 
-      // Use upsert to either create or update the profile
-      const { error: upsertError } = await supabase
+      // Update the profile
+      const { error: updateError } = await supabase
         .from('profiles')
-        .upsert(profileData, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
+        .update(profileData)
+        .eq('id', user.id);
 
-      if (upsertError) {
-        console.error('Upsert error:', upsertError);
-        throw upsertError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
       }
 
       setResult(datingStyle);

@@ -42,6 +42,17 @@ interface DateRequestResponse {
   } | null;
 }
 
+interface ImageProps {
+  src: string | null;
+  alt: string;
+  className?: string;
+  style?: React.CSSProperties;
+  priority?: boolean;
+  width?: number;
+  height?: number;
+  sizes?: string;
+}
+
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
@@ -65,25 +76,33 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
 };
 
 const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) {
-    return '/images/default-avatar.png';
-  }
-
+  if (!avatarPath) return '/images/default-avatar.png';
+  
   try {
-    // If it's already a full URL, we'll use it directly
-    if (avatarPath.startsWith('http')) {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
       return avatarPath;
     }
 
+    // Clean up the path - remove any duplicate avatars/ prefixes and query parameters
+    const cleanPath = avatarPath
+      .replace(/^avatars\/avatars\//, 'avatars/') // Remove duplicate avatars/
+      .replace(/^avatars\//, '')                  // Remove single avatars/
+      .split('?')[0];                            // Remove query parameters
+
+    // Get a public URL that doesn't expire
     const { data: publicUrlData } = supabase
       .storage
-      .from('avatars')  // Matches the bucket name exactly
-      .getPublicUrl(avatarPath);
+      .from('avatars')
+      .getPublicUrl(cleanPath);
+
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
 
     return publicUrlData.publicUrl;
-
   } catch (error) {
-    console.error('Error processing avatar URL:', error);
+    console.error('Error getting avatar URL:', error);
     return '/images/default-avatar.png';
   }
 };
@@ -96,61 +115,31 @@ const ProfileImage = ({
   priority = false,
   width,
   height 
-}: { 
-  src: string | null, 
-  alt: string, 
-  className?: string,
-  style?: React.CSSProperties,
-  priority?: boolean,
-  width?: number,
-  height?: number
-}) => {
+}: ImageProps) => {
   const [imageUrl, setImageUrl] = useState<string>('/images/default-avatar.png');
-  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+
     const loadImage = async () => {
-      console.log('ProfileImage - Initial src:', src); // Debug log
-
-      if (!src) {
-        console.log('No src provided, using default'); // Debug log
-        setImageUrl('/images/default-avatar.png');
-        return;
-      }
-
       try {
-        // If it's already a complete URL, use it directly
-        if (src.startsWith('http') || src.startsWith('/images/')) {
-          console.log('Using direct URL:', src); // Debug log
-          setImageUrl(src);
-          return;
-        }
-
-        // For Supabase storage paths
-        const { data: publicUrlData } = supabase
-          .storage
-          .from('avatars')
-          .getPublicUrl(src);
-
-        console.log('Supabase public URL result:', publicUrlData); // Debug log
-
-        if (publicUrlData?.publicUrl) {
-          console.log('Setting image URL to:', publicUrlData.publicUrl); // Debug log
-          setImageUrl(publicUrlData.publicUrl);
-          setIsError(false);
-        } else {
-          console.log('No public URL found, using default'); // Debug log
-          setImageUrl('/images/default-avatar.png');
-          setIsError(true);
+        const url = await getAvatarUrl(src);
+        if (mounted) {
+          setImageUrl(url);
         }
       } catch (err) {
         console.error('Error loading image:', err);
-        setImageUrl('/images/default-avatar.png');
-        setIsError(true);
+        if (mounted) {
+          setImageUrl('/images/default-avatar.png');
+        }
       }
     };
 
     loadImage();
+
+    return () => {
+      mounted = false;
+    };
   }, [src]);
 
   return (
@@ -162,15 +151,16 @@ const ProfileImage = ({
         ...style
       }}
     >
-      <img
+      <Image
         src={imageUrl}
         alt={alt}
-        className="absolute inset-0 w-full h-full object-cover rounded-lg"
-        onError={(e) => {
-          console.log('Image load error:', imageUrl); // Debug log
-          setImageUrl('/images/default-avatar.png');
-          setIsError(true);
-        }}
+        fill
+        sizes="(max-width: 640px) 100vw, 
+               (max-width: 1024px) 50vw,
+               33vw"
+        priority={priority}
+        className="object-cover rounded-lg"
+        unoptimized={imageUrl.startsWith('http')} // Skip optimization for external URLs
       />
     </div>
   );
@@ -251,57 +241,38 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  const fetchMatches = useCallback(async () => {
+  const fetchMatches = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/auth/login');
+      // Check if we have a valid userId
+      if (!userId) {
+        console.log('No user ID provided');
         return;
       }
 
-      const { data: currentUser, error: currentUserError } = await supabase
+      // Get user's preferred gender
+      const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', user.id)
+        .select('preferred_gender')
+        .eq('id', userId)
         .single();
 
-      if (currentUserError) throw currentUserError;
+      if (profileError || !userProfile) {
+        throw new Error('User profile not found');
+      }
 
-      const { data: matchData, error: matchError } = await supabase
+      const { data: matches } = await supabase
         .from('profiles')
         .select('*')
-        .neq('id', user.id)
-        .eq('school', currentUser.school)
-        .in('gender', [currentUser.preferred_gender, 'both'])
-        .or(`preferred_gender.eq.${currentUser.gender},preferred_gender.eq.both`)
-        .limit(6);
+        .neq('id', userId) // Exclude current user
+        .eq('gender', userProfile.preferred_gender) // Filter by preferred gender
+        .limit(MAX_PREVIEW_MATCHES);
 
-      if (matchError) {
-        console.error('Match error:', matchError);
-        setProfiles([]);
-        return;
-      }
-
-      if (matchData) {
-        const processedProfiles = await Promise.all(
-          matchData.map(async (profile) => {
-            console.log(`Profile ${profile.first_name}'s avatar_url:`, profile.avatar_url);
-            const avatarUrl = await getAvatarUrl(profile.avatar_url);
-            console.log(`Processed URL for ${profile.first_name}:`, avatarUrl);
-            return {
-              ...profile,
-              avatar_url: avatarUrl
-            };
-          })
-        );
-        
-        setProfiles(processedProfiles);
-      }
+      return matches || [];
     } catch (error) {
-      console.error('Error in fetchMatches:', error);
-      setProfiles([]);
+      console.error('Error fetching matches:', error);
+      return [];
     }
-  }, [router]);
+  };
 
   const checkSession = async () => {
     try {
@@ -442,9 +413,26 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchMatches();
-    fetchDateRequests();
-  }, [fetchMatches, fetchDateRequests]);
+    const loadMatches = async () => {
+      if (currentUser?.id) {
+        const matchedProfiles = await fetchMatches(currentUser.id);
+        setProfiles(matchedProfiles || []);
+      }
+    };
+
+    loadMatches();
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const initializePage = async () => {
+      if (currentUser?.id) {
+        await fetchMatches(currentUser.id);
+        await fetchDateRequests();
+      }
+    };
+
+    initializePage();
+  }, [currentUser?.id, fetchMatches, fetchDateRequests]);
 
   if (!currentUser) {
     return (
@@ -505,7 +493,8 @@ export default function DashboardPage() {
           {profiles.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-                {profiles.slice(0, MAX_PREVIEW_MATCHES).map((profile, index) => (
+                {profiles.map((profile, index) => (
+                  
                   <Link key={profile.id} href={`/profile/${profile.id}`}>
                     <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg border border-gray-200">
                       <CardContent className="p-0">
@@ -514,6 +503,10 @@ export default function DashboardPage() {
                             src={profile.avatar_url}
                             alt={`${profile.first_name}'s profile`}
                             className="rounded-t-lg"
+                            priority={index === 0}
+                            sizes="(max-width: 640px) 100vw, 
+                                   (max-width: 1024px) 50vw,
+                                   33vw"
                           />
                         </div>
                         <div className="p-5">
@@ -529,20 +522,26 @@ export default function DashboardPage() {
                   </Link>
                 ))}
               </div>
-              {profiles.length > MAX_PREVIEW_MATCHES && (
-                <div className="flex justify-center mt-6">
-                  <Link
-                    href="/matching"
-                    className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                  >
-                    View More Matches
-                  </Link>
-                </div>
-              )}
+              <div className="flex justify-center mt-6">
+                <Link
+                  href="/matching"
+                  className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                >
+                  View More Matches →
+                </Link>
+              </div>
             </>
           ) : (
             <div className="text-center py-8 text-gray-500">
               No matches available yet
+              <div className="flex justify-center mt-6">
+                <Link
+                  href="/matching"
+                  className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                >
+                  View More Matches →
+                </Link>
+              </div>
             </div>
           )}
         </div>
