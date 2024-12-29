@@ -33,14 +33,28 @@ const getSignedUrl = async (filePath: string) => {
       return '/images/default-avatar.png';
     }
 
-    const fileName = filePath.split('/').pop();
+    // If the URL is already a signed URL or complete URL, return it as is
+    if (filePath.startsWith('http')) {
+      return filePath;
+    }
+
+    // Extract filename whether it's a full path or just filename
+    const fileName = filePath.includes('/') 
+      ? filePath.split('/').pop() 
+      : filePath;
+
     if (!fileName) return '/images/default-avatar.png';
 
     const { data, error } = await supabase.storage
       .from('avatars')
-      .createSignedUrl(fileName, 60 * 60); // 1 hour expiry
+      .createSignedUrl(fileName, 60 * 60);
 
-    if (error) throw error;
+    if (error) {
+      console.log('Falling back to direct URL');
+      // Try using the direct URL format
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${fileName}`;
+    }
+
     return data.signedUrl;
   } catch (error) {
     console.error('Error getting signed URL:', error);
