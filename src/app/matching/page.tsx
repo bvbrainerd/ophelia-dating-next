@@ -209,7 +209,7 @@ export default function MatchingPage() {
                   />
                 </div>
                 
-                <h3 className='text-xl font-bold text-[#BA2525] mb-1'>
+                <h3 className='text-xl font-semibold text-[#BA2525] mb-1'>
                   {user.first_name}, {user.age}
                 </h3>
                 <p className='text-gray-600 text-sm mb-4 line-clamp-3'>
