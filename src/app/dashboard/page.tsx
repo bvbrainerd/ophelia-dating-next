@@ -493,17 +493,19 @@ export default function DashboardPage() {
               { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
               { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
-              <Card key={label} className="col-span-1 bg-[#BA2525] border-none rounded-[50px] h-14 shadow-sm">
-                <CardContent className="p-0 h-full">
-                  <div className="flex flex-col items-center justify-center h-full text-center py-2">
-                    <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                      <Icon className="text-white" size={15} />
-                      <div className="text-base font-medium text-white">{value}</div>
+              <div key={label} className="overflow-hidden">
+                <Card className="col-span-1 bg-[#BA2525] border-0 !rounded-[50px] h-14 shadow-sm overflow-hidden">
+                  <CardContent className="p-0 h-full">
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Icon className="text-white" size={15} />
+                        <div className="text-base font-medium text-white">{value}</div>
+                      </div>
+                      <div className="text-[10px] text-white/80 -mt-0.5">{label}</div>
                     </div>
-                    <div className="text-[10px] text-white/80">{label}</div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
 
