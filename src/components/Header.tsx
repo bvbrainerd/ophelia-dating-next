@@ -11,7 +11,11 @@ interface Profile {
   avatar_url: string | null;
 }
 
-export default function Header() {
+interface HeaderProps {
+  variant?: 'default' | 'matching';
+}
+
+export default function Header({ variant = 'default' }: HeaderProps) {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [avatarKey, setAvatarKey] = useState(Date.now());
 
@@ -42,17 +46,23 @@ export default function Header() {
   }, [currentUser?.avatar_url]);
 
   return (
-    <div className="flex items-center mb-6 relative">
+    <div className={`flex items-center mb-6 relative -mx-5 px-5 py-4 ${
+      variant === 'matching' ? 'bg-white' : 'bg-[#BA2525]'
+    }`}>
       <div className="absolute left-0 right-0 text-center">
         <Link href="/dashboard">
-          <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
+          <h1 className={`text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity ${
+            variant === 'matching' ? 'text-[#BA2525]' : 'text-white'
+          }`}>
             Ophelia
           </h1>
         </Link>
       </div>
       {currentUser && (
         <div className="ml-auto flex items-center gap-3 z-10">
-          <div className="text-sm font-medium text-[#cc0000]">
+          <div className={`text-sm font-medium ${
+            variant === 'matching' ? 'text-[#BA2525]' : 'text-white'
+          }`}>
             {currentUser.first_name}
           </div>
           <Link href="/dashboard/editprofile">

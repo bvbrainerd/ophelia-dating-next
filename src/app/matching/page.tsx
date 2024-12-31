@@ -192,25 +192,15 @@ export default function MatchingPage() {
 
   return (
     <>
-      <div className='max-w-6xl mx-auto p-5 pt-8 pb-24'>
-        <Header />
-        <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
-          {users.length === 0 
-            ? 'No Matches Available' 
-            : `Your ${users.length} Matches Are Waiting...`
-          }
-        </h2>
-
-        {users.length === 0 ? (
-          <div className='text-center text-gray-600 py-8'>
-            No matches available at the moment
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-5xl mx-auto p-5 pb-24">
+          <Header variant="matching" />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {users.map((user) => (
               <div
                 key={user.id}
-                className='border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow'
+                className='border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white max-w-md mx-auto w-full'
               >
                 <div className="aspect-[4/3] w-full mb-4">
                   <ProfileImage 
@@ -219,20 +209,22 @@ export default function MatchingPage() {
                   />
                 </div>
                 
-                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                  {user.first_name} {user.last_name}, {user.age}
+                <h3 className='text-xl font-bold text-[#BA2525] mb-1'>
+                  {user.first_name}, {user.age}
                 </h3>
-                <p className='text-gray-600 text-sm mb-4 line-clamp-3'>{user.bio}</p>
+                <p className='text-gray-600 text-sm mb-4 line-clamp-3'>
+                  {user.bio}
+                </p>
                 
                 <div className="space-y-2">
                   <button
-                    className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
+                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                     onClick={() => handleSendDateRequest(user.id)}
                   >
                     Send Date Request
                   </button>
                   <button
-                    className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
                     onClick={() => router.push(`/profile/${user.id}`)}
                   >
                     View Profile
@@ -241,9 +233,9 @@ export default function MatchingPage() {
               </div>
             ))}
           </div>
-        )}
+        </div>
+        <BottomNav />
       </div>
-      <BottomNav />
     </>
   );
 }

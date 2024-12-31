@@ -463,173 +463,170 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="max-w-6xl mx-auto p-5 pb-24">
-        <Header />
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-6 mb-8">
-          {[
-            { icon: Crown, value: 'Gold', label: 'Dater Status' },
-            { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
-            { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
-          ].map(({ icon: Icon, value, label }) => (
-            <Card key={label} className="col-span-1 border-2 border-[#BA2525]/20">
-              <CardContent className="p-4">
-                <div className="flex flex-col items-center text-center">
-                  <Icon className="text-[#BA2525] mb-2" size={24} />
-                  <div className="text-2xl font-bold text-[#BA2525]">{value}</div>
-                  <div className="text-sm text-gray-600">{label}</div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Make Your First Move section */}
-        <div>
-          <h2 className="text-2xl font-bold text-[#cc0000] mb-6">
-            Make Your First Move...
-          </h2>
-          
-          {profiles.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
-                {profiles.map((profile, index) => (
-                  
-                  <Link key={profile.id} href={`/profile/${profile.id}`}>
-                    <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg border border-gray-200">
-                      <CardContent className="p-0">
-                        <div className="relative w-full" style={{ height: '300px' }}>
-                          <ProfileImage
-                            src={profile.avatar_url}
-                            alt={`${profile.first_name}'s profile`}
-                            className="rounded-t-lg"
-                            priority={index === 0}
-                            sizes="(max-width: 640px) 100vw, 
-                                   (max-width: 1024px) 50vw,
-                                   33vw"
-                          />
-                        </div>
-                        <div className="p-5">
-                          <div className="text-lg font-medium text-[#cc0000] mb-1">
-                            {profile.first_name}, {profile.age}
-                          </div>
-                          <div className="text-sm text-gray-500 line-clamp-1">
-                            {profile.bio}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-              <div className="flex justify-center mt-6">
-                <Link
-                  href="/matching"
-                  className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                >
-                  View More Matches →
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No matches available yet
-              <div className="flex justify-center mt-6">
-                <Link
-                  href="/matching"
-                  className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                >
-                  View More Matches →
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Date Requests section */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-[#cc0000] mb-6">
-            Your Story Starts Here...
-          </h2>
-          {dateRequests.map((request, index) => (
-            <Card key={request.id} className="mb-3">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className="relative w-16 h-16">
-                    <ProfileImage
-                      src={request.sender?.avatar_url || null}
-                      alt={`${request.sender?.first_name || 'User'}'s profile`}
-                      width={64}
-                      height={64}
-                      className="rounded-lg"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium mb-1">
-                      {request.sender?.first_name}, {request.sender?.age}
-                    </div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-2">
-                      <Coffee size={14} />
-                      <span className="text-sm">
-                        {request.venue} • {
-                          request.proposed_time 
-                            ? new Date(request.proposed_time).toLocaleString('en-US', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short'
-                              })
-                            : 'No date specified'
-                        }
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleDateRequest(request.id, 'accepted')}
-                        className="px-4 py-1.5 bg-[#BA2525] text-white rounded-lg text-sm hover:bg-[#a02020] transition-colors"
-                      >
-                        Accept
-                      </button>
-                      <button 
-                        onClick={() => handleDateRequest(request.id, 'declined')}
-                        className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-lg text-sm hover:bg-[#ffeeee] transition-colors"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          <div className="flex justify-center mt-6">
-            <Link
-              href="/daterequests"
-              className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-            >
-              View More Date Requests →
-            </Link>
-          </div>
-        </div>
-
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <div className="max-w-2xl mx-auto flex justify-around">
+      <div className="min-h-screen bg-[#BA2525]">
+        <div className="max-w-6xl mx-auto p-5 pb-24">
+          <Header />
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-6 mb-8">
             {[
-              { icon: <Home size={24} />, label: 'Home', href: '/dashboard' },
-              { icon: <Users size={24} />, label: 'Matches', href: '/matching' },
-              { icon: <Heart size={24} />, label: 'Dates', href: '/daterequests' },
-              { icon: <Calendar size={24} />, label: 'Upcoming', href: '/dates/upcoming' },
-              { icon: <UserCircle size={24} />, label: 'Profile', href: '/dashboard/editprofile' }
-            ].map(({ icon, label, href }) => (
-              <Link
-                key={label}
-                href={href}
-                className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                {icon}
-                <span className="text-xs mt-1">{label}</span>
-              </Link>
+              { icon: Crown, value: 'Gold', label: 'Dater Status' },
+              { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
+              { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
+            ].map(({ icon: Icon, value, label }) => (
+              <Card key={label} className="col-span-1 bg-white/90 border-none">
+                <CardContent className="p-4">
+                  <div className="flex flex-col items-center text-center">
+                    <Icon className="text-[#BA2525] mb-2" size={24} />
+                    <div className="text-2xl font-bold text-[#BA2525]">{value}</div>
+                    <div className="text-sm text-gray-600">{label}</div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
+          </div>
+
+          {/* Make Your First Move section */}
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Make Your First Move...
+            </h2>
+            
+            {profiles.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {profiles.map((profile, index) => (
+                    <Link key={profile.id} href={`/profile/${profile.id}`}>
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg bg-white/90 border-none">
+                        <CardContent className="p-0">
+                          <div className="relative aspect-[4/3] w-full">
+                            <ProfileImage 
+                              src={profile.avatar_url}
+                              alt={`${profile.first_name}'s profile`}
+                              className="w-full h-full"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <h3 className="text-xl font-bold text-[#BA2525] mb-1">
+                              {profile.first_name}, {profile.age}
+                            </h3>
+                            <p className="text-gray-600 text-sm line-clamp-2">
+                              {profile.bio}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+                <div className="flex justify-center mt-12">
+                  <Link
+                    href="/matching"
+                    className="px-6 py-3 bg-white text-[#cc0000] rounded-full font-medium hover:bg-white/90 transition-colors"
+                  >
+                    View More Matches →
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-white">
+                No matches available yet
+                <div className="flex justify-center mt-12">
+                  <Link
+                    href="/matching"
+                    className="px-6 py-3 bg-white text-[#cc0000] rounded-full font-medium hover:bg-white/90 transition-colors"
+                  >
+                    View More Matches →
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Date Requests section */}
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Your Story Starts Here...
+            </h2>
+            {dateRequests.map((request, index) => (
+              <Card key={request.id} className="mb-3">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="relative w-16 h-16">
+                      <ProfileImage
+                        src={request.sender?.avatar_url || null}
+                        alt={`${request.sender?.first_name || 'User'}'s profile`}
+                        width={64}
+                        height={64}
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium mb-1">
+                        {request.sender?.first_name}, {request.sender?.age}
+                      </div>
+                      <div className="flex items-center gap-1 text-gray-600 mb-2">
+                        <Coffee size={14} />
+                        <span className="text-sm">
+                          {request.venue} • {
+                            request.proposed_time 
+                              ? new Date(request.proposed_time).toLocaleString('en-US', {
+                                  dateStyle: 'medium',
+                                  timeStyle: 'short'
+                                })
+                              : 'No date specified'
+                          }
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleDateRequest(request.id, 'accepted')}
+                          className="px-4 py-1.5 bg-[#BA2525] text-white rounded-lg text-sm hover:bg-[#a02020] transition-colors"
+                        >
+                          Accept
+                        </button>
+                        <button 
+                          onClick={() => handleDateRequest(request.id, 'declined')}
+                          className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-lg text-sm hover:bg-[#ffeeee] transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            <div className="flex justify-center mt-12">
+              <Link
+                href="/daterequests"
+                className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+              >
+                View More Date Requests →
+              </Link>
+            </div>
+          </div>
+
+          {/* Bottom Navigation */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+            <div className="max-w-2xl mx-auto flex justify-around">
+              {[
+                { icon: <Home size={24} />, label: 'Home', href: '/dashboard' },
+                { icon: <Users size={24} />, label: 'Matches', href: '/matching' },
+                { icon: <Heart size={24} />, label: 'Dates', href: '/daterequests' },
+                { icon: <Calendar size={24} />, label: 'Upcoming', href: '/dates/upcoming' },
+                { icon: <UserCircle size={24} />, label: 'Profile', href: '/dashboard/editprofile' }
+              ].map(({ icon, label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
+                >
+                  {icon}
+                  <span className="text-xs mt-1">{label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
