@@ -493,14 +493,14 @@ export default function DashboardPage() {
               { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
               { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
-              <Card key={label} className="col-span-1 bg-[#BA2525] border-none rounded-[100px] h-[72px] shadow-sm">
+              <Card key={label} className="col-span-1 bg-[#BA2525] border-none rounded-[200px] h-[64px] shadow-sm">
                 <CardContent className="p-0 h-full">
-                  <div className="flex flex-col items-center justify-center h-full text-center py-3">
+                  <div className="flex flex-col items-center justify-center h-full text-center py-2.5">
                     <div className="flex items-center gap-2">
-                      <Icon className="text-white" size={18} />
-                      <div className="text-lg font-semibold text-white">{value}</div>
+                      <Icon className="text-white" size={16} />
+                      <div className="text-base font-semibold text-white">{value}</div>
                     </div>
-                    <div className="text-xs text-white/80 mt-0.5">{label}</div>
+                    <div className="text-[11px] text-white/90 mt-0.5">{label}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -543,7 +543,7 @@ export default function DashboardPage() {
                 <div className="flex justify-center mt-12">
                   <Link
                     href="/matching"
-                    className="px-6 py-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
+                    className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
                   >
                     View More Matches →
                   </Link>
@@ -555,7 +555,7 @@ export default function DashboardPage() {
                 <div className="flex justify-center mt-12">
                   <Link
                     href="/matching"
-                    className="px-6 py-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
+                    className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
                   >
                     View More Matches →
                   </Link>
