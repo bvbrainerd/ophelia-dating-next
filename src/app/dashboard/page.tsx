@@ -483,22 +483,24 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#BA2525]">
+      <div className="min-h-screen bg-white">
         <div className="max-w-6xl mx-auto p-5 pb-24">
-          <Header />
+          <Header variant="matching" />
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-3 gap-4 mb-8">
             {[
               { icon: Crown, value: 'Gold', label: 'Dater Status' },
               { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
               { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
-              <Card key={label} className="col-span-1 bg-white/90 border-none">
-                <CardContent className="p-4">
-                  <div className="flex flex-col items-center text-center">
-                    <Icon className="text-[#BA2525] mb-2" size={24} />
-                    <div className="text-2xl font-bold text-[#BA2525]">{value}</div>
-                    <div className="text-sm text-gray-600">{label}</div>
+              <Card key={label} className="col-span-1 bg-[#BA2525] border-none rounded-[100px] h-[72px] shadow-sm">
+                <CardContent className="p-0 h-full">
+                  <div className="flex flex-col items-center justify-center h-full text-center py-3">
+                    <div className="flex items-center gap-2">
+                      <Icon className="text-white" size={18} />
+                      <div className="text-lg font-semibold text-white">{value}</div>
+                    </div>
+                    <div className="text-xs text-white/80 mt-0.5">{label}</div>
                   </div>
                 </CardContent>
               </Card>
@@ -507,7 +509,7 @@ export default function DashboardPage() {
 
           {/* Make Your First Move section */}
           <div>
-            <h2 className="text-2xl font-bold text-white mb-6">
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">
               Make Your First Move...
             </h2>
             
@@ -516,7 +518,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                   {profiles.map((profile, index) => (
                     <Link key={profile.id} href={`/profile/${profile.id}`}>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg bg-white/90 border-none">
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg bg-white/90 border border-gray-200">
                         <CardContent className="p-0">
                           <div className="relative aspect-[4/3] w-full">
                             <ProfileImage 
@@ -541,19 +543,19 @@ export default function DashboardPage() {
                 <div className="flex justify-center mt-12">
                   <Link
                     href="/matching"
-                    className="px-6 py-3 bg-white text-[#cc0000] rounded-full font-medium hover:bg-white/90 transition-colors"
+                    className="px-6 py-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
                   >
                     View More Matches →
                   </Link>
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 text-white">
+              <div className="text-center py-8 text-gray-600">
                 No matches available yet
                 <div className="flex justify-center mt-12">
                   <Link
                     href="/matching"
-                    className="px-6 py-3 bg-white text-[#cc0000] rounded-full font-medium hover:bg-white/90 transition-colors"
+                    className="px-6 py-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
                   >
                     View More Matches →
                   </Link>
@@ -564,13 +566,13 @@ export default function DashboardPage() {
 
           {/* Date Requests section */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-white mb-6">
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">
               Your Story Starts Here...
             </h2>
             {dateRequests.map((request, index) => (
               <Card 
                 key={request.id} 
-                className="mb-3 bg-white p-4 rounded-lg shadow-sm"
+                className="mb-3 bg-white p-4 rounded-[30px] shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -594,13 +596,13 @@ export default function DashboardPage() {
                   <div className="flex gap-2">
                     <button 
                       onClick={() => handleDateRequest(request.id, 'accepted')}
-                      className="px-4 py-1.5 bg-[#BA2525] text-white rounded-lg text-sm hover:bg-[#a02020] transition-colors"
+                      className="px-4 py-1.5 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a02020] transition-colors"
                     >
                       Accept
                     </button>
                     <button 
                       onClick={() => handleDateRequest(request.id, 'declined')}
-                      className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-lg text-sm hover:bg-[#ffeeee] transition-colors"
+                      className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-full text-sm hover:bg-[#ffeeee] transition-colors"
                     >
                       Decline
                     </button>
