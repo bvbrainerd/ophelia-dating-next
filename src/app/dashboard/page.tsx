@@ -33,6 +33,10 @@ interface DateRequestResponse {
   venue: string;
   proposed_time: string;
   dating_style: string;
+  created_at: string;
+  sender_name: string;
+  sender_age: number;
+  sender_avatar_url: string | null;
   sender: {
     id: string;
     first_name: string;
@@ -166,6 +170,18 @@ const ProfileImage = ({
   );
 };
 
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  });
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -219,6 +235,10 @@ export default function DashboardPage() {
           venue: request.venue,
           proposed_time: request.proposed_time,
           dating_style: request.dating_style,
+          created_at: request.created_at,
+          sender_name: senderData?.first_name || '',
+          sender_age: senderData?.age || 0,
+          sender_avatar_url: avatarUrl,
           sender: senderData ? {
             ...senderData,
             avatar_url: avatarUrl
@@ -506,7 +526,7 @@ export default function DashboardPage() {
                             />
                           </div>
                           <div className="p-4">
-                            <h3 className="text-xl font-bold text-[#BA2525] mb-1">
+                            <h3 className="text-xl font-semibold text-[#BA2525] mb-1">
                               {profile.first_name}, {profile.age}
                             </h3>
                             <p className="text-gray-600 text-sm line-clamp-2">
@@ -548,56 +568,48 @@ export default function DashboardPage() {
               Your Story Starts Here...
             </h2>
             {dateRequests.map((request, index) => (
-              <Card key={request.id} className="mb-3">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="relative w-16 h-16">
-                      <ProfileImage
-                        src={request.sender?.avatar_url || null}
-                        alt={`${request.sender?.first_name || 'User'}'s profile`}
-                        width={64}
-                        height={64}
-                        className="rounded-lg"
+              <Card 
+                key={request.id} 
+                className="mb-3 bg-white p-4 rounded-lg shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative w-12 h-12">
+                      <Image
+                        src={request.sender_avatar_url || '/images/default-avatar.png'}
+                        alt={`${request.sender_name}'s profile`}
+                        fill
+                        className="object-cover rounded-full"
                       />
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium mb-1">
+                    <div>
+                      <h3 className="text-xl font-semibold text-[#BA2525]">
                         {request.sender?.first_name}, {request.sender?.age}
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600 mb-2">
-                        <Coffee size={14} />
-                        <span className="text-sm">
-                          {request.venue} • {
-                            request.proposed_time 
-                              ? new Date(request.proposed_time).toLocaleString('en-US', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short'
-                                })
-                              : 'No date specified'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleDateRequest(request.id, 'accepted')}
-                          className="px-4 py-1.5 bg-[#BA2525] text-white rounded-lg text-sm hover:bg-[#a02020] transition-colors"
-                        >
-                          Accept
-                        </button>
-                        <button 
-                          onClick={() => handleDateRequest(request.id, 'declined')}
-                          className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-lg text-sm hover:bg-[#ffeeee] transition-colors"
-                        >
-                          Decline
-                        </button>
-                      </div>
+                      </h3>
+                      <p className="text-gray-500 text-sm">
+                        {request.venue} • {formatDate(request.created_at)}
+                      </p>
                     </div>
                   </div>
-                </CardContent>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleDateRequest(request.id, 'accepted')}
+                      className="px-4 py-1.5 bg-[#BA2525] text-white rounded-lg text-sm hover:bg-[#a02020] transition-colors"
+                    >
+                      Accept
+                    </button>
+                    <button 
+                      onClick={() => handleDateRequest(request.id, 'declined')}
+                      className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-lg text-sm hover:bg-[#ffeeee] transition-colors"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
               </Card>
             ))}
             
-            <div className="flex justify-center mt-12">
+            <div className="flex justify-center mt-6">
               <Link
                 href="/daterequests"
                 className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"

@@ -29,7 +29,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
           .select('first_name, avatar_url')
           .eq('id', user.id)
           .single();
-          
+
         if (data) {
           setCurrentUser(data);
         }
