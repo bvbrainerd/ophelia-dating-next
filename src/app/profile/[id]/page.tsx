@@ -80,9 +80,12 @@ export default function UserProfile() {
 
         if (error) throw error;
 
-        // Get signed URL for avatar if it exists
         if (data) {
+          console.log('Original avatar URL:', data.avatar_url);
+          
           const signedAvatarUrl = await getSignedUrl(data.avatar_url);
+          console.log('Signed avatar URL:', signedAvatarUrl);
+          
           setProfile({
             ...data,
             avatar_url: signedAvatarUrl
@@ -120,15 +123,15 @@ export default function UserProfile() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+      <div className="flex justify-center items-center min-h-screen bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center text-gray-600 py-8">
+      <div className="text-center text-[#BA2525] py-8 bg-white min-h-screen">
         {error}
         <BottomNav />
       </div>
@@ -137,7 +140,7 @@ export default function UserProfile() {
 
   if (!profile) {
     return (
-      <div className="text-center text-gray-600 py-8">
+      <div className="text-center text-[#BA2525] py-8 bg-white min-h-screen">
         Profile not found.
         <BottomNav />
       </div>
@@ -146,7 +149,7 @@ export default function UserProfile() {
 
   return (
     <>
-      <main className="max-w-md mx-auto p-5 pb-24">
+      <main className="max-w-md mx-auto p-5 pb-24 bg-white min-h-screen">
         <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4">
           <Image
             src={profile.avatar_url || '/images/default-avatar.png'}
@@ -157,37 +160,37 @@ export default function UserProfile() {
           />
         </div>
 
-        {/* Basic Info */}
-        <h1 className="text-3xl font-bold text-[#cc0000] mb-2">
-          {profile.first_name} {profile.last_name}, {profile.age}
+        {/* Basic Info - Updated with smaller text size */}
+        <h1 className="text-2xl font-extrabold text-[#BA2525] mb-6">
+          {profile.first_name}, {profile.age}
         </h1>
 
         {/* Profile Details */}
-        <div className="mb-8">
-          {/* Dater Archetype */}
-          <div className="bg-[#ffeeee] p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-[#cc0000] mb-1">Dater Type</h2>
+        <div className="mb-8 space-y-1">
+          {/* Dater Type */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-lg font-semibold text-[#BA2525] mb-1">Dater Type</h2>
             <p className="text-gray-700">{archetypeMap[profile.dater_archetype]}</p>
           </div>
 
-          {/* Bio Section - only show if there's content */}
-          {profile.bio && profile.bio.trim() !== '' && (
-            <div className="bg-gray-50 p-4 rounded-lg mt-[1px]">
-              <p className="text-gray-600">{profile.bio}</p>
-            </div>
-          )}
-
           {/* Gender */}
-          <div className="bg-gray-50 p-4 rounded-lg mt-[1px]">
-            <h2 className="text-sm font-semibold text-gray-700 mb-1">Gender</h2>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-sm font-semibold text-[#BA2525] mb-1">Gender</h2>
             <p className="text-gray-600 capitalize">{profile.gender}</p>
           </div>
 
           {/* School */}
           {profile.school && profile.school !== 'N/A' && (
-            <div className="bg-gray-50 p-4 rounded-lg mt-[1px]">
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">School</h2>
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <h2 className="text-sm font-semibold text-[#BA2525] mb-1">School</h2>
               <p className="text-gray-600">{profile.school}</p>
+            </div>
+          )}
+
+          {/* Bio Section - only show if there's content */}
+          {profile.bio && profile.bio.trim() !== '' && (
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+              <p className="text-gray-600">{profile.bio}</p>
             </div>
           )}
         </div>
@@ -199,12 +202,12 @@ export default function UserProfile() {
             id="send-date-request"
             name="send-date-request"
             onClick={handleSendDateRequest}
-            className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors mb-3"
+            className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-3"
           >
             Send Date Request
           </button>
           {error && (
-            <div className="text-red-600 text-sm mb-3">
+            <div className="text-[#BA2525] text-sm mb-3">
               {error}
             </div>
           )}
@@ -213,7 +216,7 @@ export default function UserProfile() {
             id="back-to-matching"
             name="back-to-matching"
             onClick={() => router.push('/matching')}
-            className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+            className="w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
           >
             Back to Matching
           </button>
