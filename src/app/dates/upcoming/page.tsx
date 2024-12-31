@@ -213,7 +213,7 @@ const UpcomingDatesPage: FC = () => {
 
   return (
     <div className='max-w-2xl mx-auto p-5 pt-8 pb-24'>
-      <Header />
+      <Header variant="matching" />
       {/* Upcoming Dates Section */}
       <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
         Your Upcoming Dates

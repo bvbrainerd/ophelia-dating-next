@@ -169,24 +169,15 @@ export default function DateRequestsPage() {
 
   return (
     <>
-      <main className="max-w-2xl mx-auto p-5 pt-8 pb-24">
-        <Header />
-        <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
-          Your Date Requests
-        </h1>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-5xl mx-auto p-5 pb-24">
+          <Header variant="matching" />
+          
+          <h1 className="text-3xl font-bold text-[#BA2525] mb-8">
+            Your Date Requests
+          </h1>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        {dateRequests.length === 0 ? (
-          <div className="text-center text-gray-600 py-8">
-            No pending date requests
-          </div>
-        ) : (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {dateRequests.map((request) => (
               <div key={request.id} className="border border-gray-200 rounded-lg p-5 shadow-sm">
                 <div className="flex items-start space-x-4">
@@ -261,9 +252,9 @@ export default function DateRequestsPage() {
               </div>
             ))}
           </div>
-        )}
-      </main>
-      <BottomNav />
+        </div>
+        <BottomNav />
+      </div>
     </>
   );
 }
