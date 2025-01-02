@@ -24,7 +24,7 @@ interface DateRequest {
   venue: string;
   proposed_time: string;
   status: 'pending' | 'accepted' | 'declined';
-  proposed_payment: number;
+  split_payment: boolean;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -73,7 +73,7 @@ export default function DateRequestsPage() {
             venue,
             proposed_time,
             status,
-            proposed_payment,
+            split_payment,
             sender:profiles!date_requests_sender_id_fkey (
               id,
               first_name,
@@ -170,7 +170,7 @@ export default function DateRequestsPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto p-5 pb-24">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pb-24">
           <Header variant="matching" />
           
           <h1 className="text-3xl font-bold text-[#BA2525] mb-8">
@@ -179,17 +179,17 @@ export default function DateRequestsPage() {
 
           <div className="space-y-4">
             {dateRequests.map((request) => (
-              <div key={request.id} className="border border-gray-200 rounded-lg p-5 shadow-sm">
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0">
-                    <div className="relative w-32 h-32 border-2 border-gray-200 rounded-full overflow-hidden">
+              <div key={request.id} className="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="w-20 h-20 sm:w-32 sm:h-32 flex-shrink-0">
+                    <div className="relative w-full h-full border-2 border-gray-200 rounded-full overflow-hidden">
                       <Image
                         src={request.sender?.avatar_url || '/images/default-avatar.png'}
                         alt={request.sender ? `${request.sender.first_name}'s profile` : 'Profile'}
                         fill
                         priority={true}
                         className="object-cover"
-                        sizes="(max-width: 768px) 100vw, 128px"
+                        sizes="(max-width: 768px) 80px, 128px"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = '/images/default-avatar.png';
@@ -197,7 +197,7 @@ export default function DateRequestsPage() {
                       />
                     </div>
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="font-medium mb-1">
                       {request.sender 
                         ? `${request.sender.first_name}, ${request.sender.age}`
@@ -215,6 +215,7 @@ export default function DateRequestsPage() {
                               })
                             : 'No date specified'
                         }
+                        {request.split_payment && ' • Split payment requested'}
                       </span>
                     </div>
                     <p className="text-gray-600 text-sm mb-2 line-clamp-2">

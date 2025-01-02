@@ -19,7 +19,7 @@ interface Profile {
 interface DateRequestForm {
   venue: string;
   proposed_time: string;
-  proposed_payment: number | null; // Changed to allow null
+  split_payment: number | null;
 }
 
 const VENUES = [
@@ -79,7 +79,7 @@ export default function SendDateRequestPage() {
   const [formData, setFormData] = useState<DateRequestForm>({
     venue: '',
     proposed_time: '',
-    proposed_payment: null,
+    split_payment: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -119,8 +119,8 @@ export default function SendDateRequestPage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'proposed_payment' 
-        ? value ? parseFloat(value) : null // Allow empty payment field
+      [name]: name === 'split_payment' 
+        ? value === 'true'
         : value,
     }));
   };
@@ -155,7 +155,7 @@ export default function SendDateRequestPage() {
           receiver_id: profileId,
           venue: formData.venue,
           proposed_time: new Date(formData.proposed_time).toISOString(),
-          proposed_payment: formData.proposed_payment,
+          split_payment: formData.split_payment,
           status: 'pending'
         })
         .select()
@@ -175,7 +175,7 @@ export default function SendDateRequestPage() {
             sender_id: session.user.id,
             venue: formData.venue,
             proposed_time: formData.proposed_time,
-            proposed_payment: formData.proposed_payment,
+            split_payment: formData.split_payment,
             requestId: dateRequest.id,
             emailType: 'date_request'
           }),
@@ -216,7 +216,7 @@ export default function SendDateRequestPage() {
 
   return (
     <div className="max-w-md mx-auto p-5 pb-24">
-      <Header />
+      <Header variant="matching" />
       <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
         Send Date Request
       </h1>
@@ -317,20 +317,25 @@ export default function SendDateRequestPage() {
         </div>
 
         <div>
-          <label htmlFor="proposed_payment" className="block text-sm font-medium mb-1">
-            Proposed Payment ($) - Optional
+          <label htmlFor="split_payment" className="block text-sm font-medium mb-1">
+            Payment Preference
           </label>
-          <input
-            id="proposed_payment"
-            type="number"
-            name="proposed_payment"
-            value={formData.proposed_payment ?? ''}
-            onChange={handleChange}
-            min="0"
-            step="0.01"
-            placeholder="Enter amount (optional)"
+          <select
+            id="split_payment"
+            name="split_payment"
+            value={formData.split_payment?.toString() || ''}
+            onChange={(e) => handleChange({
+              target: {
+                name: 'split_payment',
+                value: e.target.value ? parseFloat(e.target.value) : null
+              }
+            } as any)}
             className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-[#cc0000] focus:border-[#cc0000]"
-          />
+          >
+            <option value="">Select payment option</option>
+            <option value="0">I'll take care of it</option>
+            <option value="50">Let's share</option>
+          </select>
         </div>
 
         <button

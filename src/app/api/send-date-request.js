@@ -4,12 +4,12 @@ import { supabase } from '../../../lib/supabaseClient'; // Adjust import path as
 // Define email templates at the top of the file
 const getEmailSubject = (senderName) => `New Date Request from ${senderName}`;
 
-const getEmailHtml = (senderName, venue, proposedTime, dateStyle) => `
+const getEmailHtml = (senderName, venue, proposedTime, splitPayment) => `
   <h1>New Date Request</h1>
   <p>${senderName} would like to go on a date with you!</p>
   <p>Venue: ${venue}</p>
   <p>Proposed Time: ${proposedTime}</p>
-  <p>Date Style: ${dateStyle}</p>
+  <p>Payment: ${splitPayment ? 'Split the Ophelia fee' : 'Full fee covered by sender'}</p>
 `;
 
 export default async function handler(req, res) {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { senderId, receiverId, venue, proposedTime, datingStyling } = req.body;
+    const { senderId, receiverId, venue, proposedTime, splitPayment } = req.body;
 
     // Get sender's details
     const { data: senderProfile } = await supabase
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       <h1>You have a new date request!</h1>
       <p>${senderProfile.first_name} would like to go on a date with you at ${venue}.</p>
       <p>Proposed time: ${new Date(proposedTime).toLocaleString()}</p>
-      <p>Dating style: ${datingStyling}</p>
+      <p>Dating style: ${splitPayment ? 'Split the Ophelia fee' : 'Full fee covered by sender'}</p>
       <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard">View Request</a>
     `;
 
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
           receiver_id: receiverId,
           venue,
           proposed_time: proposedTime,
-          dating_style: datingStyling,
+          split_payment: splitPayment,
           status: 'pending'
         }
       ])
