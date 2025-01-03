@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
+import ProfileImage from '../../components/ProfileImage';
 
 interface Profile {
   id: string;
@@ -19,91 +20,6 @@ interface Profile {
   preferred_gender: 'male' | 'female' | 'other';
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
 }
-
-const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) return '/images/default-avatar.png';
-  
-  // If it's already a full URL or a local image path, return it directly
-  if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
-    return avatarPath;
-  }
-
-  try {
-    // Clean up the path - remove any storage URLs and get just the filename
-    const fileName = avatarPath.split('/').pop() || '';
-    
-    if (!fileName) return '/images/default-avatar.png';
-
-    const { data } = await supabase
-      .storage
-      .from('avatars')
-      .getPublicUrl(fileName);
-
-    return data.publicUrl;
-  } catch (error) {
-    console.error('Error getting avatar URL:', error);
-    return '/images/default-avatar.png';
-  }
-};
-
-const ProfileImage = ({ user, className, width, height, style, alt }: { user: Profile, className?: string, width?: number, height?: number, style?: React.CSSProperties, alt?: string }) => {
-  const [imageUrl, setImageUrl] = useState<string>('/images/default-avatar.png');
-
-  useEffect(() => {
-    const loadImage = async () => {
-      try {
-        if (!user.avatar_url) {
-          setImageUrl('/images/default-avatar.png');
-          return;
-        }
-
-        // If it's a signed URL, get a fresh public URL
-        if (user.avatar_url.includes('?token=')) {
-          const filename = user.avatar_url.split('avatars/')[1]?.split('?')[0];
-          if (filename) {
-            const { data } = supabase
-              .storage
-              .from('avatars')
-              .getPublicUrl(filename);
-            
-            if (data?.publicUrl) {
-              setImageUrl(data.publicUrl);
-              return;
-            }
-          }
-        }
-
-        // If it's already a public URL, use it directly
-        setImageUrl(user.avatar_url);
-
-      } catch (error) {
-        console.error('Error loading image for user:', user.id, error);
-        setImageUrl('/images/default-avatar.png');
-      }
-    };
-
-    loadImage();
-  }, [user.avatar_url, user.id]);
-
-  return (
-    <div 
-      className={`relative h-[250px] w-full ${className}`}
-      style={style}
-    >
-      <Image
-        src={imageUrl}
-        alt={alt || `Profile picture of ${user.first_name}`}
-        fill
-        priority={true}
-        sizes="(max-width: 640px) 100vw, 
-               (max-width: 1024px) 50vw,
-               33vw"
-        className="object-cover rounded-lg"
-        unoptimized={imageUrl.startsWith('http')}
-      />
-    </div>
-  );
-};
 
 export default function MatchingPage() {
   const router = useRouter();
@@ -206,6 +122,7 @@ export default function MatchingPage() {
                   <ProfileImage 
                     user={user}
                     className="w-full h-full"
+                    priority={true}
                   />
                 </div>
                 
