@@ -327,130 +327,130 @@ export default function DateRequestPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header variant="matching" />
-      
-      <div className="p-4 pb-24 max-w-md mx-auto">
-        <h1 className="text-3xl font-bold text-[#cc0000] mb-6">Send Date Request</h1>
+      <div className="max-w-5xl mx-auto p-5 pb-24">
+        <Header variant="matching" />
         
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative w-16 h-16">
-            <Image
-              src={profile.avatar_url || DEFAULT_AVATAR}
-              alt={`${profile.first_name}'s avatar`}
-              fill
-              className="rounded-full object-cover"
-              sizes="64px"
-              priority
-            />
-          </div>
-          <div>
-            <h2 className="text-xl font-semibold">
-              {profile.first_name} {profile.last_name}
-            </h2>
-            <p className="text-gray-600">Age: {profile.age}</p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="text-lg font-semibold mb-2 block">Venue</label>
-            <button 
-              type="button"
-              onClick={() => setShowVenueList(true)}
-              className="w-full p-4 border rounded-lg flex items-center justify-between"
-            >
-              <span className="text-gray-600">
-                {formData.venue || 'Select a venue'}
-              </span>
-              <MapPin className="text-gray-400" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-lg font-semibold mb-2 block">Date</label>
-              <input 
-                type="date"
-                value={formData.proposed_time.split('T')[0]}
-                onChange={(e) => {
-                  const newDate = e.target.value;
-                  const currentTime = formData.proposed_time.split('T')[1] || '00:00';
-                  setFormData(prev => ({
-                    ...prev,
-                    proposed_time: `${newDate}T${currentTime}`
-                  }));
-                }}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full p-4 border rounded-lg"
-                required
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="relative w-16 h-16">
+              <Image
+                src={profile.avatar_url || DEFAULT_AVATAR}
+                alt={`${profile.first_name}'s avatar`}
+                fill
+                className="rounded-full object-cover"
+                sizes="64px"
+                priority
               />
             </div>
             <div>
-              <label className="text-lg font-semibold mb-2 block">Time</label>
-              <input 
-                type="time"
-                value={formData.proposed_time.split('T')[1] || ''}
-                onChange={(e) => {
-                  const currentDate = formData.proposed_time.split('T')[0] || 
-                    new Date().toISOString().split('T')[0];
-                  setFormData(prev => ({
-                    ...prev,
-                    proposed_time: `${currentDate}T${e.target.value}`
-                  }));
-                }}
-                className="w-full p-4 border rounded-lg"
-                required
-                step="1800"
-              />
+              <h2 className="text-xl font-semibold">
+                {profile.first_name} {profile.last_name}
+              </h2>
+              <p className="text-gray-600">Age: {profile.age}</p>
             </div>
           </div>
 
-          <div>
-            {isRestaurantVenue(formData.venue) ? (
-              <>
-                <label className="text-lg font-semibold mb-2 block">
-                  Payment Preference
-                </label>
-                <select
-                  value={formData.split_payment?.toString() || ''}
-                  onChange={(e) => setFormData(prev => ({
-                    ...prev,
-                    split_payment: e.target.value ? parseFloat(e.target.value) : null
-                  }))}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="text-lg font-semibold mb-2 block">Venue</label>
+              <button 
+                type="button"
+                onClick={() => setShowVenueList(true)}
+                className="w-full p-4 border rounded-lg flex items-center justify-between"
+              >
+                <span className="text-gray-600">
+                  {formData.venue || 'Select a venue'}
+                </span>
+                <MapPin className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-lg font-semibold mb-2 block">Date</label>
+                <input 
+                  type="date"
+                  value={formData.proposed_time.split('T')[0]}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    const currentTime = formData.proposed_time.split('T')[1] || '00:00';
+                    setFormData(prev => ({
+                      ...prev,
+                      proposed_time: `${newDate}T${currentTime}`
+                    }));
+                  }}
+                  min={new Date().toISOString().split('T')[0]}
                   className="w-full p-4 border rounded-lg"
-                >
-                  <option value="">Select payment option</option>
-                  <option value="0">Pre-Pay</option>
-                  <option value="50">Pay In-Person</option>
-                </select>
-              </>
-            ) : formData.venue && (
-              <div className="text-gray-600">
-                <label className="text-lg font-semibold mb-2 block">
-                  Payment Preference
-                </label>
-                <div className="w-full p-4 border rounded-lg bg-gray-50">
-                  Pre-Pay (Required for this venue)
-                </div>
+                  required
+                />
               </div>
-            )}
-          </div>
+              <div>
+                <label className="text-lg font-semibold mb-2 block">Time</label>
+                <input 
+                  type="time"
+                  value={formData.proposed_time.split('T')[1] || ''}
+                  onChange={(e) => {
+                    const currentDate = formData.proposed_time.split('T')[0] || 
+                      new Date().toISOString().split('T')[0];
+                    setFormData(prev => ({
+                      ...prev,
+                      proposed_time: `${currentDate}T${e.target.value}`
+                    }));
+                  }}
+                  className="w-full p-4 border rounded-lg"
+                  required
+                  step="1800"
+                />
+              </div>
+            </div>
 
-          <button 
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-[#cc0000] text-white p-4 rounded-full text-lg font-semibold
-              hover:bg-[#aa0000] transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? 'Sending...' : 'Send Date Request'}
-          </button>
-        </form>
+            <div>
+              {isRestaurantVenue(formData.venue) ? (
+                <>
+                  <label className="text-lg font-semibold mb-2 block">
+                    Payment Preference
+                  </label>
+                  <select
+                    value={formData.split_payment?.toString() || ''}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      split_payment: e.target.value ? parseFloat(e.target.value) : null
+                    }))}
+                    className="w-full p-4 border rounded-lg"
+                  >
+                    <option value="">Select payment option</option>
+                    <option value="0">Pre-Pay</option>
+                    <option value="50">Pay In-Person</option>
+                  </select>
+                </>
+              ) : formData.venue && (
+                <div className="text-gray-600">
+                  <label className="text-lg font-semibold mb-2 block">
+                    Payment Preference
+                  </label>
+                  <div className="w-full p-4 border rounded-lg bg-gray-50">
+                    Pre-Pay (Required for this venue)
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#cc0000] text-white p-4 rounded-full text-lg font-semibold
+                hover:bg-[#aa0000] transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? 'Sending...' : 'Send Date Request'}
+            </button>
+          </form>
+        </div>
       </div>
 
       {showVenueList && (
