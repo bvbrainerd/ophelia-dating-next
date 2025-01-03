@@ -78,54 +78,56 @@ export default function LoginPage() {
   };
 
   return (
-    <div className='max-w-md mx-auto p-5'>
-      <h1 className='text-center text-[#cc0000] font-bold text-4xl mb-8'>
-        Ophelia
-      </h1>
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleLogin}>
-        <input
-          name="email"
-          autoComplete="email"
-          className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-          type='email'
-          placeholder='BC Email (@bc.edu)'
-          value={email}
-          onChange={handleEmailChange}
-          disabled={isLoading}
-        />
+    <div className='min-h-screen pt-32 px-5'>
+      <div className='max-w-md mx-auto'>
+        <h1 className='text-center text-[#cc0000] font-bold text-4xl mb-8'>
+          Ophelia
+        </h1>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
+        <form onSubmit={handleLogin}>
+          <input
+            name="email"
+            autoComplete="email"
+            className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
+            type='email'
+            placeholder='BC Email (@bc.edu)'
+            value={email}
+            onChange={handleEmailChange}
+            disabled={isLoading}
+          />
 
-        <input
-          name="password"
-          autoComplete="current-password"
-          className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-          type='password'
-          placeholder='Password'
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
-        />
+          <input
+            name="password"
+            autoComplete="current-password"
+            className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
+            type='password'
+            placeholder='Password'
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isLoading}
+          />
 
-        <button
-          type="submit"
-          className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-          disabled={isLoading || !email || !password}
-        >
-          {isLoading ? 'Loading...' : 'Log In'}
-        </button>
+          <button
+            type="submit"
+            className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            disabled={isLoading || !email || !password}
+          >
+            {isLoading ? 'Loading...' : 'Log In'}
+          </button>
 
-        <button
-          className='w-full p-2.5 mt-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-          onClick={handleSignup}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Loading...' : 'Sign Up with BC Email'}
-        </button>
-      </form>
+          <button
+            className='w-full p-2.5 mt-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            onClick={handleSignup}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Sign Up with BC Email'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

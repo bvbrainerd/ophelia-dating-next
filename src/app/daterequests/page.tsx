@@ -170,13 +170,9 @@ export default function DateRequestsPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pb-24">
+        <div className="max-w-5xl mx-auto p-5 pb-24">
           <Header variant="matching" />
           
-          <h1 className="text-3xl font-bold text-[#BA2525] mb-8">
-            Your Date Requests
-          </h1>
-
           <div className="space-y-4">
             {dateRequests.map((request) => (
               <div key={request.id} className="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
