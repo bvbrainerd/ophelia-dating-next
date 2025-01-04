@@ -6,11 +6,22 @@ import { MailDataRequired } from '@sendgrid/mail';
 // Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-// Initialize Supabase Admin client
+// Initialize Supabase Admin client with proper error handling
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
+
+// Verify environment variables
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 export async function POST(request: Request) {
   try {
