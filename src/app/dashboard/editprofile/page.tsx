@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Link from 'next/link';
+import Header from '@/components/Header';
 
 // Types
 interface ProfileData {
@@ -68,23 +69,13 @@ export default function EditProfilePage() {
     }
 
     try {
-      // Clean up the path - remove any full URLs or duplicate paths
-      let fileName = filePath;
-      
-      // Remove any existing storage URLs
-      const storageUrl = 'storage/v1/object/public/avatars/';
-      if (fileName.includes(storageUrl)) {
-        fileName = fileName.split(storageUrl).pop() || '';
+      // Extract just the filename from the full URL or path
+      const matches = filePath.match(/\/avatars\/([^?]+)/);
+      if (!matches || !matches[1]) {
+        return '/images/default-avatar.png';
       }
-      
-      // Remove any query parameters
-      fileName = fileName.split('?')[0];
-      
-      // Remove any leading/trailing slashes
-      fileName = fileName.replace(/^\/+|\/+$/g, '');
-      
-      // If filename is empty after cleanup, return default
-      if (!fileName) return '/images/default-avatar.png';
+
+      const fileName = matches[1];
 
       const { data, error } = await supabase
         .storage
@@ -193,17 +184,11 @@ export default function EditProfilePage() {
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    console.log(`Updating ${name} to:`, value);
-    
-    setProfileData((prev) => ({
+  const handleChange = (field: keyof ProfileData, value: string | number | null) => {
+    setProfileData(prev => ({
       ...prev,
-      [name]: name === 'age' ? (value ? parseInt(value) : null) : value,
+      [field]: value
     }));
-    setError(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -311,197 +296,227 @@ export default function EditProfilePage() {
     refreshImage();
   }, [profileData.avatar_url]);
 
+  const handleResetPassword = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user?.email) {
+        setError('No email found for current user');
+        return;
+      }
+
+      // Use our custom API route instead
+      const response = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email');
+      }
+
+      setError('Password reset link has been sent to your email.');
+    } catch (err) {
+      console.error('Detailed error:', err);
+      setError('Unable to process request. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <>
-      <div className="max-w-2xl mx-auto p-5 pt-12 pb-24">
-        {/* Ophelia Header */}
-        <div className="flex items-center mb-10 relative">
-          <div className="absolute left-0 right-0 text-center">
-            <Link href="/dashboard">
-              <h1 className="text-4xl font-bold text-[#cc0000] cursor-pointer hover:opacity-80 transition-opacity">
-                Ophelia
-              </h1>
-            </Link>
-          </div>
-        </div>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-5xl mx-auto p-5 pb-24">
+        <Header variant="matching" />
+        
+        <div className="max-w-md mx-auto">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
+              {error}
+            </div>
+          )}
 
-        <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
-          Edit Your Profile
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSave} className="space-y-4">
-          {/* Profile Picture Upload */}
-          <div className="flex items-center justify-center w-full mb-6">
-            <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
-              {(previewUrl || profileData.avatar_url) && !imageError ? (
-                <div className="relative w-full h-full">
-                  <Image
-                    key={imageKey}
-                    src={previewUrl || profileData.avatar_url || '/images/default-avatar.png'}
-                    alt="Profile preview"
-                    fill
-                    className="object-cover rounded-full"
-                    onError={(e) => {
-                      console.error('Image load error');
-                      setImageError(true);
-                      setProfileData(prev => ({
-                        ...prev,
-                        avatar_url: '/images/default-avatar.png'
-                      }));
-                    }}
-                    unoptimized
-                    priority
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg
-                    className="w-8 h-8 mb-4 text-gray-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          <form onSubmit={handleSave} className="space-y-4">
+            {/* Profile Image Upload */}
+            <div className="flex items-center justify-center w-full mb-6">
+              <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
+                {profileData.avatar_url ? (
+                  <div className="relative w-full h-full">
+                    <Image
+                      key={imageKey}
+                      src={profileData.avatar_url}
+                      alt="Profile preview"
+                      fill
+                      className="object-cover"
+                      sizes="128px"
+                      priority
                     />
-                  </svg>
-                  <p className="mb-2 text-xs text-gray-500 text-center">
-                    Click to upload
-                  </p>
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg
+                      className="w-8 h-8 mb-4 text-gray-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    <p className="mb-2 text-xs text-gray-500 text-center">
+                      Add Photo
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={isLoading}
+                />
+              </label>
+            </div>
+
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-4">
               <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleImageUpload}
+                type="text"
+                placeholder="First Name"
+                value={profileData.first_name}
+                onChange={(e) => handleChange('first_name', e.target.value)}
+                className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                required
               />
-            </label>
-          </div>
+              <input
+                type="text"
+                placeholder="Last Name"
+                value={profileData.last_name}
+                onChange={(e) => handleChange('last_name', e.target.value)}
+                className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                required
+              />
+            </div>
 
-          <input
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            type="text"
-            name="first_name"
-            placeholder="First Name"
-            value={profileData.first_name}
-            onChange={handleChange}
-            required
-          />
+            {/* Age Field */}
+            <input
+              type="number"
+              placeholder="Age"
+              value={profileData.age || ''}
+              onChange={(e) => handleChange('age', e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+              required
+              min="18"
+              max="100"
+            />
 
-          <input
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            type="text"
-            name="last_name"
-            placeholder="Last Name"
-            value={profileData.last_name}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            type="number"
-            name="age"
-            placeholder="Your Age"
-            value={profileData.age || ''}
-            onChange={handleChange}
-            min="18"
-            max="100"
-          />
-
-          <select
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            name="gender"
-            value={profileData.gender}
-            onChange={handleChange}
-          >
-            <option value="">Select Gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-
-          <select
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            name="preferred_gender"
-            value={profileData.preferred_gender}
-            onChange={handleChange}
-            required
-          >
-            <option value="">I'm interested in dating...</option>
-            <option value="male">Men</option>
-            <option value="female">Women</option>
-            <option value="both">Both</option>
-          </select>
-
-          <textarea
-            className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
-            name="bio"
-            placeholder="Tell us about yourself..."
-            value={profileData.bio}
-            onChange={handleChange}
-          />
-
-          <select
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            name="dater_archetype"
-            value={profileData.dater_archetype || ''}
-            onChange={handleChange}
-          >
-            <option value="">Select Dater Archetype</option>
-            {ARCHETYPES.map((archetype) => (
-              <option key={archetype.value} value={archetype.value}>
-                {archetype.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-            name="school"
-            value={profileData.school}
-            onChange={handleChange}
-          >
-            <option value="">Select School</option>
-            {SCHOOLS.map((school) => (
-              <option key={school} value={school}>
-                {school}
-              </option>
-            ))}
-          </select>
-
-          <div className="space-y-3 pt-4">
-            <button
-              type="submit"
-              className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
+            {/* Gender Fields */}
+            <select
+              value={profileData.gender}
+              onChange={(e) => handleChange('gender', e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+              required
             >
-              {isLoading ? 'Saving...' : 'Save Profile'}
-            </button>
-            
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoading}
-              className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+
+            <select
+              value={profileData.preferred_gender}
+              onChange={(e) => handleChange('preferred_gender', e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+              required
             >
-              {isLoading ? 'Logging out...' : 'Logout'}
-            </button>
-          </div>
-        </form>
+              <option value="">Preferred Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="both">Both</option>
+            </select>
+
+            {/* Bio Field */}
+            <textarea
+              placeholder="Bio"
+              value={profileData.bio}
+              onChange={(e) => handleChange('bio', e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
+              required
+            />
+
+            {/* Dater Archetype */}
+            <select
+              value={profileData.dater_archetype}
+              onChange={(e) => handleChange('dater_archetype', e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+              required
+            >
+              <option value="">Select Dater Archetype</option>
+              {ARCHETYPES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+
+            {/* School Selection */}
+            <select
+              value={profileData.school}
+              onChange={(e) => handleChange('school', e.target.value)}
+              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+              required
+            >
+              <option value="">Select School</option>
+              {SCHOOLS.map((school) => (
+                <option key={school} value={school}>
+                  {school}
+                </option>
+              ))}
+            </select>
+
+            {/* Action Buttons */}
+            <div className="space-y-3 pt-4">
+              <button
+                type="submit"
+                className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Saving...' : 'Save Profile'}
+              </button>
+
+              <button
+                onClick={handleResetPassword}
+                type="button"
+                className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                Reset Password
+              </button>
+              
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoading}
+                className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Logging out...' : 'Logout'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
       <BottomNav />
-    </>
+    </div>
   );
 }

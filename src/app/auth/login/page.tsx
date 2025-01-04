@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -77,18 +78,49 @@ export default function LoginPage() {
     router.push('/auth/signup');
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError('Please enter your BC email address first');
+      return;
+    }
+
+    if (!email.toLowerCase().endsWith('@bc.edu')) {
+      setError('Please use your BC email address (@bc.edu)');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setError('Password reset link sent to your email');
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Failed to send reset password email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className='min-h-screen pt-32 px-5'>
-      <div className='max-w-md mx-auto'>
-        <h1 className='text-center text-[#cc0000] font-bold text-4xl mb-8'>
-          Ophelia
-        </h1>
+    <div className="min-h-screen bg-white px-5 pt-12">
+      <div className="max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-[#cc0000] font-bold text-[2.75rem] leading-none mb-1">Ophelia</h1>
+          <p className="text-[0.85rem] text-gray-600 italic">Oh I Feel Ya™</p>
+        </div>
+
         {error && (
           <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
             {error}
           </div>
         )}
-        <form onSubmit={handleLogin}>
+
+        <form onSubmit={handleLogin} className="space-y-4">
           <input
             name="email"
             autoComplete="email"
@@ -126,7 +158,22 @@ export default function LoginPage() {
           >
             {isLoading ? 'Loading...' : 'Sign Up with BC Email'}
           </button>
+
+          <button
+            onClick={handleForgotPassword}
+            type="button"
+            className="w-full mt-4 text-[#cc0000] text-sm hover:underline"
+          >
+            Forgot Password?
+          </button>
         </form>
+
+        <p className="mt-4 text-center">
+          Don't have an account?{' '}
+          <Link href="/auth/signup" className="text-[#cc0000] hover:underline">
+            Join us
+          </Link>
+        </p>
       </div>
     </div>
   );
