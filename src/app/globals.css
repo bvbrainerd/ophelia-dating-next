@@ -27,3 +27,13 @@ body {
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 }
+
+.marker {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #BA2525;
+  border: 2px solid white;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}

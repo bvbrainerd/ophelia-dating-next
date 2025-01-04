@@ -10,6 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import DateRecommendations from '@/components/DateRecommendations';
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -57,26 +58,108 @@ interface ImageProps {
   sizes?: string;
 }
 
+interface Venue {
+  name: string;
+  location: string;
+  type: string;
+  rating: number;
+  imageUrl: string;
+  stripeLink: string;
+  coordinates: [number, number];
+  price?: string;
+}
+
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
   'BC Hockey': 'https://buy.stripe.com/bIYcPb3iw6VT5mobIN',
-  'BC Basketball': 'https://buy.stripe.com/fZebL7bP24NL9CE9AB',
-  'Boston Commons': 'https://buy.stripe.com/eVaaH31ao2FDbKM3ck',
-  'Kured': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Barcelona Wine Bar': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
   'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
-  'Private Helicopter Ride': 'https://buy.stripe.com/14k2ax7yM0xv6qs8wz',
-  'Barcelona Wine Bar': 'https://buy.stripe.com/00g4iF1ao9414ik4gi',
-  'Capo': 'https://buy.stripe.com/7sI6qNcT65RPeWY9AE',
-  'Locco Fenway': 'https://buy.stripe.com/28o15p1ao0xv8yA6or',
-  'F1 Arcade': 'https://buy.stripe.com/4gwcPb9GU2FD6qs5km',
-  'Lucca North End': 'https://buy.stripe.com/28o8yV3iw1Bz5mo7sv',
-  'Lolita Back Bay': 'https://buy.stripe.com/4gw15p9GU6VTg126os',
-  'Blue Ribbon Sushi': 'https://buy.stripe.com/28o15pcT61Bz8yA4gh',
-  'Joes on Newbury': 'https://buy.stripe.com/6oE15p5qE0xvg125ko',
-  'Snowport @Seaport': 'https://buy.stripe.com/3cs15p9GU2FD8yA7st',
-  'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
-  'The Clay Room': 'https://buy.stripe.com/28o15p1ao0xv8yA6or',
+  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
+  // ... add other venue payment links
+};
+
+const VENUES: Record<string, Venue[]> = {
+  sports: [
+    { 
+      name: "Boston Bruins",
+      location: "TD Garden",
+      type: "Sports",
+      rating: 4.7,
+      imageUrl: "/images/venues/bruins.jpg",
+      stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
+      coordinates: [-71.0622, 42.3663]
+    },
+    { 
+      name: "Celtics",
+      location: "TD Garden",
+      type: "Sports",
+      rating: 4.7,
+      imageUrl: "/images/venues/celtics.jpg",
+      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
+      coordinates: [-71.0622, 42.3663]
+    },
+    { 
+      name: "BC Hockey",
+      location: "Conte Forum",
+      type: "Sports",
+      rating: 4.5,
+      imageUrl: "/images/venues/bchockey.jpg",
+      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
+      coordinates: [-71.1677, 42.3357]
+    },
+    { 
+      name: "BC Basketball",
+      location: "Conte Forum",
+      type: "Sports",
+      rating: 4.5,
+      imageUrl: "/images/venues/bcbasketball.jpg",
+      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
+      coordinates: [-71.1677, 42.3357]
+    }
+  ],
+  restaurants: [
+    { 
+      name: "Barcelona Wine Bar",
+      location: "South End, Boston",
+      type: "Spanish",
+      price: "$$$",
+      rating: 4.6,
+      imageUrl: "/images/venues/barcelona.jpg",
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0761, 42.3457]
+    },
+    { 
+      name: "Branchline",
+      location: "Brookline, MA",
+      type: "American",
+      price: "$$",
+      rating: 4.5,
+      imageUrl: "/images/venues/branchline.jpg",
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.1407, 42.3523]
+    }
+  ],
+  activities: [
+    { 
+      name: "Museum of Fine Arts",
+      location: "Boston, MA",
+      type: "Culture",
+      rating: 4.8,
+      imageUrl: "/images/venues/museum.jpg",
+      stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
+      coordinates: [-71.0995, 42.3394]
+    },
+    { 
+      name: "The Clay Room",
+      location: "Brookline, MA",
+      type: "Creative",
+      rating: 4.6,
+      imageUrl: "/images/venues/clayroom.jpg",
+      stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
+      coordinates: [-71.1317, 42.3396]
+    }
+  ]
 };
 
 const getAvatarUrl = async (avatarPath: string | null) => {
@@ -214,11 +297,12 @@ export default function DashboardPage() {
         .eq('status', 'pending');
 
       if (requestsError) {
-        console.log('Basic query error:', requestsError);
+        console.error('Basic query error:', requestsError);
         throw requestsError;
       }
 
-      console.log('Basic requests found:', requests);
+      // Remove or comment out this console.log
+      // console.log('Basic requests found:', requests);
 
       // Step 3: Get sender details separately
       const processedRequests = await Promise.all((requests || []).map(async (request) => {
@@ -495,7 +579,7 @@ export default function DashboardPage() {
                 value: (
                   <div className="flex items-center">
                     {'★★★★★'.split('').map((star, i) => (
-                      <span key={i} className="text-white text-xs">★</span>
+                      <span key={i} className="text-[#BA2525] text-xs">★</span>
                     ))}
                   </div>
                 ), 
@@ -504,18 +588,18 @@ export default function DashboardPage() {
               { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
               <div key={label} className="overflow-hidden">
-                <Card className="col-span-1 bg-[#BA2525] border-0 !rounded-[50px] h-14 shadow-sm overflow-hidden">
+                <Card className="col-span-1 bg-white border-2 border-[#BA2525] !rounded-[50px] h-14 shadow-sm overflow-hidden">
                   <CardContent className="p-0 h-full">
                     <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
                       <div className="flex items-center justify-center gap-1.5">
-                        {Icon && <Icon className="text-white" size={15} />}
+                        {Icon && <Icon className="text-[#BA2525]" size={15} />}
                         {typeof value === 'string' ? (
-                          <div className="text-base font-medium text-white">{value}</div>
+                          <div className="text-base font-medium text-[#BA2525]">{value}</div>
                         ) : (
                           value
                         )}
                       </div>
-                      <div className="text-[10px] text-white/80 -mt-0.5">{label}</div>
+                      <div className="text-[10px] text-[#BA2525]/80 -mt-0.5">{label}</div>
                     </div>
                   </CardContent>
                 </Card>
@@ -525,14 +609,16 @@ export default function DashboardPage() {
 
           {/* Make Your First Move section */}
           <div>
-            <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center">
-              Make Your First Move...
-            </h2>
+            <Link href="/matching">
+              <h2 className="text-2xl font-bold text-[#BA2525] mb-4 text-center hover:opacity-80 transition-opacity cursor-pointer">
+                Make Your First Move...
+              </h2>
+            </Link>
             
             {profiles.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                  {profiles.map((profile, index) => (
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  {profiles.slice(0, 6).map((profile) => (
                     <Link key={profile.id} href={`/profile/${profile.id}`}>
                       <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg bg-white/90 border border-gray-200">
                         <CardContent className="p-0">
@@ -543,11 +629,11 @@ export default function DashboardPage() {
                               className="w-full h-full"
                             />
                           </div>
-                          <div className="p-4">
-                            <h3 className="text-xl font-semibold text-[#BA2525] mb-1">
+                          <div className="p-3">
+                            <h3 className="text-lg font-semibold text-[#BA2525] mb-0.5">
                               {profile.first_name}, {profile.age}
                             </h3>
-                            <p className="text-gray-600 text-sm line-clamp-2">
+                            <p className="text-gray-600 text-xs line-clamp-2">
                               {profile.bio}
                             </p>
                           </div>
@@ -556,10 +642,10 @@ export default function DashboardPage() {
                     </Link>
                   ))}
                 </div>
-                <div className="flex justify-center mt-12">
+                <div className="flex justify-center mb-2">
                   <Link
                     href="/matching"
-                    className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                    className="px-6 py-3 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
                   >
                     View More Matches →
                   </Link>
@@ -568,7 +654,7 @@ export default function DashboardPage() {
             ) : (
               <div className="text-center py-8 text-gray-600">
                 No matches available yet
-                <div className="flex justify-center mt-12">
+                <div className="flex justify-center mb-4">
                   <Link
                     href="/matching"
                     className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
@@ -582,9 +668,11 @@ export default function DashboardPage() {
 
           {/* Date Requests section */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center">
-              Your Story Starts Here...
-            </h2>
+            <Link href="/daterequests">
+              <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center hover:opacity-80 transition-opacity cursor-pointer">
+                Your Story Starts Here...
+              </h2>
+            </Link>
             {dateRequests.map((request, index) => (
               <Card 
                 key={request.id} 
@@ -661,6 +749,7 @@ export default function DashboardPage() {
         </div>
       </div>
       <BottomNav />
+      <DateRecommendations />
     </>
   );
 }

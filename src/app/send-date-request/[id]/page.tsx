@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
+import VenueSelector from '@/components/VenueSelector';
 
 interface Profile {
   id: string;
@@ -25,6 +26,7 @@ interface Venue {
   rating: number;
   imageUrl: string;
   stripeLink: string;
+  coordinates: [number, number];
 }
 
 interface DateRequestForm {
@@ -41,7 +43,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       imageUrl: "/images/venues/bruins.jpg",
-      stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os"
+      stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Celtics",
@@ -49,7 +52,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       imageUrl: "/images/venues/celtics.jpg",
-      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0"
+      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "BC Hockey",
@@ -57,7 +61,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.5,
       imageUrl: "/images/venues/bchockey.jpg",
-      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN"
+      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "BC Basketball",
@@ -65,7 +70,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.5,
       imageUrl: "/images/venues/bcbasketball.jpg",
-      stripeLink: "https://buy.stripe.com/fZebL7bP24NL9CE9AB"
+      stripeLink: "https://buy.stripe.com/fZebL7bP24NL9CE9AB",
+      coordinates: [-71.0622, 42.3663]
     }
   ],
   restaurants: [
@@ -76,7 +82,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       rating: 4.6,
       imageUrl: "/images/venues/barcelona.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Capo",
@@ -85,7 +92,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       rating: 4.5,
       imageUrl: "/images/venues/capo.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Lolita Back Bay",
@@ -94,7 +102,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.5,
       imageUrl: "/images/venues/lolita.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Blue Ribbon Sushi",
@@ -103,7 +112,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       rating: 4.7,
       imageUrl: "/images/venues/blueribbon.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Lucca North End",
@@ -112,7 +122,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       rating: 4.6,
       imageUrl: "/images/venues/lucca.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Joes on Newbury",
@@ -121,7 +132,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.4,
       imageUrl: "/images/venues/joes.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Kured",
@@ -130,7 +142,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.5,
       imageUrl: "/images/venues/kured.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Branchline",
@@ -139,7 +152,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.6,
       imageUrl: "/images/venues/branchline.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     }
   ],
   activities: [
@@ -149,7 +163,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Culture",
       rating: 4.8,
       imageUrl: "/images/venues/museum.jpg",
-      stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce"
+      stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Private Helicopter Ride",
@@ -158,7 +173,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       rating: 4.9,
       imageUrl: "/images/venues/helicopter.jpg",
-      stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz"
+      stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "F1 Arcade",
@@ -167,7 +183,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.4,
       imageUrl: "/images/venues/f1arcade.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk"
+      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "The Clay Room",
@@ -175,7 +192,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Creative",
       rating: 4.6,
       imageUrl: "/images/venues/clayroom.jpg",
-      stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO"
+      stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
+      coordinates: [-71.0622, 42.3663]
     },
     { 
       name: "Boston Duck Tour",
@@ -184,7 +202,8 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       rating: 4.7,
       imageUrl: "/images/venues/ducktour.jpg",
-      stripeLink: "https://buy.stripe.com/14k9CZbP20xv7uw28j"
+      stripeLink: "https://buy.stripe.com/14k9CZbP20xv7uw28j",
+      coordinates: [-71.0622, 42.3663]
     }
   ],
   outdoors: [
@@ -194,7 +213,8 @@ const VENUES: Record<string, Venue[]> = {
       type: "Park",
       rating: 4.7,
       imageUrl: "/images/venues/commons.jpg",
-      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck"
+      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
+      coordinates: [-71.0622, 42.3663]
     }
   ]
 };
@@ -338,7 +358,7 @@ export default function DateRequestPage() {
                 alt={`${profile.first_name}'s avatar`}
                 fill
                 className="rounded-full object-cover"
-                sizes="64px"
+                sizes="(max-width: 64px) 100vw, 64px"
                 priority
               />
             </div>
@@ -358,22 +378,17 @@ export default function DateRequestPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="text-lg font-semibold mb-2 block">Venue</label>
-              <button 
-                type="button"
-                onClick={() => setShowVenueList(true)}
-                className="w-full p-4 border rounded-lg flex items-center justify-between"
-              >
-                <span className="text-gray-600">
-                  {formData.venue || 'Select a venue'}
-                </span>
-                <MapPin className="text-gray-400" />
-              </button>
+              <h2 className="text-lg font-bold text-gray-800 mb-2">Date Location</h2>
+              <VenueSelector 
+                venues={VENUES}
+                onVenueSelect={(venue) => setFormData({ ...formData, venue })}
+                selectedVenue={formData.venue}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-lg font-semibold mb-2 block">Date</label>
+                <h2 className="text-lg font-bold text-gray-800 mb-2">Date</h2>
                 <input 
                   type="date"
                   value={formData.proposed_time.split('T')[0]}
@@ -386,12 +401,12 @@ export default function DateRequestPage() {
                     }));
                   }}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full p-4 border rounded-lg"
+                  className="w-full p-3 border rounded-lg text-sm"
                   required
                 />
               </div>
               <div>
-                <label className="text-lg font-semibold mb-2 block">Time</label>
+                <h2 className="text-lg font-bold text-gray-800 mb-2">Time</h2>
                 <input 
                   type="time"
                   value={formData.proposed_time.split('T')[1] || ''}
@@ -403,7 +418,7 @@ export default function DateRequestPage() {
                       proposed_time: `${currentDate}T${e.target.value}`
                     }));
                   }}
-                  className="w-full p-4 border rounded-lg"
+                  className="w-full p-3 border rounded-lg text-sm"
                   required
                   step="1800"
                 />
@@ -444,99 +459,14 @@ export default function DateRequestPage() {
             <button 
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-[#cc0000] text-white p-4 rounded-full text-lg font-semibold
-                hover:bg-[#aa0000] transition-colors disabled:opacity-50"
+              className="w-full bg-[#BA2525] text-white p-3 rounded-full text-base font-semibold
+                hover:bg-[#a02020] transition-colors disabled:opacity-50"
             >
               {isSubmitting ? 'Sending...' : 'Send Date Request'}
             </button>
           </form>
         </div>
       </div>
-
-      {showVenueList && (
-        <div className="fixed inset-0 bg-white z-10">
-          <div className="p-4 border-b">
-            <div className="flex items-center gap-3 mb-4">
-              <button
-                onClick={() => setShowVenueList(false)}
-                className="text-[#cc0000] font-semibold"
-              >
-                ← Back
-              </button>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 text-gray-400" />
-                <input 
-                  type="text"
-                  placeholder="Search venues in Boston"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 p-2 border rounded-lg"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto">
-              {['All', 'Events', 'Restaurants', 'Activities'].map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat.toLowerCase())}
-                  className={`px-4 py-2 rounded-full text-sm whitespace-nowrap 
-                    ${selectedCategory === cat.toLowerCase() 
-                      ? 'bg-[#cc0000] text-white' 
-                      : 'bg-gray-100 text-gray-600'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="divide-y overflow-y-auto h-[calc(100vh-180px)]">
-            {filteredVenues.map((venue) => (
-              <div 
-                key={venue.name}
-                className="p-4 hover:bg-gray-50 cursor-pointer"
-                onClick={() => handleVenueSelect(venue.name)}
-              >
-                <div className="flex gap-4">
-                  <div className="w-20 h-20 relative rounded-lg overflow-hidden">
-                    <Image
-                      src={venue.imageUrl}
-                      alt={venue.name}
-                      fill
-                      className="object-cover"
-                      sizes="80px"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{venue.name}</h3>
-                    <div className="text-sm text-gray-600">
-                      <div className="flex items-center gap-1 mb-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>{venue.location}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-600">Available</span>
-                        <span>•</span>
-                        <div className="flex items-center">
-                          <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                          {venue.rating}
-                        </div>
-                        {venue.price && (
-                          <>
-                            <span>•</span>
-                            <span>{venue.price}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <BottomNav />
     </div>

@@ -172,10 +172,16 @@ export default function DateRequestsPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto p-5 pb-24">
+        <div className="max-w-6xl mx-auto p-5">
           <Header variant="matching" />
           
-          <div className="space-y-4">
+          <Link href="/daterequests">
+            <h2 className="text-3xl font-bold text-[#BA2525] mt-0 mb-8 text-center hover:opacity-80 transition-opacity cursor-pointer">
+              Your Date Requests
+            </h2>
+          </Link>
+
+          <div className="grid grid-cols-1 gap-4">
             {dateRequests.map((request, index) => (
               <div key={request.id} className="mb-3">
                 <Card className="bg-white p-4 rounded-[30px] shadow-sm hover:shadow-md transition-shadow">
