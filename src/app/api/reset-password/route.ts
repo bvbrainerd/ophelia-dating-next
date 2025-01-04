@@ -60,7 +60,8 @@ export async function POST(request: Request) {
       templateId: process.env.SENDGRID_RESET_PASSWORD_TEMPLATE_ID!,
       dynamicTemplateData: {
         reset_link: resetLink,
-        user_email: email
+        user_email: email,
+        recipient_name: email.split('@')[0]
       }
     };
 

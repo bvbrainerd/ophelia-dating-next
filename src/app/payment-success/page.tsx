@@ -21,21 +21,57 @@ export default function PaymentSuccessHandler() {
           throw new Error('Missing payment information');
         }
 
-        // Clear the stored data immediately to prevent double-processing
+        // Clear stored data
         localStorage.removeItem('pendingDateId');
         localStorage.removeItem('paymentReturnTime');
 
-        // Update the date request status and payment info
-        const { error: updateError } = await supabase
+        // Update date request status
+        const { data: dateRequest, error: updateError } = await supabase
           .from('date_requests')
           .update({
             status: 'accepted',
             payment_completed: true,
             payment_completed_at: returnTime
           })
-          .eq('id', dateId);
+          .eq('id', dateId)
+          .select(`
+            *,
+            profiles!date_requests_receiver_id_fkey (
+              id,
+              first_name,
+              email
+            )
+          `)
+          .single();
 
         if (updateError) throw updateError;
+
+        // Add debug logs
+        console.log('Sending confirmation email with data:', {
+          recipientEmail: dateRequest.profiles.email,
+          recipientName: dateRequest.profiles.first_name,
+          venueName: dateRequest.venue,
+          dateTime: dateRequest.proposed_time,
+          dateDetails: dateRequest.date_details
+        });
+
+        // Send confirmation email
+        const emailResponse = await fetch('/api/send-date-confirmation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recipientEmail: dateRequest.profiles.email,
+            recipientName: dateRequest.profiles.first_name,
+            venueName: dateRequest.venue,
+            dateTime: dateRequest.proposed_time,
+            dateDetails: dateRequest.date_details
+          }),
+        });
+
+        const emailResult = await emailResponse.json();
+        console.log('Email send result:', emailResult);
 
         setIsProcessing(false);
         
@@ -49,7 +85,6 @@ export default function PaymentSuccessHandler() {
         setError(err instanceof Error ? err.message : 'Failed to confirm payment');
         setIsProcessing(false);
         
-        // Redirect after error
         setTimeout(() => {
           router.push('/daterequests');
         }, 3000);
