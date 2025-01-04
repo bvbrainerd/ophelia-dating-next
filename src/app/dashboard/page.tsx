@@ -490,7 +490,17 @@ export default function DashboardPage() {
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[
               { icon: Crown, value: 'Gold', label: 'Dater Status' },
-              { icon: Trophy, value: '1/1', label: 'Your Dater Rating' },
+              { 
+                icon: null,
+                value: (
+                  <div className="flex items-center">
+                    {'★★★★★'.split('').map((star, i) => (
+                      <span key={i} className="text-white text-xs">★</span>
+                    ))}
+                  </div>
+                ), 
+                label: 'Your Dater Rating' 
+              },
               { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
               <div key={label} className="overflow-hidden">
@@ -498,8 +508,12 @@ export default function DashboardPage() {
                   <CardContent className="p-0 h-full">
                     <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
                       <div className="flex items-center justify-center gap-1.5">
-                        <Icon className="text-white" size={15} />
-                        <div className="text-base font-medium text-white">{value}</div>
+                        {Icon && <Icon className="text-white" size={15} />}
+                        {typeof value === 'string' ? (
+                          <div className="text-base font-medium text-white">{value}</div>
+                        ) : (
+                          value
+                        )}
                       </div>
                       <div className="text-[10px] text-white/80 -mt-0.5">{label}</div>
                     </div>
