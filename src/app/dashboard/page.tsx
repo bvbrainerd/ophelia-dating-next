@@ -511,7 +511,7 @@ export default function DashboardPage() {
 
           {/* Make Your First Move section */}
           <div>
-            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center">
               Make Your First Move...
             </h2>
             
@@ -568,7 +568,7 @@ export default function DashboardPage() {
 
           {/* Date Requests section */}
           <div className="mt-12">
-            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center">
               Your Story Starts Here...
             </h2>
             {dateRequests.map((request, index) => (
