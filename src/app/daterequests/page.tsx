@@ -8,6 +8,8 @@ import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import { Coffee } from 'lucide-react';
+import Link from 'next/link';
+import { Card } from '@/components/ui/card';
 
 interface Profile {
   id: string;
@@ -174,80 +176,70 @@ export default function DateRequestsPage() {
           <Header variant="matching" />
           
           <div className="space-y-4">
-            {dateRequests.map((request) => (
-              <div key={request.id} className="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <div className="w-20 h-20 sm:w-32 sm:h-32 flex-shrink-0">
-                    <div className="relative w-full h-full border-2 border-gray-200 rounded-full overflow-hidden">
-                      <Image
-                        src={request.sender?.avatar_url || '/images/default-avatar.png'}
-                        alt={request.sender ? `${request.sender.first_name}'s profile` : 'Profile'}
-                        fill
-                        priority={true}
-                        className="object-cover"
-                        sizes="(max-width: 768px) 80px, 128px"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/images/default-avatar.png';
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium mb-1">
-                      {request.sender 
-                        ? `${request.sender.first_name}, ${request.sender.age}`
-                        : 'Unknown User'
-                      }
-                    </div>
-                    <div className="flex items-center gap-1 text-gray-600 mb-2">
-                      <Coffee size={14} />
-                      <span className="text-sm">
-                        {request.venue} • {
-                          request.proposed_time 
-                            ? new Date(request.proposed_time).toLocaleString('en-US', {
-                                dateStyle: 'medium',
-                                timeStyle: 'short'
-                              })
-                            : 'No date specified'
-                        }
-                        {request.split_payment && ' • Split payment requested'}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                      {request.sender?.bio || 'No bio available'}
-                    </p>
-                  </div>
-                </div>
+            {dateRequests.map((request, index) => (
+              <div key={request.id} className="mb-3">
+                <Card className="bg-white p-4 rounded-[30px] shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <Link href={`/profile/${request.sender?.id}`} className="flex-1">
+                      <div className="flex items-center space-x-4">
+                        <div className="relative w-16 h-16">
+                          <Image
+                            src={request.sender?.avatar_url || '/images/default-avatar.png'}
+                            alt={`${request.sender?.first_name}'s profile`}
+                            fill
+                            className="object-cover rounded-full"
+                          />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-[#BA2525]">
+                            {request.sender?.first_name}, {request.sender?.age}
+                          </h3>
+                          <p className="text-gray-500 text-sm">
+                            {request.venue} • {
+                              request.proposed_time 
+                                ? new Date(request.proposed_time).toLocaleString('en-US', {
+                                    weekday: 'long',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  })
+                                : 'No date specified'
+                            }
+                            {request.split_payment && ' • Split payment requested'}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
 
-                <div className="mt-4">
-                  {request.status === 'pending' ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        className="p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors"
+                    <div className="flex gap-2 ml-4">
+                      <button 
                         onClick={() => handleDateResponse(request.id, 'accepted')}
+                        className="px-4 py-1.5 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a02020] transition-colors"
                       >
                         Accept
                       </button>
-                      <button
-                        className="p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                      <button 
                         onClick={() => handleDateResponse(request.id, 'declined')}
+                        className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-full text-sm hover:bg-[#ffeeee] transition-colors"
                       >
                         Decline
                       </button>
                     </div>
-                  ) : (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className={`text-center font-medium ${
-                        request.status === 'accepted' ? 'text-green-600' : 'text-[#cc0000]'
-                      }`}>
-                        {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                </Card>
               </div>
             ))}
+          </div>
+
+          <div className="flex justify-center mt-12">
+            <Link
+              href="/matching"
+              className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+            >
+              View More Matches →
+            </Link>
           </div>
         </div>
         <BottomNav />
