@@ -407,7 +407,10 @@ export default function DateRequestPage() {
         <Header variant="matching" />
         
         <div className="max-w-md mx-auto">
-          <div className="flex items-center gap-4 mb-8">
+          <div 
+            className="flex items-center gap-4 mb-8 cursor-pointer hover:bg-gray-50 p-3 rounded-lg transition-colors"
+            onClick={() => router.push(`/profile/${profileId}`)}
+          >
             <div className="relative w-16 h-16">
               <Image
                 src={profile.avatar_url || DEFAULT_AVATAR}
