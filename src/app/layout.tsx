@@ -2,6 +2,7 @@ import { Prompt } from 'next/font/google';
 import './globals.css';
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const prompt = Prompt({
   subsets: ['latin'], 
@@ -45,7 +46,9 @@ export default async function RootLayout({
   return (
     <html lang="en" className={prompt.variable}>
       <body className={`font-prompt ${prompt.variable}`}>
-        <main>{children}</main>
+        <ErrorBoundary>
+          <main>{children}</main>
+        </ErrorBoundary>
       </body>
     </html>
   );

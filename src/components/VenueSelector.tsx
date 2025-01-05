@@ -105,7 +105,7 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
             {/* Map and List Container */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
               {/* Map */}
-              <div className="bg-white rounded-[30px] h-[400px] lg:sticky lg:top-4 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-[30px] h-[300px] lg:h-[400px] lg:sticky lg:top-4 shadow-sm overflow-hidden">
                 <Map 
                   markers={filteredVenues.map(venue => ({
                     coordinates: venue.coordinates,
@@ -115,7 +115,7 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
               </div>
 
               {/* Venue List */}
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
                 <div className="space-y-4">
                   {filteredVenues.map((venue) => (
                     <button
@@ -135,9 +135,9 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                           className="object-cover rounded-lg"
                         />
                       </div>
-                      <div className="text-left">
+                      <div className="text-left flex-1">
                         <h3 className="text-lg font-semibold mb-1">{venue.name}</h3>
-                        <p className="text-gray-500 text-left">
+                        <p className="text-gray-500 text-sm">
                           {venue.location}
                           {venue.distance && (
                             <>
@@ -146,6 +146,9 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                             </>
                           )}
                         </p>
+                        {venue.price && (
+                          <p className="text-gray-500 text-sm mt-1">{venue.price}</p>
+                        )}
                       </div>
                     </button>
                   ))}
