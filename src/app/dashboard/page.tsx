@@ -273,66 +273,56 @@ export default function DashboardPage() {
 
   const fetchDateRequests = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log('No user found');
+      const session = await checkAndRefreshSession(supabase);
+      if (!session) {
         router.push('/auth/login');
         return;
       }
 
-      // Step 2: Basic query first with status filter
+      // Simplified query with proper error handling
       const { data: requests, error: requestsError } = await supabase
         .from('date_requests')
-        .select('*')
-        .eq('receiver_id', user.id)
+        .select(`
+          *,
+          sender:profiles!date_requests_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            age,
+            avatar_url
+          )
+        `)
+        .eq('receiver_id', session.user.id)
         .eq('status', 'pending');
 
       if (requestsError) {
-        console.error('Basic query error:', requestsError);
+        console.error('Error fetching date requests:', requestsError);
         throw requestsError;
       }
 
-      // Remove or comment out this console.log
-      // console.log('Basic requests found:', requests);
-
-      // Step 3: Get sender details separately
       const processedRequests = await Promise.all((requests || []).map(async (request) => {
-        const { data: senderData } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, age, avatar_url')
-          .eq('id', request.sender_id)
-          .single();
+        try {
+          const avatarUrl = request.sender?.avatar_url ? 
+            await getAvatarUrl(request.sender.avatar_url) : 
+            '/images/default-avatar.png';
 
-        const avatarUrl = await getAvatarUrl(senderData?.avatar_url);
-        return {
-          id: request.id,
-          status: request.status,
-          venue: request.venue,
-          proposed_time: request.proposed_time,
-          dating_style: request.dating_style,
-          created_at: request.created_at,
-          sender_name: senderData?.first_name || '',
-          sender_age: senderData?.age || 0,
-          sender_avatar_url: avatarUrl,
-          sender: senderData ? {
-            ...senderData,
-            avatar_url: avatarUrl
-          } : null
-        };
+          return {
+            ...request,
+            sender: request.sender ? {
+              ...request.sender,
+              avatar_url: avatarUrl
+            } : null
+          };
+        } catch (error) {
+          console.error('Error processing request:', error);
+          return request;
+        }
       }));
 
       setDateRequests(processedRequests);
-
-    } catch (err) {
-      if (err instanceof Error) {
-        console.error('Detailed error:', {
-          name: err.name,
-          message: err.message,
-          details: err
-        });
-      } else {
-        console.error('Unknown error:', err);
-      }
+    } catch (error) {
+      console.error('Error in fetchDateRequests:', error);
+      setError('Failed to load date requests');
     }
   }, [router]);
 
@@ -529,6 +519,56 @@ export default function DashboardPage() {
     initializePage();
   }, [currentUser?.id, fetchMatches, fetchDateRequests]);
 
+  const DateRequestCard = ({ request }: { request: DateRequestResponse }) => (
+    <Card 
+      key={request.id} 
+      className="mb-3 bg-white p-4 rounded-[30px] shadow-sm"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <div className="relative w-16 h-16">
+            <Image
+              src={request.sender?.avatar_url || '/images/default-avatar.png'}
+              alt={`${request.sender?.first_name || 'User'}'s profile`}
+              fill
+              sizes="(max-width: 640px) 64px, 
+                     (max-width: 768px) 64px,
+                     96px"
+              className="object-cover rounded-full"
+              priority={false}
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = '/images/default-avatar.png';
+              }}
+            />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-[#BA2525]">
+              {request.sender?.first_name}, {request.sender?.age}
+            </h3>
+            <p className="text-gray-500 text-sm">
+              {request.venue} • {formatDate(request.created_at)}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 w-full sm:w-auto">
+          <button 
+            onClick={() => handleDateRequest(request.id, 'accepted')}
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-[#BA2525] text-white rounded-full text-base hover:bg-[#a02020] transition-colors"
+          >
+            Accept
+          </button>
+          <button 
+            onClick={() => handleDateRequest(request.id, 'declined')}
+            className="flex-1 sm:flex-none px-6 py-2.5 border border-[#BA2525] text-[#BA2525] rounded-full text-base hover:bg-[#ffeeee] transition-colors"
+          >
+            Decline
+          </button>
+        </div>
+      </div>
+    </Card>
+  );
+
   if (!currentUser) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -664,46 +704,8 @@ export default function DashboardPage() {
                 Your Story Starts Here...
               </h2>
             </Link>
-            {dateRequests.map((request, index) => (
-              <Card 
-                key={request.id} 
-                className="mb-3 bg-white p-4 rounded-[30px] shadow-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative w-12 h-12">
-                      <Image
-                        src={request.sender_avatar_url || '/images/default-avatar.png'}
-                        alt={`${request.sender_name}'s profile`}
-                        fill
-                        className="object-cover rounded-full"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-[#BA2525]">
-                        {request.sender?.first_name}, {request.sender?.age}
-                      </h3>
-                      <p className="text-gray-500 text-sm">
-                        {request.venue} • {formatDate(request.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleDateRequest(request.id, 'accepted')}
-                      className="px-4 py-1.5 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a02020] transition-colors"
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      onClick={() => handleDateRequest(request.id, 'declined')}
-                      className="px-4 py-1.5 border border-[#BA2525] text-[#BA2525] rounded-full text-sm hover:bg-[#ffeeee] transition-colors"
-                    >
-                      Decline
-                    </button>
-                  </div>
-                </div>
-              </Card>
+            {dateRequests.map((request) => (
+              <DateRequestCard key={request.id} request={request} />
             ))}
             
             <div className="flex justify-center mt-6 mb-8">
