@@ -107,15 +107,6 @@ const VENUES: Record<string, Venue[]> = {
       imageUrl: "/images/venues/bchockey.jpg",
       stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
       coordinates: [-71.1677, 42.3357]
-    },
-    { 
-      name: "BC Basketball",
-      location: "Conte Forum",
-      type: "Sports",
-      rating: 4.5,
-      imageUrl: "/images/venues/bcbasketball.jpg",
-      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
-      coordinates: [-71.1677, 42.3357]
     }
   ],
   restaurants: [
@@ -568,7 +559,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="min-h-screen bg-white">
-        <div className="max-w-6xl mx-auto p-5 pb-24">
+        <div className="max-w-6xl mx-auto p-5 pb-32">
           <Header variant="matching" />
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4 mb-8">
@@ -610,7 +601,7 @@ export default function DashboardPage() {
           {/* Make Your First Move section */}
           <div>
             <Link href="/matching">
-              <h2 className="text-2xl font-bold text-[#BA2525] mb-4 text-center hover:opacity-80 transition-opacity cursor-pointer">
+              <h2 className="text-2xl font-bold text-[#BA2525] mb-8 text-center hover:opacity-80 transition-opacity cursor-pointer">
                 Make Your First Move...
               </h2>
             </Link>
@@ -715,7 +706,7 @@ export default function DashboardPage() {
               </Card>
             ))}
             
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-6 mb-8">
               <Link
                 href="/daterequests"
                 className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
@@ -725,8 +716,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Move DateRecommendations here, before the bottom nav */}
+          <DateRecommendations />
+
           {/* Bottom Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
             <div className="max-w-2xl mx-auto flex justify-around">
               {[
                 { icon: <Home size={24} />, label: 'Home', href: '/dashboard' },
@@ -749,7 +743,6 @@ export default function DashboardPage() {
         </div>
       </div>
       <BottomNav />
-      <DateRecommendations />
     </>
   );
 }

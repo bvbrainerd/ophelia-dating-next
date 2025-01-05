@@ -1,76 +1,52 @@
 import { NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 import { createClient } from '@supabase/supabase-js';
-import { MailDataRequired } from '@sendgrid/mail';
 
 // Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
-// Initialize Supabase Admin client with proper error handling
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
+// Initialize Supabase admin client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-// Verify environment variables
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing Supabase environment variables');
-}
 
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
+
+    // Generate a secure reset token
+    const resetToken = crypto.randomUUID();
     
-    // Generate reset password link using Supabase
-    const { data, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
-      },
+    // Store the reset token in Supabase (you might need to create a password_resets table)
+    const { error: dbError } = await supabase
+      .from('password_resets')
+      .insert([
+        {
+          email,
+          token: resetToken,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours from now
+        }
+      ]);
+
+    if (dbError) throw dbError;
+
+    // Send email using SendGrid
+    await sgMail.send({
+      to: email,
+      from: 'noreply@opheliadating.com',
+      templateId: process.env.SENDGRID_FORGOT_PASSWORD_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        resetLink: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password?token=${resetToken}`,
+        email: email
+      }
     });
 
-    if (resetError) {
-      console.error('Reset link generation error:', resetError);
-      return NextResponse.json(
-        { error: 'Failed to generate reset link' }, 
-        { status: 500 }
-      );
-    }
-
-    const resetLink = data.properties?.action_link;
-    
-    if (!resetLink) {
-      return NextResponse.json(
-        { error: 'No reset link generated' }, 
-        { status: 500 }
-      );
-    }
-
-    // Send email using SendGrid template
-    const msg: MailDataRequired = {
-      to: email,
-      from: 'dates@opheliadating.io',
-      templateId: process.env.SENDGRID_RESET_PASSWORD_TEMPLATE_ID!,
-      dynamicTemplateData: {
-        reset_link: resetLink,
-        user_email: email,
-        recipient_name: email.split('@')[0]
-      }
-    };
-
-    await sgMail.send(msg);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Reset password error:', error);
+    console.error('Error in password reset:', error);
     return NextResponse.json(
-      { error: 'Failed to send reset password email' }, 
+      { error: 'Failed to process password reset' },
       { status: 500 }
     );
   }

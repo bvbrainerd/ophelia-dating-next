@@ -129,7 +129,7 @@ export default function LoginSignup({ onLogin, onSignup }: LoginSignupProps) {
       <input 
         className="w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors" 
         type="email" 
-        placeholder="BC Email"
+        placeholder="Email"
         value={email}
         onChange={handleEmailChange}
         disabled={isLoading}

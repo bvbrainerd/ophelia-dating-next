@@ -44,7 +44,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={prompt.variable}>
-      <body className={`font-prompt ${prompt.variable}`}>{children}</body>
+      <body className={`font-prompt ${prompt.variable}`}>
+        <main>{children}</main>
+      </body>
     </html>
   );
 }

@@ -78,7 +78,7 @@ export default function LoginPage() {
     router.push('/auth/signup');
   };
 
-  const handleForgotPassword = async () => {
+  const handleForgotPassword = () => {
     if (!email.trim()) {
       setError('Please enter your BC email address first');
       return;
@@ -89,21 +89,7 @@ export default function LoginPage() {
       return;
     }
 
-    try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-
-      if (error) throw error;
-
-      setError('Password reset link sent to your email');
-    } catch (err) {
-      console.error('Error:', err);
-      setError('Failed to send reset password email');
-    } finally {
-      setIsLoading(false);
-    }
+    window.location.replace(`/auth/reset-password?email=${encodeURIComponent(email)}`);
   };
 
   return (

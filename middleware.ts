@@ -5,23 +5,21 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  
-  const supabase = createMiddlewareClient(
-    { req, res },
-    {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      cookieOptions: {
-        name: 'sb-auth',
-        domain: '',
-        path: '/',
-        sameSite: 'lax'
-      }
-    }
-  );
+  const supabase = createMiddlewareClient({ req, res });
 
-  // Refresh session if expired
-  await supabase.auth.getSession();
+  // Skip auth check for password reset routes
+  if (req.nextUrl.pathname.startsWith('/auth/reset-password')) {
+    return res;
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // Redirect if not authenticated
+  if (!session && !req.nextUrl.pathname.startsWith('/auth')) {
+    return NextResponse.redirect(new URL('/auth/login', req.url));
+  }
 
   return res;
 }
@@ -34,7 +32,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - auth folder (except reset-password)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public/|api/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|auth(?!/reset-password)).*)',
   ],
 };
