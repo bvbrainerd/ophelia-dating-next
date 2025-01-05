@@ -68,6 +68,7 @@ interface Venue {
   stripeLink: string;
   coordinates: [number, number];
   price?: string;
+  distance: string;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -87,27 +88,33 @@ const VENUES: Record<string, Venue[]> = {
       location: "TD Garden",
       type: "Sports",
       rating: 4.7,
+      price: "$$$",
       imageUrl: "/images/venues/bruins.jpg",
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0622, 42.3663],
+      distance: "5.8 mi"
     },
     { 
       name: "Celtics",
       location: "TD Garden",
       type: "Sports",
       rating: 4.7,
+      price: "$$$",
       imageUrl: "/images/venues/celtics.jpg",
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0622, 42.3663],
+      distance: "5.8 mi"
     },
     { 
       name: "BC Hockey",
       location: "Conte Forum",
       type: "Sports",
       rating: 4.5,
+      price: "$$",
       imageUrl: "/images/venues/bchockey.jpg",
       stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
-      coordinates: [-71.1677, 42.3357]
+      coordinates: [-71.1677, 42.3357],
+      distance: "0.1 mi"
     }
   ],
   restaurants: [
@@ -119,7 +126,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       imageUrl: "/images/venues/barcelona.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0761, 42.3457]
+      coordinates: [-71.0761, 42.3457],
+      distance: "4.9 mi"
     },
     { 
       name: "Branchline",
@@ -129,7 +137,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/branchline.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.1407, 42.3523]
+      coordinates: [-71.1407, 42.3523],
+      distance: "1.5 mi"
     }
   ],
   activities: [
@@ -138,18 +147,33 @@ const VENUES: Record<string, Venue[]> = {
       location: "Boston, MA",
       type: "Culture",
       rating: 4.8,
+      price: "$$",
       imageUrl: "/images/venues/museum.jpg",
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
-      coordinates: [-71.0995, 42.3394]
+      coordinates: [-71.0995, 42.3394],
+      distance: "3.6 mi"
+    },
+    { 
+      name: "Private Helicopter Ride",
+      location: "Boston, MA",
+      type: "Adventure",
+      price: "$$$$",
+      rating: 4.9,
+      imageUrl: "/images/venues/helicopter.jpg",
+      stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
+      coordinates: [-71.0217, 42.3656],
+      distance: "7.8 mi"
     },
     { 
       name: "The Clay Room",
       location: "Brookline, MA",
       type: "Creative",
       rating: 4.6,
+      price: "$$",
       imageUrl: "/images/venues/clayroom.jpg",
       stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
-      coordinates: [-71.1317, 42.3396]
+      coordinates: [-71.1317, 42.3396],
+      distance: "1.9 mi"
     }
   ]
 };

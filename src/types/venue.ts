@@ -3,9 +3,9 @@ export interface Venue {
   location: string;
   type: string;
   rating: number;
+  price: string;
   imageUrl: string;
   coordinates: [number, number];
-  distance?: string;
-  price?: string;
+  distance: string;
   stripeLink?: string;
 } 
