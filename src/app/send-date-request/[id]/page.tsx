@@ -8,6 +8,7 @@ import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import VenueSelector from '@/components/VenueSelector';
+import { Venue } from '@/types/venue';
 
 interface Profile {
   id: string;
@@ -18,21 +19,14 @@ interface Profile {
   bio: string;
 }
 
-interface Venue {
-  name: string;
-  location: string;
-  type: string;
-  price?: string;
-  rating: number;
-  imageUrl: string;
-  stripeLink: string;
-  coordinates: [number, number];
-}
-
 interface DateRequestForm {
   venue: string;
   proposed_time: string;
   split_payment: number | null;
+}
+
+interface QuizAnswers {
+  idealDate: string;
 }
 
 const VENUES: Record<string, Venue[]> = {
@@ -44,7 +38,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       imageUrl: "/images/venues/bruins.jpg",
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0622, 42.3663],
+      distance: "5.8 mi"
     },
     { 
       name: "Celtics",
@@ -53,7 +48,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       imageUrl: "/images/venues/celtics.jpg",
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0622, 42.3663],
+      distance: "5.8 mi"
     },
     { 
       name: "BC Hockey",
@@ -62,7 +58,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/bchockey.jpg",
       stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.1677, 42.3357],
+      distance: "0.1 mi"
     },
     { 
       name: "BC Basketball",
@@ -71,7 +68,7 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/bcbasketball.jpg",
       stripeLink: "https://buy.stripe.com/fZebL7bP24NL9CE9AB",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.1677, 42.3357]
     }
   ],
   restaurants: [
@@ -83,7 +80,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       imageUrl: "/images/venues/barcelona.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0761, 42.3457],
+      distance: "4.9 mi"
     },
     { 
       name: "Capo",
@@ -93,7 +91,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/capo.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0424, 42.3363],
+      distance: "6.7 mi"
     },
     { 
       name: "Lolita Back Bay",
@@ -103,7 +102,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/lolita.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0751, 42.3483],
+      distance: "4.8 mi"
     },
     { 
       name: "Blue Ribbon Sushi",
@@ -113,7 +113,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       imageUrl: "/images/venues/blueribbon.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0594, 42.3551],
+      distance: "5.7 mi"
     },
     { 
       name: "Lucca North End",
@@ -123,7 +124,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       imageUrl: "/images/venues/lucca.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0547, 42.3645],
+      distance: "6.0 mi"
     },
     { 
       name: "Joes on Newbury",
@@ -133,7 +135,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.4,
       imageUrl: "/images/venues/joes.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0793, 42.3491],
+      distance: "4.7 mi"
     },
     { 
       name: "Kured",
@@ -143,7 +146,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       imageUrl: "/images/venues/kured.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0712, 42.3589],
+      distance: "5.2 mi"
     },
     { 
       name: "Branchline",
@@ -153,7 +157,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       imageUrl: "/images/venues/branchline.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.1407, 42.3523],
+      distance: "1.5 mi"
     }
   ],
   activities: [
@@ -164,7 +169,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.8,
       imageUrl: "/images/venues/museum.jpg",
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0995, 42.3394],
+      distance: "3.6 mi"
     },
     { 
       name: "Private Helicopter Ride",
@@ -174,7 +180,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.9,
       imageUrl: "/images/venues/helicopter.jpg",
       stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0217, 42.3656],
+      distance: "7.8 mi"
     },
     { 
       name: "F1 Arcade",
@@ -184,7 +191,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.4,
       imageUrl: "/images/venues/f1arcade.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0595, 42.3501],
+      distance: "5.7 mi"
     },
     { 
       name: "The Clay Room",
@@ -193,7 +201,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       imageUrl: "/images/venues/clayroom.jpg",
       stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.1317, 42.3396],
+      distance: "1.9 mi"
     },
     { 
       name: "Boston Duck Tour",
@@ -203,7 +212,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       imageUrl: "/images/venues/ducktour.jpg",
       stripeLink: "https://buy.stripe.com/14k9CZbP20xv7uw28j",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0737, 42.3587],
+      distance: "5.0 mi"
     }
   ],
   outdoors: [
@@ -214,7 +224,8 @@ const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       imageUrl: "/images/venues/commons.jpg",
       stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
-      coordinates: [-71.0622, 42.3663]
+      coordinates: [-71.0640, 42.3554],
+      distance: "5.5 mi"
     }
   ]
 };
@@ -238,6 +249,7 @@ export default function DateRequestPage() {
     split_payment: null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userQuizAnswers, setUserQuizAnswers] = useState<QuizAnswers | null>(null);
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -268,6 +280,30 @@ export default function DateRequestPage() {
 
     checkAuthAndFetch();
   }, [profileId, router]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('dater_archetype')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          setUserQuizAnswers({
+            idealDate: profile.dater_archetype === 'Hopeless Romantic' ? 'Concert/Activity' :
+                      profile.dater_archetype === 'Cautious Dater' ? 'Dinner or Bar' :
+                      profile.dater_archetype === 'Serial Dater' ? 'Sports Game' :
+                      'A fun group activity with friends'
+          });
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const isRestaurantVenue = (venueName: string) => {
     return VENUES.restaurants.some(venue => venue.name === venueName);
@@ -312,6 +348,35 @@ export default function DateRequestPage() {
       if (insertError) throw insertError;
 
       router.push('/daterequests');
+
+      const sendDateRequestNotification = async (receiverEmail: string, requestDetails: any) => {
+        try {
+          await fetch('/api/send-date-request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: receiverEmail,
+              requestDetails: {
+                sender_name: requestDetails.sender_name,
+                venue: requestDetails.venue,
+                proposed_time: requestDetails.proposed_time,
+                // Add any other details needed for the email template
+              }
+            })
+          });
+        } catch (error) {
+          console.error('Error sending date request notification:', error);
+        }
+      };
+
+      const requestDetails = {
+        sender_name: session.user.email,
+        venue: formData.venue,
+        proposed_time: formData.proposed_time,
+        receiver_email: profileId // Assuming profileId is the receiver's email
+      };
+
+      await sendDateRequestNotification(requestDetails.receiver_email, requestDetails);
     } catch (err) {
       setError('Failed to send date request');
       console.error('Error:', err);
@@ -335,15 +400,6 @@ export default function DateRequestPage() {
       </div>
     );
   }
-
-  const filteredVenues = Object.entries(VENUES).flatMap(([category, venues]) => {
-    if (selectedCategory !== 'all' && selectedCategory !== category) return [];
-    return venues.filter(venue => 
-      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      venue.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      venue.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
 
   return (
     <div className="min-h-screen bg-white">

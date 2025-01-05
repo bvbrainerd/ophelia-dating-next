@@ -37,3 +37,35 @@ body {
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
+
+.venue-card {
+  @apply flex items-start gap-4 w-full;
+}
+
+.venue-info {
+  @apply flex flex-col items-start;
+}
+
+.venue-location {
+  @apply text-gray-500;
+}
+
+.venue-type {
+  @apply text-gray-500 text-sm mt-1;
+}
+
+.venue-selector-card {
+  @apply pl-6 pr-4 py-4 flex gap-4 w-full;
+}
+
+.venue-selector-info {
+  @apply min-w-0 flex flex-col items-start;
+}
+
+.venue-selector-location {
+  @apply text-gray-500 text-sm flex items-center gap-2;
+}
+
+.venue-selector-type {
+  @apply text-gray-500 text-sm mt-1;
+}

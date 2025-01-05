@@ -7,6 +7,7 @@ import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import EmailUpdateSection from '@/components/EmailUpdateSection';
 
 // Types
 interface ProfileData {
@@ -19,6 +20,7 @@ interface ProfileData {
   dater_archetype: string;
   school: string;
   avatar_url: string | null;
+  email: string;
 }
 
 // Constants
@@ -57,6 +59,7 @@ export default function EditProfilePage() {
     dater_archetype: '',
     school: '',
     avatar_url: null,
+    email: '',
   });
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -184,7 +187,7 @@ export default function EditProfilePage() {
     }
   };
 
-  const handleChange = (field: keyof ProfileData, value: string | number | null) => {
+  const handleChange = (field: keyof ProfileData, value: string | number) => {
     setProfileData(prev => ({
       ...prev,
       [field]: value
@@ -296,35 +299,14 @@ export default function EditProfilePage() {
     refreshImage();
   }, [profileData.avatar_url]);
 
-  const handleResetPassword = async () => {
+  const handleResetPassword = () => {
     try {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user?.email) {
-        setError('No email found for current user');
-        return;
-      }
-
-      // Use our custom API route instead
-      const response = await fetch('/api/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: user.email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send reset email');
-      }
-
-      setError('Password reset link has been sent to your email.');
-    } catch (err) {
-      console.error('Detailed error:', err);
-      setError('Unable to process request. Please try again later.');
+      // Just redirect to reset password page
+      window.location.replace('/auth/reset-password');
+    } catch (error) {
+      console.error('Error:', error);
+      setError('Failed to initiate password reset');
     } finally {
       setIsLoading(false);
     }
@@ -414,7 +396,7 @@ export default function EditProfilePage() {
               type="number"
               placeholder="Age"
               value={profileData.age || ''}
-              onChange={(e) => handleChange('age', e.target.value ? parseInt(e.target.value) : null)}
+              onChange={(e) => handleChange('age', e.target.value ? parseInt(e.target.value) : 0)}
               className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
               required
               min="18"
@@ -484,6 +466,10 @@ export default function EditProfilePage() {
                 </option>
               ))}
             </select>
+
+            <EmailUpdateSection 
+              onEmailChange={(email) => handleChange('email', email)} 
+            />
 
             {/* Action Buttons */}
             <div className="space-y-3 pt-4">

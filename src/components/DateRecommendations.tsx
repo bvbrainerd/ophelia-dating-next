@@ -23,6 +23,7 @@ interface DateSpot {
   imageUrl: string;
   coordinates: [number, number];
   description?: string;
+  rating?: number;
 }
 
 const sampleDateSpots: DateSpot[] = [
@@ -31,38 +32,92 @@ const sampleDateSpots: DateSpot[] = [
     name: 'Boston Bruins',
     category: 'sports',
     location: 'TD Garden',
-    distance: '0.7 mi',
+    distance: '5.8 mi',
     imageUrl: '/images/venues/bruins.jpg',
-    coordinates: [-71.0622, 42.3663]
+    coordinates: [-71.0622, 42.3663],
+    rating: 4.7
   },
   {
     id: '2',
     name: 'Barcelona Wine Bar',
     category: 'restaurants',
     location: 'Boston, MA',
-    distance: '0.5 mi',
+    distance: '4.9 mi',
     imageUrl: '/images/venues/barcelona.jpg',
-    coordinates: [-71.0622, 42.3663]
+    coordinates: [-71.0761, 42.3457],
+    rating: 4.6
   },
   {
     id: '3',
     name: 'Museum of Fine Arts',
     category: 'activities',
     location: 'Boston, MA',
-    distance: '1.2 mi',
+    distance: '3.6 mi',
     imageUrl: '/images/venues/museum.jpg',
-    coordinates: [-71.0622, 42.3663]
+    coordinates: [-71.0995, 42.3394],
+    rating: 4.8
   },
   {
     id: '4',
     name: 'The Clay Room',
     category: 'activities',
     location: 'Boston, MA',
-    distance: '0.8 mi',
+    distance: '1.9 mi',
     imageUrl: '/images/venues/clayroom.jpg',
-    coordinates: [-71.0622, 42.3663]
+    coordinates: [-71.1317, 42.3396],
+    rating: 4.6
   }
 ];
+
+interface Venue {
+  name: string;
+  category: string[];  // e.g. ['bar', 'restaurant', 'sports', 'activity']
+  description: string;
+  image: string;
+}
+
+const venues: Venue[] = [
+  {
+    name: "Lolita Back Bay",
+    category: ["bar", "restaurant", "dinner"],
+    description: "Trendy Mexican restaurant & bar",
+    image: "/venues/lolita.jpg"
+  },
+  {
+    name: "Fenway Park",
+    category: ["sports", "activity", "group"],
+    description: "Historic baseball stadium",
+    image: "/venues/fenway.jpg"
+  },
+  {
+    name: "House of Blues",
+    category: ["concert", "activity", "entertainment"],
+    description: "Live music venue",
+    image: "/venues/hob.jpg"
+  },
+  // Add more venues with categories
+];
+
+const getRecommendedVenues = (quizAnswers: any) => {
+  // Map quiz answers to venue categories
+  const preferredCategories: string[] = [];
+  
+  // Check first date preference from quiz
+  if (quizAnswers.idealDate === "Dinner or Bar") {
+    preferredCategories.push("bar", "restaurant", "dinner");
+  } else if (quizAnswers.idealDate === "Sports Game") {
+    preferredCategories.push("sports", "activity");
+  } else if (quizAnswers.idealDate === "Concert/Activity") {
+    preferredCategories.push("concert", "activity", "entertainment");
+  } else if (quizAnswers.idealDate === "A fun group activity with friends") {
+    preferredCategories.push("group", "activity");
+  }
+
+  // Filter venues that match preferred categories
+  return venues.filter(venue => 
+    venue.category.some(cat => preferredCategories.includes(cat))
+  );
+};
 
 export default function DateRecommendations() {
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -70,16 +125,20 @@ export default function DateRecommendations() {
 
   const filteredSpots = selectedCategory === 'all' 
     ? dateSpots 
+    : selectedCategory === 'recommended'
+    ? dateSpots.filter(spot => (spot.rating ?? 0) >= 4.6)
     : dateSpots.filter(spot => spot.category === selectedCategory);
 
   return (
-    <div className="max-w-6xl mx-auto p-5 mb-24">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-bold mb-2 text-[#BA2525]">Top Rated Date Locations Near You</h2>
+    <div className="max-w-6xl mx-auto p-5">
+      <div className="mt-4 mb-10">
+        <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center hover:opacity-80 transition-opacity">
+          Top Rated Date Locations Near You
+        </h2>
       </div>
-
+      
       {/* Category Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto mb-8">
         {categories.map((category) => (
           <button
             key={category.id}
@@ -95,7 +154,7 @@ export default function DateRecommendations() {
       </div>
 
       {/* Map and Listings Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
         {/* Map Section */}
         <div className="bg-white rounded-[30px] h-[400px] lg:sticky lg:top-4 shadow-sm overflow-hidden">
           <Map 
@@ -106,8 +165,8 @@ export default function DateRecommendations() {
           />
         </div>
 
-        {/* Listings Section - Back to original format */}
-        <div className="pb-16">
+        {/* Listings Section */}
+        <div className="max-h-[500px] overflow-y-auto">
           <div className="space-y-4">
             {filteredSpots.map(spot => (
               <Link href={`/date-spot/${spot.id}`} key={spot.id}>
@@ -138,12 +197,9 @@ export default function DateRecommendations() {
         </div>
       </div>
 
-      {/* Add Start Dating Button */}
-      <div className="flex justify-center mt-8 mb-4">
-        <Link
-          href="/matching"
-          className="px-6 py-3 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-        >
+      {/* View More Button */}
+      <div className="flex justify-center mt-4">
+        <Link href="/matching" className="px-6 py-3 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors">
           View Matches →
         </Link>
       </div>

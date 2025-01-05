@@ -37,19 +37,6 @@ export default function Map({ markers = [], center = [-71.0589, 42.3601], zoom =
       onMapLoad(map.current);
     }
 
-    // Add click handler to show coordinates
-    map.current.on('click', (e) => {
-      const coordinates = e.lngLat;
-      
-      new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(`
-          <p class="text-sm font-semibold">Clicked Location</p>
-          <p class="text-xs text-gray-600">[${coordinates.lng.toFixed(4)}, ${coordinates.lat.toFixed(4)}]</p>
-        `)
-        .addTo(map.current!);
-    });
-
     return () => {
       markersRef.current.forEach(marker => marker.remove());
       markersRef.current = [];

@@ -1,40 +1,64 @@
 import { NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
-import { MailDataRequired } from '@sendgrid/mail';
 
-// Initialize SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
 export async function POST(request: Request) {
   try {
-    const { recipientEmail, recipientName, dateDetails, venueName, dateTime } = await request.json();
+    const { email, dateDetails } = await request.json();
 
-    const msg: MailDataRequired = {
-      to: recipientEmail,
-      from: 'dates@opheliadating.io',
+    // Send immediate confirmation email
+    await sgMail.send({
+      to: email,
+      from: 'noreply@opheliadating.com',
       templateId: process.env.SENDGRID_DATE_CONFIRMATION_TEMPLATE_ID!,
-      dynamicTemplateData: {
-        recipient_name: recipientName,
-        venue_name: venueName,
-        date_time: new Date(dateTime).toLocaleString('en-US', {
-          weekday: 'long',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        }),
-        venue_details: dateDetails,
-        action_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dates/upcoming`
-      }
-    };
+      dynamicTemplateData: dateDetails
+    });
 
-    await sgMail.send(msg);
+    // Send date reminder email
+    await sgMail.send({
+      to: email,
+      from: 'noreply@opheliadating.com',
+      templateId: process.env.SENDGRID_DATE_REMINDER_TEMPLATE_ID!,
+      dynamicTemplateData: dateDetails
+    });
+
+    const dateTime = new Date(dateDetails.date_time);
+    const now = new Date();
+
+    // Calculate timing for pre and post date emails
+    const checkInTime = new Date(dateTime.getTime() - (24 * 60 * 60 * 1000));
+    const postDateTime = new Date(dateTime.getTime() + (12 * 60 * 60 * 1000));
+    
+    // Schedule pre-date check-in email if date is more than 24 hours away
+    if (checkInTime > now) {
+      await sgMail.send({
+        to: email,
+        from: 'noreply@opheliadating.com',
+        templateId: process.env.SENDGRID_PRE_DATE_CHECK_IN_TEMPLATE_ID!,
+        dynamicTemplateData: {
+          ...dateDetails,
+          sendAt: checkInTime.toISOString()
+        }
+      });
+    }
+
+    // Schedule post-date check-in email
+    await sgMail.send({
+      to: email,
+      from: 'noreply@opheliadating.com',
+      templateId: process.env.SENDGRID_POST_DATE_CHECK_IN_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...dateDetails,
+        sendAt: postDateTime.toISOString()
+      }
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
+    console.error('SendGrid Error:', error);
     return NextResponse.json(
-      { error: 'Failed to send confirmation email' },
+      { error: 'Failed to send confirmation emails' },
       { status: 500 }
     );
   }

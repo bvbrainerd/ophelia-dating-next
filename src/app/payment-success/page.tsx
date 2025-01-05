@@ -80,6 +80,59 @@ export default function PaymentSuccessHandler() {
           router.push('/dates/upcoming');
         }, 2000);
 
+        // After successful payment
+        const sendDateConfirmationEmails = async (dateId: string) => {
+          try {
+            // Get date details from Supabase
+            const { data: dateRequest, error: dateError } = await supabase
+              .from('date_requests')
+              .select(`
+                *,
+                sender:sender_id(email, first_name),
+                receiver:receiver_id(email, first_name)
+              `)
+              .eq('id', dateId)
+              .single();
+
+            if (dateError) throw dateError;
+
+            // Prepare date details for email templates
+            const dateDetails = {
+              date_time: dateRequest.proposed_time,
+              venue: dateRequest.venue,
+              sender_name: dateRequest.sender.first_name,
+              receiver_name: dateRequest.receiver.first_name,
+              // Add any other details needed for the email templates
+            };
+
+            // Send confirmation emails to both participants
+            await Promise.all([
+              fetch('/api/send-date-confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: dateRequest.sender.email,
+                  dateDetails
+                })
+              }),
+              fetch('/api/send-date-confirmation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: dateRequest.receiver.email,
+                  dateDetails
+                })
+              })
+            ]);
+
+          } catch (error) {
+            console.error('Error sending confirmation emails:', error);
+          }
+        };
+
+        // Add this to your existing payment success handler
+        await sendDateConfirmationEmails(dateId);
+
       } catch (err) {
         console.error('Error processing payment success:', err);
         setError(err instanceof Error ? err.message : 'Failed to confirm payment');
