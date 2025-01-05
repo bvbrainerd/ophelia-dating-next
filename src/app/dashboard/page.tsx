@@ -11,6 +11,7 @@ import Header from '@/components/Header';
 import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import DateRecommendations from '@/components/DateRecommendations';
+import { checkAndRefreshSession } from '@/lib/auth';
 
 const MAX_PREVIEW_MATCHES = 6;
 
