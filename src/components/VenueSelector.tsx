@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Search, Star, ArrowLeft } from 'lucide-react';
 import Map from './Map';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Image from 'next/image';
 import { Venue } from '@/types/venue';
+import EventbriteEvents from './EventbriteEvents';
 
 interface VenueSelectorProps {
   venues: Record<string, Venue[]>;
@@ -19,32 +20,56 @@ const categories = [
   { id: 'recommended', label: 'Recommended' },
   { id: 'sports', label: 'Sports' },
   { id: 'restaurants', label: 'Restaurants' },
-  { id: 'activities', label: 'Activities' }
+  { id: 'activities', label: 'Activities' },
+  { id: 'events', label: 'Events' }
 ];
+
+interface EventbriteEvent {
+  id: string;
+  name: { text: string };
+  start: { local: string };
+  end: { local: string };
+  logo?: { url: string };
+  url: string;
+}
 
 export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: VenueSelectorProps) {
   const [showVenueList, setShowVenueList] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [events, setEvents] = useState<EventbriteEvent[]>([]);
 
   const filteredVenues = Object.entries(venues).flatMap(([category, venueList]) => {
-    // For recommended category
+    if (selectedCategory === 'events') {
+      return [];
+    }
+
     if (selectedCategory === 'recommended') {
       return venueList.filter(venue => 
         venue.type.toLowerCase() === 'sports' || 
         venue.type.toLowerCase() === 'restaurant'
       );
     }
-    
-    // For other categories
+
     if (selectedCategory !== 'all' && selectedCategory !== category) return [];
-    
+
     return venueList.filter(venue => 
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       venue.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       venue.location.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
+
+  const fetchEventsForVenue = async (venueId: string) => {
+    try {
+      const response = await fetch(`/api/eventbrite/events?venueId=${venueId}`);
+      const data = await response.json();
+      setEvents(data.events || []);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setEvents([]);
+    }
+  };
 
   return (
     <div>
@@ -122,6 +147,7 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                       key={venue.name}
                       onClick={() => {
                         onVenueSelect(venue.name);
+                        fetchEventsForVenue(venue.id); // Fetch events for the selected venue
                         setShowVenueList(false);
                       }}
                       className="w-full bg-white hover:bg-gray-100 p-4 flex items-start gap-4 transition-colors duration-200"
@@ -153,11 +179,49 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                     </button>
                   ))}
                 </div>
+
+                {/* Events List */}
+                <div className="space-y-4 mt-6">
+                  {events.length === 0 ? (
+                    <p>No current events available</p>
+                  ) : (
+                    <ul className="space-y-4">
+                      {events.map((event) => (
+                        <li key={event.id} className="border rounded-lg p-4">
+                          <a href={event.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-4">
+                            <div className="relative w-24 h-24 flex-shrink-0">
+                              <Image
+                                src={event.logo?.url || '/default-event-image.jpg'}
+                                alt={event.name?.text || 'Event'}
+                                fill
+                                sizes="96px"
+                                className="object-cover rounded-lg"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold">{event.name?.text}</h3>
+                              <p className="text-gray-500 text-sm">
+                                {new Date(event.start.local).toLocaleString()} -{' '}
+                                {new Date(event.end.local).toLocaleString()}
+                              </p>
+                            </div>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
+
+            {selectedCategory === 'events' && (
+              <div className="mt-4">
+                <EventbriteEvents />
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
-} 
+}

@@ -9,6 +9,8 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import EmailUpdateSection from '@/components/EmailUpdateSection';
 
+const DEFAULT_AVATAR = '/images/default-avatar.png';
+
 // Types
 interface ProfileData {
   first_name: string;
@@ -41,8 +43,6 @@ const ARCHETYPES = [
   { value: 'Friends with Benefits', label: 'Friends with Benefits' },
 ] as const;
 
-const DEFAULT_AVATAR = '/images/default-avatar.png';
-
 export default function EditProfilePage() {
   const router = useRouter();
 
@@ -65,42 +65,21 @@ export default function EditProfilePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
-  // Add this function to get a signed URL for an existing file
-  const getSignedUrl = async (filePath: string) => {
-    if (!filePath || filePath.includes('default-avatar')) {
-      return '/images/default-avatar.png';
-    }
-
-    try {
-      // Extract just the filename from the full URL or path
-      const matches = filePath.match(/\/avatars\/([^?]+)/);
-      if (!matches || !matches[1]) {
-        return '/images/default-avatar.png';
-      }
-
-      const fileName = matches[1];
-
-      const { data, error } = await supabase
-        .storage
-        .from('avatars')
-        .createSignedUrl(fileName, 3600);
-
-      if (error) throw error;
-      return data?.signedUrl || '/images/default-avatar.png';
-    } catch (error) {
-      console.error('Error getting signed URL:', error);
-      return '/images/default-avatar.png';
-    }
-  };
-
   // Wrap fetchProfile in useCallback
   const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw sessionError;
+      }
+
       if (!session) {
+        console.log('No active session, redirecting to login');
         router.replace('/auth/login');
         return;
       }
@@ -111,20 +90,52 @@ export default function EditProfilePage() {
         .eq('id', session.user.id)
         .single();
 
-      if (profileError) throw profileError;
-
-      if (data) {
-        // Get signed URL for avatar if it exists
-        const avatarUrl = data.avatar_url ? await getSignedUrl(data.avatar_url) : '/images/default-avatar.png';
-        
-        setProfileData({
-          ...data,
-          avatar_url: avatarUrl
-        });
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw profileError;
       }
+
+      if (!data) {
+        console.error('No profile data found');
+        throw new Error('Profile not found');
+      }
+
+      // Process avatar URL if present
+      if (data.avatar_url && !data.avatar_url.startsWith('/images/')) {
+        try {
+          // Clean up the path - extract just the filename
+          const cleanPath = data.avatar_url
+            .split('/')
+            .pop()
+            ?.split('?')[0];
+
+          if (cleanPath) {
+            // Get the download URL for the avatar
+            const { data: downloadData } = await supabase
+              .storage
+              .from('avatars')
+              .createSignedUrl(`avatars/${cleanPath}`, 60 * 60); // 1 hour expiry
+
+            if (downloadData?.signedUrl) {
+              data.avatar_url = downloadData.signedUrl;
+            }
+          }
+        } catch (error) {
+          console.error('Error getting signed URL:', error);
+          data.avatar_url = DEFAULT_AVATAR;
+        }
+      }
+
+      setProfileData(data);
+      setError(null);
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       setError(error instanceof Error ? error.message : 'Failed to load profile');
+      
+      if (error instanceof Error && 
+          (error.message.includes('JWT') || error.message.includes('session'))) {
+        router.replace('/auth/login');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -172,15 +183,15 @@ export default function EditProfilePage() {
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, avatarFile, {
+        .upload(`avatars/${fileName}`, avatarFile, {
           cacheControl: '0',
           upsert: true
         });
 
       if (uploadError) throw uploadError;
 
-      // Just return the filename
-      return fileName;
+      // Return the full path including the avatars/ prefix
+      return `avatars/${fileName}`;
     } catch (error) {
       console.error('Error uploading image:', error);
       throw error;
@@ -204,10 +215,10 @@ export default function EditProfilePage() {
       if (authError) throw authError;
       if (!user) throw new Error('No user found');
 
-      let avatarFileName = profileData.avatar_url;
+      let avatarUrl = profileData.avatar_url;
 
       if (avatarFile) {
-        avatarFileName = await uploadImage(user.id);
+        avatarUrl = await uploadImage(user.id);
       }
 
       const updates = {
@@ -220,7 +231,7 @@ export default function EditProfilePage() {
         bio: profileData.bio,
         dater_archetype: profileData.dater_archetype,
         school: profileData.school,
-        avatar_url: avatarFileName,
+        avatar_url: avatarUrl,
         profile_completed: true
       };
 
@@ -230,12 +241,9 @@ export default function EditProfilePage() {
 
       if (updateError) throw updateError;
 
-      // Get the signed URL for display
-      const signedUrl = await getSignedUrl(avatarFileName || '');
-      
       setProfileData(prev => ({
         ...prev,
-        avatar_url: signedUrl
+        avatar_url: avatarUrl
       }));
 
       setImageKey(prev => prev + 1);
@@ -275,23 +283,40 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     const refreshImage = async () => {
-      if (profileData.avatar_url) {
-        // Force browser to reload the image
-        setImageKey(prev => prev + 1);
-        
-        // Verify the image exists
+      if (profileData.avatar_url && !profileData.avatar_url.startsWith('/images/')) {
         try {
-          const response = await fetch(profileData.avatar_url);
-          if (!response.ok) {
-            setImageError(true);
-            setProfileData(prev => ({
-              ...prev,
-              avatar_url: '/images/default-avatar.png'
-            }));
+          // If it's already a signed URL and not expired, keep using it
+          if (profileData.avatar_url.includes('token=')) {
+            return;
+          }
+
+          // Clean up the path - extract just the filename
+          const cleanPath = profileData.avatar_url
+            .split('/')
+            .pop()
+            ?.split('?')[0];
+
+          if (cleanPath) {
+            // Get the download URL for the avatar
+            const { data: downloadData } = await supabase
+              .storage
+              .from('avatars')
+              .createSignedUrl(`avatars/${cleanPath}`, 60 * 60); // 1 hour expiry
+
+            if (downloadData?.signedUrl) {
+              setProfileData(prev => ({
+                ...prev,
+                avatar_url: downloadData.signedUrl
+              }));
+            }
           }
         } catch (error) {
-          console.error('Error verifying image:', error);
+          console.error('Error refreshing image:', error);
           setImageError(true);
+          setProfileData(prev => ({
+            ...prev,
+            avatar_url: DEFAULT_AVATAR
+          }));
         }
       }
     };
@@ -332,12 +357,22 @@ export default function EditProfilePage() {
                   <div className="relative w-full h-full">
                     <Image
                       key={imageKey}
-                      src={profileData.avatar_url}
-                      alt="Profile preview"
+                      src={previewUrl || profileData.avatar_url || DEFAULT_AVATAR}
+                      alt="Profile"
                       fill
                       className="object-cover"
                       sizes="128px"
                       priority
+                      unoptimized={true}
+                      onError={(e) => {
+                        console.error('Failed to load profile image');
+                        const target = e.target as HTMLImageElement;
+                        target.src = DEFAULT_AVATAR;
+                        setProfileData(prev => ({
+                          ...prev,
+                          avatar_url: DEFAULT_AVATAR
+                        }));
+                      }}
                     />
                   </div>
                 ) : (
