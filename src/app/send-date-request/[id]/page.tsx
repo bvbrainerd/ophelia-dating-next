@@ -9,6 +9,7 @@ import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import VenueSelector from '@/components/VenueSelector';
 import { Venue } from '@/types/venue';
+import EventbriteEvents from '@/components/EventbriteEvents';
 
 interface Profile {
   id: string;
@@ -32,6 +33,7 @@ interface QuizAnswers {
 const VENUES: Record<string, Venue[]> = {
   sports: [
     { 
+      id: "boston-bruins",
       name: "Boston Bruins",
       location: "TD Garden",
       type: "Sports",
@@ -43,6 +45,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.8 mi"
     },
     { 
+      id: "celtics",
       name: "Celtics",
       location: "TD Garden",
       type: "Sports",
@@ -54,6 +57,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.8 mi"
     },
     { 
+      id: "bc-hockey",
       name: "BC Hockey",
       location: "Conte Forum",
       type: "Sports",
@@ -65,6 +69,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "0.1 mi"
     },
     { 
+      id: "bc-basketball",
       name: "BC Basketball",
       location: "Conte Forum",
       type: "Sports",
@@ -78,6 +83,7 @@ const VENUES: Record<string, Venue[]> = {
   ],
   restaurants: [
     { 
+      id: "barcelona-wine-bar",
       name: "Barcelona Wine Bar",
       location: "Boston, MA",
       type: "Spanish",
@@ -89,6 +95,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "4.9 mi"
     },
     { 
+      id: "capo",
       name: "Capo",
       location: "South Boston",
       type: "Italian",
@@ -100,6 +107,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "6.7 mi"
     },
     { 
+      id: "lolita-back-bay",
       name: "Lolita Back Bay",
       location: "Back Bay",
       type: "Mexican",
@@ -111,6 +119,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "4.8 mi"
     },
     { 
+      id: "blue-ribbon-sushi",
       name: "Blue Ribbon Sushi",
       location: "Boston, MA",
       type: "Japanese",
@@ -122,6 +131,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.7 mi"
     },
     { 
+      id: "lucca-north-end",
       name: "Lucca North End",
       location: "North End",
       type: "Italian",
@@ -133,6 +143,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "6.0 mi"
     },
     { 
+      id: "joes-on-newbury",
       name: "Joes on Newbury",
       location: "Back Bay",
       type: "American",
@@ -144,6 +155,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "4.7 mi"
     },
     { 
+      id: "kured",
       name: "Kured",
       location: "Beacon Hill",
       type: "Charcuterie",
@@ -155,6 +167,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.2 mi"
     },
     { 
+      id: "branchline",
       name: "Branchline",
       location: "Brookline, MA",
       type: "American",
@@ -168,6 +181,7 @@ const VENUES: Record<string, Venue[]> = {
   ],
   activities: [
     { 
+      id: "museum-of-fine-arts",
       name: "Museum of Fine Arts",
       location: "Boston, MA",
       type: "Culture",
@@ -179,6 +193,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "3.6 mi"
     },
     { 
+      id: "private-helicopter-ride",
       name: "Private Helicopter Ride",
       location: "Boston, MA",
       type: "Adventure",
@@ -190,6 +205,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "7.8 mi"
     },
     { 
+      id: "f1-arcade",
       name: "F1 Arcade",
       location: "Boston, MA",
       type: "Entertainment",
@@ -201,6 +217,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.7 mi"
     },
     { 
+      id: "clay-room",
       name: "The Clay Room",
       location: "Boston, MA",
       type: "Creative",
@@ -212,6 +229,7 @@ const VENUES: Record<string, Venue[]> = {
       distance: "1.9 mi"
     },
     { 
+      id: "boston-duck-tour",
       name: "Boston Duck Tour",
       location: "Downtown Boston",
       type: "Tour",
@@ -225,6 +243,7 @@ const VENUES: Record<string, Venue[]> = {
   ],
   outdoors: [
     { 
+      id: "boston-commons",
       name: "Boston Commons",
       location: "Boston, MA",
       type: "Park",
@@ -239,6 +258,15 @@ const VENUES: Record<string, Venue[]> = {
 };
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
+
+const categories = [
+  { id: 'all', label: 'All' },
+  { id: 'recommended', label: 'Recommended' },
+  { id: 'sports', label: 'Sports' },
+  { id: 'restaurants', label: 'Restaurants' },
+  { id: 'activities', label: 'Activities' },
+  { id: 'events', label: 'Events' }
+];
 
 export default function DateRequestPage() {
   const params = useParams();
