@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import { Crown, Star, Heart } from 'lucide-react';
 import Header from '@/components/Header';
+import ProfileImage from '@/components/ProfileImage';
 
 interface Profile {
   id: string;
@@ -97,11 +97,7 @@ export default function UserProfile() {
         if (error) throw error;
 
         if (data) {
-          console.log('Original avatar URL:', data.avatar_url);
-          
           const signedAvatarUrl = await getSignedUrl(data.avatar_url);
-          console.log('Signed avatar URL:', signedAvatarUrl);
-          
           setProfile({
             ...data,
             avatar_url: signedAvatarUrl
@@ -177,15 +173,10 @@ export default function UserProfile() {
         <Header variant="logo-only" />
         {/* Profile Image */}
         <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 mt-4">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Image
-              src={profile.avatar_url || '/images/default-avatar.png'}
-              alt={`${profile.first_name} ${profile.last_name}`}
-              fill
-              className="object-cover object-center"
-              onError={(e) => (e.currentTarget.src = '/images/default-avatar.png')}
-            />
-          </div>
+          <ProfileImage 
+            user={profile} 
+            className="w-full h-full"
+          />
         </div>
 
         {/* Basic Info */}
