@@ -23,7 +23,6 @@ interface UpcomingDate {
   venue: string;
   proposed_time: string;
   status: string;
-  proposed_payment: number;
   isSender: boolean;
 }
 
@@ -33,7 +32,6 @@ interface ReceiverDateResponse {
   venue: string;
   proposed_time: string;
   status: string;
-  proposed_payment: number;
   profiles: Profile;
 }
 
@@ -42,7 +40,6 @@ interface SenderDateResponse {
   venue: string;
   proposed_time: string;
   status: string;
-  proposed_payment: number;
   profiles: Profile;
 }
 
@@ -70,7 +67,6 @@ const UpcomingDatesPage: FC = () => {
           venue,
           proposed_time,
           status,
-          proposed_payment,
           profiles!date_requests_sender_id_fkey (
             id,
             first_name,
@@ -96,7 +92,6 @@ const UpcomingDatesPage: FC = () => {
           venue,
           proposed_time,
           status,
-          proposed_payment,
           profiles!date_requests_receiver_id_fkey (
             id,
             first_name,
@@ -123,7 +118,6 @@ const UpcomingDatesPage: FC = () => {
           venue: date.venue,
           proposed_time: date.proposed_time,
           status: date.status,
-          proposed_payment: date.proposed_payment || 0,
           isSender: false,
         })),
         ...(senderDates || []).map(date => ({
@@ -132,7 +126,6 @@ const UpcomingDatesPage: FC = () => {
           venue: date.venue,
           proposed_time: date.proposed_time,
           status: date.status,
-          proposed_payment: date.proposed_payment || 0,
           isSender: true,
         }))
       ];
@@ -254,11 +247,6 @@ const UpcomingDatesPage: FC = () => {
                     When: {new Date(date.proposed_time).toLocaleDateString()}, {new Date(date.proposed_time).toLocaleTimeString()}
                   </p>
                   <p className='font-medium'>Where: {date.venue}</p>
-                  {date.proposed_payment > 0 && (
-                    <p className='font-medium text-green-600'>
-                      {date.isSender ? 'Offered: ' : 'Payment: '}${date.proposed_payment}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -329,12 +317,23 @@ const UpcomingDatesPage: FC = () => {
                   When: {new Date(date.proposed_time).toLocaleDateString()}, {new Date(date.proposed_time).toLocaleTimeString()}
                 </p>
                 <p className='font-medium'>Where: {date.venue}</p>
-                {date.proposed_payment > 0 && (
-                  <p className='font-medium text-green-600'>
-                    {date.isSender ? 'Offered: ' : 'Payment: '}${date.proposed_payment}
-                  </p>
-                )}
               </div>
+            </div>
+            <div className='space-y-2 mt-4'>
+              <button
+                onClick={() => router.push(`/dates/upcoming/${date.id}/second-date`)}
+                className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                type="button"
+              >
+                Second Date
+              </button>
+              <button
+                onClick={() => router.push(`/dates/upcoming/${date.id}/rate`)}
+                className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                type="button"
+              >
+                Rate
+              </button>
             </div>
           </div>
         ))

@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import VenueSelector from '@/components/VenueSelector';
 import { Venue } from '@/types/venue';
 import EventbriteEvents from '@/components/EventbriteEvents';
+import Link from 'next/link';
 
 interface Profile {
   id: string;
@@ -471,7 +472,7 @@ export default function DateRequestPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
             <div>
               <h2 className="text-lg font-bold text-gray-800 mb-2">Date Location</h2>
               <VenueSelector 
@@ -551,14 +552,23 @@ export default function DateRequestPage() {
               )}
             </div>
 
-            <button 
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#BA2525] text-white p-3 rounded-full text-base font-semibold
-                hover:bg-[#a02020] transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? 'Sending...' : 'Send Date Request'}
-            </button>
+            <div className="space-y-2 mt-20">
+              <button 
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-[#BA2525] text-white p-3 rounded-full text-base font-medium
+                  hover:bg-[#a02020] transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Sending...' : 'Send Date Request'}
+              </button>
+
+              <Link
+                href="/matching"
+                className="w-full block text-center bg-white text-[#BA2525] p-3 rounded-full text-base font-medium border-2 border-[#BA2525] hover:bg-[#ffeeee] transition-colors"
+              >
+                Back to Matches
+              </Link>
+            </div>
           </form>
         </div>
       </div>

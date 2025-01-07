@@ -13,7 +13,7 @@ interface Profile {
 }
 
 interface HeaderProps {
-  variant?: 'default' | 'matching';
+  variant?: 'default' | 'matching' | 'logo-only';
 }
 
 export default function Header({ variant = 'default' }: HeaderProps) {
@@ -21,6 +21,8 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
+    if (variant === 'logo-only') return; // Don't fetch user data for logo-only variant
+    
     const fetchUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -64,25 +66,25 @@ export default function Header({ variant = 'default' }: HeaderProps) {
     };
 
     fetchUser();
-  }, []);
+  }, [variant]);
 
   return (
     <div className={`flex items-center mb-6 relative -mx-5 px-5 py-4 ${
-      variant === 'matching' ? 'bg-white' : 'bg-[#BA2525]'
+      variant === 'default' ? 'bg-[#BA2525]' : 'bg-white'
     }`}>
       <div className="absolute left-0 right-0 text-center">
         <Link href="/dashboard">
           <h1 className={`text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity ${
-            variant === 'matching' ? 'text-[#BA2525]' : 'text-white'
+            variant === 'default' ? 'text-white' : 'text-[#BA2525]'
           }`}>
             Ophelia
           </h1>
         </Link>
       </div>
-      {currentUser && (
+      {currentUser && variant !== 'logo-only' && (
         <div className="ml-auto flex items-center gap-3 z-10">
           <div className={`text-sm font-medium ${
-            variant === 'matching' ? 'text-[#BA2525]' : 'text-white'
+            variant === 'default' ? 'text-white' : 'text-[#BA2525]'
           }`}>
             {currentUser.first_name}
           </div>

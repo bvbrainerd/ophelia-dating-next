@@ -8,6 +8,7 @@ import BottomNav from '@/components/BottomNav';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import EmailUpdateSection from '@/components/EmailUpdateSection';
+import ImageCropper from '@/components/ImageCropper';
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
@@ -64,6 +65,8 @@ export default function EditProfilePage() {
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Wrap fetchProfile in useCallback
   const fetchProfile = useCallback(async () => {
@@ -154,16 +157,29 @@ export default function EditProfilePage() {
       return;
     }
 
-    // Clean up previous preview URL if it exists
+    setSelectedFile(file);
+    setShowCropper(true);
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    // Convert blob to File
+    const croppedFile = new File([croppedBlob], selectedFile?.name || 'profile.jpg', {
+      type: 'image/jpeg'
+    });
+
+    setAvatarFile(croppedFile);
+    const url = URL.createObjectURL(croppedBlob);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
-
-    // Create new preview URL
-    const url = URL.createObjectURL(file);
-    setAvatarFile(file);
     setPreviewUrl(url);
-    setImageError(false);
+    setShowCropper(false);
+    setSelectedFile(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setSelectedFile(null);
   };
 
   useEffect(() => {
@@ -538,6 +554,15 @@ export default function EditProfilePage() {
         </div>
       </div>
       <BottomNav />
+      
+      {showCropper && selectedFile && (
+        <ImageCropper
+          imageFile={selectedFile}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
+      )}
     </div>
   );
 }

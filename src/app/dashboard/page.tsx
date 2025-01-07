@@ -26,7 +26,11 @@ interface Profile {
   gender: 'male' | 'female' | 'other';
   preferred_gender: 'male' | 'female' | 'other';
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
+  dating_style?: string;
   rating?: string;
+  dater_status?: 'gold' | 'silver' | 'bronze' | null;
+  follow_through_rate?: number;
+  average_rating?: number;
 }
 
 interface DateRequestResponse {
@@ -63,12 +67,14 @@ interface Venue {
   name: string;
   location: string;
   type: string;
+  category: string;
   rating: number;
   imageUrl: string;
   stripeLink: string;
   coordinates: [number, number];
   price?: string;
   distance: string;
+  slug: string;
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -87,34 +93,40 @@ const VENUES: Record<string, Venue[]> = {
       name: "Boston Bruins",
       location: "TD Garden",
       type: "Sports",
+      category: "Sports & Entertainment",
       rating: 4.7,
       price: "$$$",
       imageUrl: "/images/venues/bruins.jpg",
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
       coordinates: [-71.0622, 42.3663],
-      distance: "5.8 mi"
+      distance: "5.8 mi",
+      slug: "boston-bruins"
     },
     { 
       name: "Celtics",
       location: "TD Garden",
       type: "Sports",
+      category: "Sports & Entertainment",
       rating: 4.7,
       price: "$$$",
       imageUrl: "/images/venues/celtics.jpg",
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
       coordinates: [-71.0622, 42.3663],
-      distance: "5.8 mi"
+      distance: "5.8 mi",
+      slug: "celtics"
     },
     { 
       name: "BC Hockey",
       location: "Conte Forum",
       type: "Sports",
+      category: "Sports & Entertainment",
       rating: 4.5,
       price: "$$",
       imageUrl: "/images/venues/bchockey.jpg",
       stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
       coordinates: [-71.1677, 42.3357],
-      distance: "0.1 mi"
+      distance: "0.1 mi",
+      slug: "bc-hockey"
     }
   ],
   restaurants: [
@@ -122,23 +134,27 @@ const VENUES: Record<string, Venue[]> = {
       name: "Barcelona Wine Bar",
       location: "South End, Boston",
       type: "Spanish",
+      category: "Food & Drinks",
       price: "$$$",
       rating: 4.6,
       imageUrl: "/images/venues/barcelona.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
       coordinates: [-71.0761, 42.3457],
-      distance: "4.9 mi"
+      distance: "4.9 mi",
+      slug: "barcelona-wine-bar"
     },
     { 
       name: "Branchline",
       location: "Brookline, MA",
       type: "American",
+      category: "Food & Drinks",
       price: "$$",
       rating: 4.5,
       imageUrl: "/images/venues/branchline.jpg",
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
       coordinates: [-71.1407, 42.3523],
-      distance: "1.5 mi"
+      distance: "1.5 mi",
+      slug: "branchline"
     }
   ],
   activities: [
@@ -146,34 +162,55 @@ const VENUES: Record<string, Venue[]> = {
       name: "Museum of Fine Arts",
       location: "Boston, MA",
       type: "Culture",
+      category: "Arts & Culture",
       rating: 4.8,
       price: "$$",
       imageUrl: "/images/venues/museum.jpg",
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0995, 42.3394],
-      distance: "3.6 mi"
+      distance: "3.6 mi",
+      slug: "museum-of-fine-arts"
     },
     { 
       name: "Private Helicopter Ride",
       location: "Boston, MA",
       type: "Adventure",
+      category: "Adventure & Outdoors",
       price: "$$$$",
       rating: 4.9,
       imageUrl: "/images/venues/helicopter.jpg",
       stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
       coordinates: [-71.0217, 42.3656],
-      distance: "7.8 mi"
+      distance: "7.8 mi",
+      slug: "private-helicopter-ride"
     },
     { 
       name: "The Clay Room",
       location: "Brookline, MA",
       type: "Creative",
+      category: "Arts & Culture",
       rating: 4.6,
       price: "$$",
       imageUrl: "/images/venues/clayroom.jpg",
       stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
       coordinates: [-71.1317, 42.3396],
-      distance: "1.9 mi"
+      distance: "1.9 mi",
+      slug: "the-clay-room"
+    }
+  ],
+  events: [
+    { 
+      name: "Boston Celtics Game",
+      location: "TD Garden",
+      type: "Sports",
+      category: "Events",
+      rating: 4.8,
+      price: "$$$",
+      imageUrl: "/images/venues/celtics.jpg",
+      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
+      coordinates: [-71.0622, 42.3663],
+      distance: "5.8 mi",
+      slug: "boston-celtics-game"
     }
   ]
 };
@@ -187,17 +224,18 @@ const getAvatarUrl = async (avatarPath: string | null) => {
       return avatarPath;
     }
 
-    // Clean up the path - remove any duplicate avatars/ prefixes and query parameters
-    const cleanPath = avatarPath
-      .replace(/^avatars\/avatars\//, 'avatars/') // Remove duplicate avatars/
-      .replace(/^avatars\//, '')                  // Remove single avatars/
+    // Extract just the filename from the path
+    const filename = avatarPath
+      .split('/')                                // Split by /
+      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
+      .join('/')                                 // Join remaining parts
       .split('?')[0];                            // Remove query parameters
 
     // Get a public URL that doesn't expire
     const { data: publicUrlData } = supabase
       .storage
       .from('avatars')
-      .getPublicUrl(cleanPath);
+      .getPublicUrl(filename);
 
     if (!publicUrlData?.publicUrl) {
       throw new Error('Could not generate public URL');
@@ -423,13 +461,21 @@ export default function DashboardPage() {
           return;
         }
 
+        // Fetch profile with all fields
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('*')
+          .select(`
+            *,
+            dater_archetype,
+            dating_style
+          `)
           .eq('id', user.id)
-          .maybeSingle();
+          .single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+          throw profileError;
+        }
 
         if (!profile) {
           console.log('No profile found, redirecting to quiz');
@@ -437,6 +483,7 @@ export default function DashboardPage() {
           return;
         }
 
+        console.log('Fetched profile:', profile);
         setCurrentUser(profile);
         
       } catch (error) {
@@ -629,36 +676,42 @@ export default function DashboardPage() {
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[
-              { icon: Crown, value: 'Gold', label: 'Dater Status' },
+              { icon: Crown, value: currentUser.dater_status || 'Bronze', label: 'Dater Status' },
               { 
                 icon: null,
                 value: (
                   <div className="flex items-center">
-                    {'★★★★★'.split('').map((star, i) => (
-                      <span key={i} className="text-[#BA2525] text-xs">★</span>
+                    {Array(5).fill(0).map((_, i) => (
+                      <span key={i} className="text-[#BA2525] text-base">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </span>
                     ))}
                   </div>
                 ), 
                 label: 'Your Dater Rating' 
               },
-              { icon: Heart, value: '0%', label: 'Your Date Follow-Through' }
+              { icon: Heart, value: currentUser.follow_through_rate ? `${currentUser.follow_through_rate}%` : '0%', label: 'Your Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
               <div key={label} className="overflow-hidden">
-                <Card className="col-span-1 bg-white border-2 border-[#BA2525] !rounded-[50px] h-14 shadow-sm overflow-hidden">
-                  <CardContent className="p-0 h-full">
-                    <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {Icon && <Icon className="text-[#BA2525]" size={15} />}
-                        {typeof value === 'string' ? (
-                          <div className="text-base font-medium text-[#BA2525]">{value}</div>
-                        ) : (
-                          value
-                        )}
+                <Link href={`/profile/${currentUser.id}`}>
+                  <Card className="col-span-1 bg-white border-2 border-[#BA2525] !rounded-[50px] h-14 shadow-sm overflow-hidden hover:bg-[#ffeeee] transition-colors cursor-pointer">
+                    <CardContent className="p-0 h-full">
+                      <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {Icon && <Icon className="text-[#BA2525]" size={15} />}
+                          {typeof value === 'string' ? (
+                            <div className="text-base font-medium text-[#BA2525]">{value}</div>
+                          ) : (
+                            value
+                          )}
+                        </div>
+                        <div className="text-[10px] text-[#BA2525]/80 -mt-0.5">{label}</div>
                       </div>
-                      <div className="text-[10px] text-[#BA2525]/80 -mt-0.5">{label}</div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               </div>
             ))}
           </div>
