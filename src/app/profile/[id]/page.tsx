@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
+import { Crown, Star, Heart } from 'lucide-react';
+import Header from '@/components/Header';
 
 interface Profile {
   id: string;
@@ -17,6 +19,10 @@ interface Profile {
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
   preferred_gender: 'male' | 'female' | 'other';
   school: string;
+  average_rating: number | null;
+  total_ratings: number | null;
+  dater_status: 'gold' | 'silver' | 'bronze' | null;
+  follow_through_rate: number | null;
 }
 
 const archetypeMap = {
@@ -65,6 +71,9 @@ const getSignedUrl = async (filePath: string) => {
 export default function UserProfile() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const context = searchParams.get('context');
+  const dateId = searchParams.get('dateId');
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +130,14 @@ export default function UserProfile() {
     }
   };
 
+  const handleBackButton = () => {
+    if (context === 'second-date' && dateId) {
+      router.push(`/dates/upcoming/${dateId}/second-date`);
+    } else {
+      router.push('/matching');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-white">
@@ -150,23 +167,63 @@ export default function UserProfile() {
   return (
     <>
       <main className="max-w-md mx-auto p-5 pb-24 bg-white min-h-screen">
-        <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4">
-          <Image
-            src={profile.avatar_url || '/images/default-avatar.png'}
-            alt={`${profile.first_name} ${profile.last_name}`}
-            fill
-            className="object-cover"
-            onError={(e) => (e.currentTarget.src = '/images/default-avatar.png')}
-          />
+        <Header variant="logo-only" />
+        {/* Profile Image */}
+        <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 mt-4 flex items-center justify-center">
+          <div className="absolute inset-0">
+            <Image
+              src={profile.avatar_url || '/images/default-avatar.png'}
+              alt={`${profile.first_name} ${profile.last_name}`}
+              fill
+              className="object-cover"
+              onError={(e) => (e.currentTarget.src = '/images/default-avatar.png')}
+            />
+          </div>
         </div>
 
-        {/* Basic Info - Updated with smaller text size */}
-        <h1 className="text-2xl font-extrabold text-[#BA2525] mb-6">
+        {/* Basic Info */}
+        <h1 className="text-2xl font-bold text-[#BA2525] mb-6">
           {profile.first_name}, {profile.age}
         </h1>
 
+        {/* Rankings Section */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Dater Status */}
+          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Crown className="w-5 h-5 text-[#BA2525]" />
+              <span className="text-[#BA2525] font-medium capitalize">
+                {profile.dater_status || 'Bronze'}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Dater Status</div>
+          </div>
+
+          {/* Rating */}
+          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Star className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
+              <span className="text-[#BA2525] font-medium">
+                {profile.average_rating ? profile.average_rating.toFixed(1) : '0.0'}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Dater Rating</div>
+          </div>
+
+          {/* Follow-Through */}
+          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Heart className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
+              <span className="text-[#BA2525] font-medium">
+                {profile.follow_through_rate ? `${profile.follow_through_rate}%` : '0%'}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Follow-Through</div>
+          </div>
+        </div>
+
         {/* Profile Details */}
-        <div className="mb-8 space-y-1">
+        <div className="mb-8 space-y-4">
           {/* Dater Type */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <h2 className="text-lg font-semibold text-[#BA2525] mb-1">Dater Type</h2>
@@ -175,37 +232,39 @@ export default function UserProfile() {
 
           {/* Gender */}
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-sm font-semibold text-[#BA2525] mb-1">Gender</h2>
-            <p className="text-gray-600 capitalize">{profile.gender}</p>
+            <h2 className="text-lg font-semibold text-[#BA2525] mb-1">Gender</h2>
+            <p className="text-gray-700 capitalize">{profile.gender}</p>
           </div>
 
           {/* School */}
           {profile.school && profile.school !== 'N/A' && (
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-sm font-semibold text-[#BA2525] mb-1">School</h2>
-              <p className="text-gray-600">{profile.school}</p>
+              <h2 className="text-lg font-semibold text-[#BA2525] mb-1">School</h2>
+              <p className="text-gray-700">{profile.school}</p>
             </div>
           )}
 
           {/* Bio Section - only show if there's content */}
           {profile.bio && profile.bio.trim() !== '' && (
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <p className="text-gray-600">{profile.bio}</p>
+              <p className="text-gray-700">{profile.bio}</p>
             </div>
           )}
         </div>
 
         {/* Action Buttons */}
         <div>
-          <button
-            type="button"
-            id="send-date-request"
-            name="send-date-request"
-            onClick={handleSendDateRequest}
-            className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-3"
-          >
-            Send Date Request
-          </button>
+          {context !== 'second-date' && (
+            <button
+              type="button"
+              id="send-date-request"
+              name="send-date-request"
+              onClick={handleSendDateRequest}
+              className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-3"
+            >
+              Send Date Request
+            </button>
+          )}
           {error && (
             <div className="text-[#BA2525] text-sm mb-3">
               {error}
@@ -213,12 +272,12 @@ export default function UserProfile() {
           )}
           <button
             type="button"
-            id="back-to-matching"
-            name="back-to-matching"
-            onClick={() => router.push('/matching')}
+            id="back-button"
+            name="back-button"
+            onClick={handleBackButton}
             className="w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
           >
-            Back to Matching
+            {context === 'second-date' ? 'Back to Second Date' : 'Back to Matching'}
           </button>
         </div>
       </main>

@@ -5,6 +5,7 @@ import { supabase } from '@/supabase/client';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import ImageCropper from '@/components/ImageCropper';
 
 interface UserData {
   email: string;
@@ -61,8 +62,10 @@ export default function ProfileSetup() {
     preferred_gender: '',
     dater_archetype: null
   });
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -71,10 +74,29 @@ export default function ProfileSetup() {
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-    setAvatarFile(file);
-    setError(null);
+    setSelectedFile(file);
+    setShowCropper(true);
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    // Convert blob to File
+    const croppedFile = new File([croppedBlob], selectedFile?.name || 'profile.jpg', {
+      type: 'image/jpeg'
+    });
+
+    setAvatarFile(croppedFile);
+    const url = URL.createObjectURL(croppedBlob);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(url);
+    setShowCropper(false);
+    setSelectedFile(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropper(false);
+    setSelectedFile(null);
   };
 
   const uploadImage = async (userId: string): Promise<string | null> => {
@@ -349,6 +371,15 @@ export default function ProfileSetup() {
           {isLoading ? 'Creating Account...' : 'Create Account'}
         </button>
       </form>
+
+      {showCropper && selectedFile && (
+        <ImageCropper
+          imageFile={selectedFile}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+          aspectRatio={1}
+        />
+      )}
     </div>
   );
 }
