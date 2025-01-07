@@ -77,10 +77,17 @@ export default function UserProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
+        // Get current user's session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setCurrentUserId(session.user.id);
+        }
+
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -169,13 +176,13 @@ export default function UserProfile() {
       <main className="max-w-md mx-auto p-5 pb-24 bg-white min-h-screen">
         <Header variant="logo-only" />
         {/* Profile Image */}
-        <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 mt-4 flex items-center justify-center">
-          <div className="absolute inset-0">
+        <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 mt-4">
+          <div className="absolute inset-0 flex items-center justify-center">
             <Image
               src={profile.avatar_url || '/images/default-avatar.png'}
               alt={`${profile.first_name} ${profile.last_name}`}
               fill
-              className="object-cover"
+              className="object-cover object-center"
               onError={(e) => (e.currentTarget.src = '/images/default-avatar.png')}
             />
           </div>
@@ -254,7 +261,7 @@ export default function UserProfile() {
 
         {/* Action Buttons */}
         <div>
-          {context !== 'second-date' && (
+          {context !== 'second-date' && currentUserId !== id && (
             <button
               type="button"
               id="send-date-request"

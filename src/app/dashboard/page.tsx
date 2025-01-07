@@ -690,9 +690,9 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ), 
-                label: 'Your Dater Rating' 
+                label: 'Your Rating' 
               },
-              { icon: Heart, value: currentUser.follow_through_rate ? `${currentUser.follow_through_rate}%` : '0%', label: 'Your Date Follow-Through' }
+              { icon: Heart, value: currentUser.follow_through_rate ? `${currentUser.follow_through_rate}%` : '0%', label: 'Date Follow-Through' }
             ].map(({ icon: Icon, value, label }) => (
               <div key={label} className="overflow-hidden">
                 <Link href={`/profile/${currentUser.id}`}>
@@ -707,7 +707,7 @@ export default function DashboardPage() {
                             value
                           )}
                         </div>
-                        <div className="text-[10px] text-[#BA2525]/80 -mt-0.5">{label}</div>
+                        <div className="text-[9px] text-[#BA2525]/80 -mt-0.5 px-1 whitespace-nowrap leading-tight">{label}</div>
                       </div>
                     </CardContent>
                   </Card>
