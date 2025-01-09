@@ -16,6 +16,38 @@ interface HeaderProps {
   variant?: 'default' | 'matching' | 'logo-only';
 }
 
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) return DEFAULT_AVATAR;
+  
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Clean up the path - remove any duplicate avatars/ prefix and query parameters
+    const filename = avatarPath
+      .split('/')
+      .filter(part => part !== 'avatars')
+      .join('/')
+      .split('?')[0];
+
+    // Get public URL using just the filename
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!data?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return DEFAULT_AVATAR;
+  }
+};
+
 export default function Header({ variant = 'default' }: HeaderProps) {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [avatarError, setAvatarError] = useState(false);
@@ -34,70 +66,17 @@ export default function Header({ variant = 'default' }: HeaderProps) {
       if (profileData) {
         console.log('Raw profile data from header:', profileData);
         
-        // Handle avatar URL
-        const avatarUrl = profileData.avatar_url;
+        // Get the avatar URL
+        const avatarUrl = await getAvatarUrl(profileData.avatar_url);
         
-        if (!avatarUrl) {
-          console.log('No avatar URL found, using default');
-          setCurrentUser({
-            ...profileData,
-            avatar_url: DEFAULT_AVATAR
-          });
-          return;
-        }
-
-        if (avatarUrl.startsWith('/images/')) {
-          console.log('Using static image path:', avatarUrl);
-          setCurrentUser({
-            ...profileData,
-            avatar_url: avatarUrl
-          });
-          return;
-        }
-
-        // Check if the file exists
-        try {
-          const { data: existsData, error: existsError } = await supabase.storage
-            .from('avatars')
-            .list('', {
-              limit: 1,
-              search: avatarUrl.split('/').pop()?.split('?')[0]
-            });
-
-          if (existsError || !existsData?.length) {
-            console.log('Avatar file not found:', avatarUrl);
-            setCurrentUser({
-              ...profileData,
-              avatar_url: DEFAULT_AVATAR
-            });
-            return;
-          }
-
-          // Get a fresh signed URL
-          const { data, error } = await supabase.storage
-            .from('avatars')
-            .createSignedUrl(existsData[0].name, 365 * 24 * 60 * 60); // 1 year expiry
-
-          if (error || !data?.signedUrl) {
-            throw error || new Error('Failed to generate signed URL');
-          }
-
-          console.log('Generated signed URL in header:', data.signedUrl);
-          
-          setCurrentUser({
-            ...profileData,
-            avatar_url: data.signedUrl
-          });
-        } catch (error) {
-          console.error('Error processing avatar URL:', error);
-          setCurrentUser({
-            ...profileData,
-            avatar_url: DEFAULT_AVATAR
-          });
-        }
+        setCurrentUser({
+          ...profileData,
+          avatar_url: avatarUrl
+        });
       }
     } catch (error) {
       console.error('Error fetching user:', error);
+      setCurrentUser(null);
     }
   }, []);
 
