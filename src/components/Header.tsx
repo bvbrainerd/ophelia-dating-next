@@ -35,7 +35,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
         console.log('Raw profile data from header:', profileData);
         
         // Handle avatar URL
-        let avatarUrl = profileData.avatar_url;
+        const avatarUrl = profileData.avatar_url;
         
         if (!avatarUrl) {
           console.log('No avatar URL found, using default');
