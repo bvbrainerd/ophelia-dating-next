@@ -22,11 +22,18 @@ interface Profile {
 
 interface DateRequest {
   id: string;
-  sender: Profile;
   venue: string;
   proposed_time: string;
   status: 'pending' | 'accepted' | 'declined';
   split_payment: boolean;
+  sender: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    age: number;
+    avatar_url: string;
+    bio: string;
+  };
 }
 
 const VENUE_PAYMENT_LINKS: Record<string, string> = {
@@ -49,6 +56,39 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009',
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
   'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
+};
+
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) return '/images/default-avatar.png';
+  
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Extract just the filename from the path
+    const filename = avatarPath
+      .split('/')                                // Split by /
+      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
+      .join('/')                                 // Join remaining parts
+      .split('?')[0];                            // Remove query parameters
+
+    // Get a public URL that doesn't expire
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
 };
 
 export default function DateRequestsPage() {
@@ -95,12 +135,34 @@ export default function DateRequestsPage() {
           return;
         }
 
-        const formattedRequests = requests?.map(request => ({
-          ...request,
-          sender: request.sender as unknown as Profile
-        })) || [];
+        const processedRequests: DateRequest[] = await Promise.all((requests || []).map(async (request: any) => {
+          try {
+            const avatarUrl = request.sender?.avatar_url ? 
+              await getAvatarUrl(request.sender.avatar_url) : 
+              '/images/default-avatar.png';
 
-        setDateRequests(formattedRequests);
+            return {
+              id: request.id,
+              venue: request.venue,
+              proposed_time: request.proposed_time,
+              status: request.status,
+              split_payment: request.split_payment,
+              sender: request.sender ? {
+                id: request.sender.id,
+                first_name: request.sender.first_name,
+                last_name: request.sender.last_name,
+                age: request.sender.age,
+                avatar_url: avatarUrl,
+                bio: request.sender.bio
+              } : null
+            };
+          } catch (error) {
+            console.error('Error processing request:', error);
+            return request;
+          }
+        }));
+
+        setDateRequests(processedRequests);
       } catch (error) {
         console.error('Error:', error);
         setError('An unexpected error occurred');
