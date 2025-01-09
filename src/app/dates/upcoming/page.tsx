@@ -43,6 +43,19 @@ interface SenderDateResponse {
   profiles: Profile;
 }
 
+interface DateRequest {
+  id: string;
+  is_challenge: boolean;
+  payment_status: string;
+}
+
+interface DateRequestUpdateData {
+  status: string;
+  updated_at: string;
+  challenge_status?: 'completed' | 'committed' | 'cancelled';
+  payment_status?: 'pending' | 'paid' | 'refunded';
+}
+
 const UpcomingDatesPage: FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -173,17 +186,42 @@ const UpcomingDatesPage: FC = () => {
     if (action) {
       alert('Reschedule feature coming soon!');
     } else {
-      if (window.confirm('Are you sure you want to cancel this date?')) {
+      if (window.confirm('Are you sure you want to cancel this date? For challenge dates, this will require admin approval for refund processing.')) {
         try {
+          // First get the date request to check if it's a challenge
+          const { data: dateRequest, error: fetchError } = await supabase
+            .from('date_requests')
+            .select('is_challenge, payment_status')
+            .eq('id', dateId)
+            .single();
+
+          if (fetchError) throw fetchError;
+
+          const updateData: DateRequestUpdateData = {
+            status: 'cancelled',
+            updated_at: new Date().toISOString()
+          };
+
+          // If it's a challenge date, update both challenge and payment status
+          if (dateRequest?.is_challenge) {
+            updateData.challenge_status = 'cancelled';
+            updateData.payment_status = 'refunded';
+          }
+
           const { error } = await supabase
             .from('date_requests')
-            .update({ status: 'cancelled' })
+            .update(updateData)
             .eq('id', dateId);
 
           if (error) throw error;
 
           setUpcomingDates((prev) => prev.filter((date) => date.id !== dateId));
-          alert('Date cancelled successfully');
+          
+          if (dateRequest?.is_challenge) {
+            alert('Date cancelled successfully. Admin will process your refund within 24-48 hours.');
+          } else {
+            alert('Date cancelled successfully');
+          }
         } catch (error) {
           console.error('Error cancelling date:', error);
           alert('Failed to cancel date. Please try again.');

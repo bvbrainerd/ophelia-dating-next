@@ -19,6 +19,7 @@ export default function ImageCropper({ imageFile, onCropComplete, onCancel, aspe
     x: 5,
     y: 5
   });
+  const [zoom, setZoom] = useState(1);
   const [imageSrc, setImageSrc] = useState<string>('');
   const imageRef = useRef<HTMLImageElement | null>(null);
 
@@ -43,12 +44,18 @@ export default function ImageCropper({ imageFile, onCropComplete, onCancel, aspe
       throw new Error('No 2d context');
     }
 
+    // Apply zoom factor to the drawing
+    const sourceWidth = crop.width * scaleX / zoom;
+    const sourceHeight = crop.height * scaleY / zoom;
+    const sourceX = crop.x * scaleX / zoom;
+    const sourceY = crop.y * scaleY / zoom;
+
     ctx.drawImage(
       image,
-      crop.x * scaleX,
-      crop.y * scaleY,
-      crop.width * scaleX,
-      crop.height * scaleY,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
       0,
       0,
       crop.width,
@@ -81,6 +88,10 @@ export default function ImageCropper({ imageFile, onCropComplete, onCancel, aspe
     }
   };
 
+  const handleZoomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setZoom(parseFloat(e.target.value));
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg p-4 max-w-lg w-full">
@@ -88,19 +99,35 @@ export default function ImageCropper({ imageFile, onCropComplete, onCancel, aspe
         
         <div className="mb-4 max-h-[60vh] overflow-auto">
           {imageSrc && (
-            <ReactCrop
-              crop={crop}
-              onChange={(c) => setCrop(c)}
-              aspect={aspectRatio}
-              circularCrop
-            >
-              <img
-                ref={imageRef}
-                src={imageSrc}
-                alt="Crop preview"
-                className="max-w-full"
-              />
-            </ReactCrop>
+            <div className="space-y-4">
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                aspect={aspectRatio}
+                circularCrop
+              >
+                <img
+                  ref={imageRef}
+                  src={imageSrc}
+                  alt="Crop preview"
+                  className="max-w-full transform scale-[var(--zoom)]"
+                  style={{ '--zoom': zoom } as any}
+                />
+              </ReactCrop>
+              
+              <div className="flex items-center gap-2 px-4">
+                <span className="text-sm text-gray-500">Zoom:</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={handleZoomChange}
+                  className="w-full"
+                />
+              </div>
+            </div>
           )}
         </div>
 

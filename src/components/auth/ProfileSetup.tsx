@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../supabase/client';
 import DatingTypeQuiz from '@/components/DatingTypeQuiz';
 import { useRouter } from 'next/navigation';
 

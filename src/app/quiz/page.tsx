@@ -4,7 +4,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../supabase/client';
 import ResultScreen from '../dashboard/resultsscreen/ResultsPage';
 import DatingTypeQuiz from '@/components/DatingTypeQuiz';
 

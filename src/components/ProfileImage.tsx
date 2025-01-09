@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../supabase/client';
 
 interface ProfileImageProps {
   user: {
@@ -14,22 +15,27 @@ export default function ProfileImage({ user, className = '', priority = true }: 
   const DEFAULT_AVATAR = '/images/default-avatar.png';
 
   const getPublicUrl = (url: string | null) => {
-    if (!url) return DEFAULT_AVATAR;
-    if (url.startsWith('file://')) return DEFAULT_AVATAR;
+    if (!url || url.includes('default-avatar')) return DEFAULT_AVATAR;
     
     try {
-      // Extract the file path from any URL format
-      const matches = url.match(/\/avatars\/avatars\/([^?]+)/);
-      if (!matches || !matches[1]) {
-        // Try alternate URL format
-        const altMatches = url.match(/\/avatars\/([^?]+)/);
-        if (!altMatches || !altMatches[1]) return DEFAULT_AVATAR;
-        return `https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/avatars/${altMatches[1]}`;
+      // If it's already a full URL (not a signed URL), use it
+      if (url.startsWith('http') && !url.includes('/sign/')) {
+        return url;
       }
 
-      // Always use the public URL format
-      const fileName = matches[1];
-      return `https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/avatars/avatars/${fileName}`;
+      // Just use the filename directly - no path manipulation needed
+      const filename = url.split('/').pop()?.split('?')[0];
+      
+      console.log('Using filename for storage:', filename);
+
+      // Get public URL using just the filename
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filename || '');
+
+      console.log('Generated public URL for profile image:', data?.publicUrl);
+
+      return data?.publicUrl || DEFAULT_AVATAR;
     } catch (e) {
       console.error('Error parsing avatar URL:', e);
       return DEFAULT_AVATAR;

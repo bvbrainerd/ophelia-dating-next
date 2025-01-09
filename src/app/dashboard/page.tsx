@@ -5,7 +5,7 @@ import { Heart, Calendar, MessageCircle, UserCircle, Trophy, Crown, Users, Coffe
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import Image from 'next/image';
