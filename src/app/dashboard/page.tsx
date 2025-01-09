@@ -35,20 +35,17 @@ interface Profile {
 
 interface DateRequestResponse {
   id: string;
-  status: string;
   venue: string;
   proposed_time: string;
-  dating_style: string;
-  created_at: string;
-  sender_name: string;
-  sender_age: number;
-  sender_avatar_url: string | null;
+  status: string;
+  split_payment: boolean;
   sender: {
     id: string;
     first_name: string;
     last_name: string;
     age: number;
-    avatar_url: string | null;
+    avatar_url: string;
+    bio: string;
   } | null;
 }
 
@@ -342,38 +339,51 @@ export default function DashboardPage() {
         return;
       }
 
-      // Simplified query with proper error handling
       const { data: requests, error: requestsError } = await supabase
         .from('date_requests')
         .select(`
-          *,
+          id,
+          venue,
+          proposed_time,
+          status,
+          split_payment,
           sender:profiles!date_requests_sender_id_fkey (
             id,
             first_name,
             last_name,
             age,
-            avatar_url
+            avatar_url,
+            bio
           )
         `)
         .eq('receiver_id', session.user.id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .order('proposed_time', { ascending: true });
 
       if (requestsError) {
         console.error('Error fetching date requests:', requestsError);
         throw requestsError;
       }
 
-      const processedRequests = await Promise.all((requests || []).map(async (request) => {
+      const processedRequests: DateRequestResponse[] = await Promise.all((requests || []).map(async (request: any) => {
         try {
           const avatarUrl = request.sender?.avatar_url ? 
             await getAvatarUrl(request.sender.avatar_url) : 
             '/images/default-avatar.png';
 
           return {
-            ...request,
+            id: request.id,
+            venue: request.venue,
+            proposed_time: request.proposed_time,
+            status: request.status,
+            split_payment: request.split_payment,
             sender: request.sender ? {
-              ...request.sender,
-              avatar_url: avatarUrl
+              id: request.sender.id,
+              first_name: request.sender.first_name,
+              last_name: request.sender.last_name,
+              age: request.sender.age,
+              avatar_url: avatarUrl,
+              bio: request.sender.bio
             } : null
           };
         } catch (error) {
@@ -619,7 +629,19 @@ export default function DashboardPage() {
               {request.sender?.first_name}, {request.sender?.age}
             </h3>
             <p className="text-gray-500 text-sm">
-              {request.venue} • {formatDate(request.created_at)}
+              {request.venue} • {
+                request.proposed_time 
+                  ? new Date(request.proposed_time).toLocaleString('en-US', {
+                      weekday: 'long',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })
+                  : 'No date specified'
+              }
+              {request.split_payment && ' • Split payment requested'}
             </p>
           </div>
         </div>
