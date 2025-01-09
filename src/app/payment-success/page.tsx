@@ -4,7 +4,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../supabase/client';
 
 export default function PaymentSuccessHandler() {
   const router = useRouter();
@@ -25,13 +25,14 @@ export default function PaymentSuccessHandler() {
         localStorage.removeItem('pendingDateId');
         localStorage.removeItem('paymentReturnTime');
 
-        // Update date request status
+        // Update date request status with new enum values
         const { data: dateRequest, error: updateError } = await supabase
           .from('date_requests')
           .update({
             status: 'accepted',
-            payment_completed: true,
-            payment_completed_at: returnTime
+            payment_status: 'paid',
+            challenge_status: 'committed',
+            updated_at: new Date().toISOString()
           })
           .eq('id', dateId)
           .select(`
@@ -169,7 +170,7 @@ export default function PaymentSuccessHandler() {
               Payment Successful!
             </h2>
             <p className="text-gray-600 mb-4">Your date has been confirmed.</p>
-            <p className="text-gray-500">Redirecting to date requests...</p>
+            <p className="text-gray-500">Redirecting to upcoming dates...</p>
           </div>
         )}
       </div>

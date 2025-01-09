@@ -2,13 +2,7 @@
 const nextConfig = {
   images: {
     domains: ['oyjfhrqfufujmsnqevgr.supabase.co'],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'oyjfhrqfufujmsnqevgr.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-    ],
+    unoptimized: true,
   },
   webpack: (config) => {
     config.resolve.fallback = { fs: false, path: false };

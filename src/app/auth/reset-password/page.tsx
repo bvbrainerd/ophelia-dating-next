@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../../supabase/client';
 
 export default function ResetPassword() {
   const searchParams = useSearchParams();

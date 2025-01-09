@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../supabase/client';
 
 interface EmailUpdateSectionProps {
   onEmailChange: (email: string) => void;

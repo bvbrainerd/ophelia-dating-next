@@ -24,6 +24,18 @@ interface Profile {
 
 type DateStatus = 'Not Started' | "I'm on my way" | "I'm here" | "We're both here";
 
+interface DateRequest {
+  sender_id: string;
+  receiver_id: string;
+  is_challenge: boolean;
+}
+
+interface DateRequestUpdateData {
+  status: string;
+  updated_at: string;
+  challenge_status?: 'completed' | 'committed' | 'cancelled';
+}
+
 export default function DateMessaging() {
   const router = useRouter();
   const params = useParams();
@@ -328,7 +340,7 @@ export default function DateMessaging() {
       // Get the date request details first
       const { data: dateRequest, error: dateRequestError } = await supabase
         .from('date_requests')
-        .select('sender_id, receiver_id')
+        .select('sender_id, receiver_id, is_challenge')
         .eq('id', dateId)
         .single();
 
@@ -357,9 +369,19 @@ export default function DateMessaging() {
       }
 
       // Update original date_request status
+      const updateData: DateRequestUpdateData = {
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      };
+
+      // If this was a challenge date, update the challenge status
+      if (dateRequest.is_challenge) {
+        updateData.challenge_status = 'completed';
+      }
+
       const { error: updateError } = await supabase
         .from('date_requests')
-        .update({ status: 'completed' })
+        .update(updateData)
         .eq('id', dateId);
 
       if (updateError) {
@@ -370,12 +392,8 @@ export default function DateMessaging() {
       router.push('/dates/upcoming');
 
     } catch (error) {
-      console.error('Full error details:', {
-        error,
-        dateId,
-        timestamp: new Date().toISOString()
-      });
-      alert('Unable to confirm date completion. Please try again.');
+      console.error('Error confirming date completion:', error);
+      // Handle error appropriately
     }
   };
 

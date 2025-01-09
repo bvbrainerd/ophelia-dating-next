@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
-import { supabase } from '@/supabase/client';
+import { supabase } from '../../supabase/client';
 import Header from '@/components/Header';
 import ProfileImage from '../../components/ProfileImage';
 
