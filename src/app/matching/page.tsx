@@ -21,6 +21,40 @@ interface Profile {
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
 }
 
+const DEFAULT_AVATAR = '/images/default-avatar.png';
+
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) return DEFAULT_AVATAR;
+  
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Clean up the path - remove any duplicate avatars/ prefix and query parameters
+    const filename = avatarPath
+      .split('/')
+      .filter(part => part !== 'avatars')
+      .join('/')
+      .split('?')[0];
+
+    // Get public URL using just the filename
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!data?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return DEFAULT_AVATAR;
+  }
+};
+
 export default function MatchingPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -75,16 +109,15 @@ export default function MatchingPage() {
       if (matchError) throw matchError;
 
       if (matchingUsers) {
-        // Debug log to see what URLs we're getting
-        console.log('Matching users with their avatar URLs:', 
-          matchingUsers.map(user => ({
-            id: user.id,
-            name: user.first_name,
-            avatar_url: user.avatar_url
+        // Process avatar URLs for all users
+        const processedUsers = await Promise.all(
+          matchingUsers.map(async (user) => ({
+            ...user,
+            avatar_url: await getAvatarUrl(user.avatar_url)
           }))
         );
         
-        setUsers(matchingUsers);
+        setUsers(processedUsers);
       }
 
     } catch (error) {

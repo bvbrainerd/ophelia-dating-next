@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { supabase } from '../supabase/client';
 
@@ -25,6 +25,18 @@ export default function ProfileImageGallery({
   mode = 'edit'
 }: ProfileImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [processedUrls, setProcessedUrls] = useState<{ [key: number]: string }>({});
+
+  useEffect(() => {
+    const processUrls = async () => {
+      const urlMap: { [key: number]: string } = {};
+      for (const image of images) {
+        urlMap[image.id] = await getImageUrl(image);
+      }
+      setProcessedUrls(urlMap);
+    };
+    processUrls();
+  }, [images]);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % images.length);
@@ -41,27 +53,31 @@ export default function ProfileImageGallery({
     }
 
     try {
-      // Extract filename from URL
-      let filename = image.image_url;
-      if (filename.includes('?token=')) {
-        filename = filename.split('?')[0].split('/avatars/').pop() || '';
-      } else if (filename.includes('/avatars/')) {
-        filename = filename.split('/avatars/').pop() || '';
+      // If it's already a public URL, return it directly
+      if (image.image_url.startsWith('http') && !image.image_url.includes('/sign/')) {
+        return image.image_url;
       }
+
+      // Clean up the path - remove any duplicate avatars/ prefix and query parameters
+      const filename = image.image_url
+        .split('/')
+        .filter(part => part !== 'avatars')
+        .join('/')
+        .split('?')[0];
 
       console.log('Processing gallery image filename:', filename);
 
-      // Get a fresh signed URL
-      const { data, error } = await supabase.storage
+      // Get public URL using just the filename
+      const { data } = supabase.storage
         .from('avatars')
-        .createSignedUrl(filename, 365 * 24 * 60 * 60); // 1 year expiry
+        .getPublicUrl(filename);
 
-      if (error || !data?.signedUrl) {
-        throw error || new Error('Failed to generate signed URL');
+      if (!data?.publicUrl) {
+        throw new Error('Could not generate public URL');
       }
 
-      console.log('Generated signed URL for gallery:', data.signedUrl);
-      return data.signedUrl;
+      console.log('Generated public URL for gallery:', data.publicUrl);
+      return data.publicUrl;
     } catch (error) {
       console.error('Error generating image URL:', error);
       return '/images/default-avatar.png';
@@ -69,10 +85,11 @@ export default function ProfileImageGallery({
   };
 
   if (mode === 'view') {
+    const currentImage = images[currentIndex];
     return (
       <div className={`relative aspect-square w-full ${className}`}>
         <Image
-          src={images[currentIndex]?.image_url || '/images/default-avatar.png'}
+          src={currentImage ? processedUrls[currentImage.id] || '/images/default-avatar.png' : '/images/default-avatar.png'}
           alt="Profile image"
           fill
           className="object-cover rounded-lg"
@@ -81,7 +98,7 @@ export default function ProfileImageGallery({
           unoptimized={true}
           crossOrigin="anonymous"
           onError={(e) => {
-            console.error('Error loading gallery image:', images[currentIndex]?.image_url);
+            console.error('Error loading gallery image:', currentImage?.image_url);
             const target = e.target as HTMLImageElement;
             target.src = '/images/default-avatar.png';
           }}
@@ -102,7 +119,7 @@ export default function ProfileImageGallery({
             </button>
           </>
         )}
-        {images[currentIndex]?.is_main && (
+        {currentImage?.is_main && (
           <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
             <Star className="w-4 h-4 text-[#BA2525] fill-[#BA2525]" />
           </div>
@@ -117,7 +134,7 @@ export default function ProfileImageGallery({
       {images.map((image) => (
         <div key={image.id} className="relative w-20 h-20">
           <Image
-            src={image.image_url || '/images/default-avatar.png'}
+            src={processedUrls[image.id] || '/images/default-avatar.png'}
             alt="Profile image"
             fill
             className="object-cover rounded-full"
