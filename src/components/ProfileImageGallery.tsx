@@ -17,6 +17,42 @@ interface ProfileImageGalleryProps {
   mode?: 'edit' | 'view';
 }
 
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) return '/images/default-avatar.png';
+  
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Extract just the filename from the path
+    const filename = avatarPath
+      .split('/')                                // Split by /
+      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
+      .join('/')                                 // Join remaining parts
+      .split('?')[0];                            // Remove query parameters
+
+    console.log('Processing filename:', filename);
+
+    // Get a public URL that doesn't expire
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    console.log('Generated public URL:', publicUrlData.publicUrl);
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
 export default function ProfileImageGallery({ 
   images, 
   onSetMain, 
@@ -31,7 +67,13 @@ export default function ProfileImageGallery({
     const processUrls = async () => {
       const urlMap: { [key: number]: string } = {};
       for (const image of images) {
-        urlMap[image.id] = await getImageUrl(image);
+        try {
+          const url = await getAvatarUrl(image.image_url);
+          urlMap[image.id] = url;
+        } catch (error) {
+          console.error('Error processing URL for image:', image.id, error);
+          urlMap[image.id] = '/images/default-avatar.png';
+        }
       }
       setProcessedUrls(urlMap);
     };
@@ -44,44 +86,6 @@ export default function ProfileImageGallery({
 
   const handlePrev = () => {
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const getImageUrl = async (image: ProfileImage) => {
-    if (!image.image_url) return '/images/default-avatar.png';
-    if (image.image_url.startsWith('/images/')) {
-      return image.image_url;
-    }
-
-    try {
-      // If it's already a public URL, return it directly
-      if (image.image_url.startsWith('http') && !image.image_url.includes('/sign/')) {
-        return image.image_url;
-      }
-
-      // Clean up the path - remove any duplicate avatars/ prefix and query parameters
-      const filename = image.image_url
-        .split('/')
-        .filter(part => part !== 'avatars')
-        .join('/')
-        .split('?')[0];
-
-      console.log('Processing gallery image filename:', filename);
-
-      // Get public URL using just the filename
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filename);
-
-      if (!data?.publicUrl) {
-        throw new Error('Could not generate public URL');
-      }
-
-      console.log('Generated public URL for gallery:', data.publicUrl);
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error generating image URL:', error);
-      return '/images/default-avatar.png';
-    }
   };
 
   if (mode === 'view') {
@@ -98,8 +102,12 @@ export default function ProfileImageGallery({
           unoptimized={true}
           crossOrigin="anonymous"
           onError={(e) => {
-            console.error('Error loading gallery image:', currentImage?.image_url);
             const target = e.target as HTMLImageElement;
+            console.error('Error loading gallery image:', {
+              originalSrc: target.src,
+              imageId: currentImage?.id,
+              imageUrl: currentImage?.image_url
+            });
             target.src = '/images/default-avatar.png';
           }}
         />
@@ -142,8 +150,12 @@ export default function ProfileImageGallery({
             unoptimized={true}
             crossOrigin="anonymous"
             onError={(e) => {
-              console.error('Error loading thumbnail:', image.image_url);
               const target = e.target as HTMLImageElement;
+              console.error('Error loading thumbnail:', {
+                originalSrc: target.src,
+                imageId: image.id,
+                imageUrl: image.image_url
+              });
               target.src = '/images/default-avatar.png';
             }}
           />
