@@ -206,7 +206,7 @@ export default function MatchChallengePage() {
               </p>
             </div>
             <p className="text-gray-600">
-              Ready to level up your dating game? Ophelia's got you. Answer 5 quick questions, and we'll match you with your most compatible partner—and plan a first date that's completely tailed to the both of you. The catch? You've got to show up. Let's redefine how you meet. Are you in?
+              Ready to level up your dating game? Ophelia's got you. Answer 5 quick questions, and we'll match you with your most compatible partner—and plan a first date that's completely tailored to the both of you. The catch? You've got to show up. Let's redefine how you meet. Are you in?
             </p>
             <button
               onClick={() => setCurrentStep('questions')}
