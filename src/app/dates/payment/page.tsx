@@ -8,21 +8,21 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Boston Celtics': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
-  'BC Hockey': 'https://buy.stripe.com/bIYcPb3iw6VT5mobIN',
+  'BC Lacrosse': 'https://buy.stripe.com/fZeg1nbP2gwtaGI14l',
   'BC Basketball': 'https://buy.stripe.com/fZebL7bP24NL9CE9AB',
   'Boston Commons': 'https://buy.stripe.com/eVaaH31ao2FDbKM3ck',
-  'Kured': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'Kured': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
   'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
   'Private Helicopter Ride': 'https://buy.stripe.com/14k2ax7yM0xv6qs8wz',
-  'Barcelona Wine Bar': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Capo': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Locco Fenway': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'F1 Arcade': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Lucca North End': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Lolita Back Bay': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Blue Ribbon Sushi': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Joes on Newbury': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
-  'Snowport @Seaport': 'https://buy.stripe.com/aEUaH39GUcgd6qs009'
+  'Barcelona Wine Bar': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Capo': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Locco Fenway': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'F1 Arcade': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Lucca North End': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Lolita Back Bay': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Blue Ribbon Sushi': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Joes on Newbury': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg',
+  'Snowport @Seaport': 'https://buy.stripe.com/00gcPb6uIdkh5mofZg'
 } as const;
 
 interface DateType {

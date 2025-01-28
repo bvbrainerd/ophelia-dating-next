@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabase/client';
+import { cn } from '../utils/cn';
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
@@ -13,7 +14,7 @@ interface Profile {
 }
 
 interface HeaderProps {
-  variant?: 'default' | 'matching' | 'logo-only';
+  variant?: 'default' | 'matching' | 'logo-only' | 'dashboard';
 }
 
 const getAvatarUrl = async (avatarPath: string | null) => {
@@ -87,49 +88,51 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   }, [variant, fetchUser]);
 
   return (
-    <div className={`flex items-center mb-6 relative -mx-5 px-5 py-4 ${
-      variant === 'default' ? 'bg-[#BA2525]' : 'bg-white'
-    }`}>
-      <div className="absolute left-0 right-0 text-center">
+    <div className={cn(
+      "flex justify-between items-center py-4 px-5",
+      variant === "dashboard" ? "bg-transparent" : "bg-transparent"
+    )}>
+      <div className="flex-1" />
+      
+      <div className="flex-1 flex justify-center">
         <Link href="/dashboard">
-          <h1 className={`text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity ${
-            variant === 'default' ? 'text-white' : 'text-[#BA2525]'
-          }`}>
+          <h1 className="text-3xl font-bold text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity">
             Ophelia
           </h1>
         </Link>
       </div>
-      {currentUser && variant !== 'logo-only' && (
-        <div className="ml-auto flex items-center gap-3 z-10">
-          <div className={`text-sm font-medium ${
-            variant === 'default' ? 'text-white' : 'text-[#BA2525]'
-          }`}>
-            {currentUser.first_name}
-          </div>
-          <Link href="/dashboard/editprofile">
-            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full cursor-pointer overflow-hidden">
-              <div className="relative w-10 h-10">
-                <Image
-                  src={currentUser.avatar_url || DEFAULT_AVATAR}
-                  alt={`${currentUser.first_name}'s profile`}
-                  fill
-                  sizes="40px"
-                  priority
-                  unoptimized={true}
-                  crossOrigin="anonymous"
-                  className="object-cover rounded-full"
-                  onError={(e) => {
-                    console.error('Error loading image in header:', currentUser.avatar_url);
-                    setAvatarError(true);
-                    const target = e.target as HTMLImageElement;
-                    target.src = DEFAULT_AVATAR;
-                  }}
-                />
-              </div>
+
+      <div className="flex-1 flex justify-end">
+        {currentUser && variant !== 'logo-only' && (
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-medium text-[#BA2525]">
+              {currentUser.first_name}
             </div>
-          </Link>
-        </div>
-      )}
+            <Link href="/dashboard/editprofile">
+              <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full cursor-pointer overflow-hidden">
+                <div className="relative w-10 h-10">
+                  <Image
+                    src={currentUser.avatar_url || DEFAULT_AVATAR}
+                    alt={`${currentUser.first_name}'s profile`}
+                    fill
+                    sizes="40px"
+                    priority
+                    unoptimized={true}
+                    crossOrigin="anonymous"
+                    className="object-cover rounded-full"
+                    onError={(e) => {
+                      console.error('Error loading image in header:', currentUser.avatar_url);
+                      setAvatarError(true);
+                      const target = e.target as HTMLImageElement;
+                      target.src = DEFAULT_AVATAR;
+                    }}
+                  />
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
