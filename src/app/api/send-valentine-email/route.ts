@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           dynamic_template_data: dynamicTemplateData,
         }],
         from: { 
-          email: SENDGRID_FROM_EMAIL,
+          email: SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
           name: 'Ophelia Dating'
         },
         template_id: templateId,
