@@ -218,6 +218,11 @@ export default function DateRecommendations() {
               coordinates: spot.coordinates,
               title: spot.name
             }))}
+            center={filteredSpots.length > 0 
+              ? filteredSpots[0].coordinates 
+              : [-71.0589, 42.3601] // Boston coordinates as default
+            }
+            zoom={13}
           />
         </div>
 
