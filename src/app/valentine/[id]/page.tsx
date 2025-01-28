@@ -178,7 +178,7 @@ export default function ValentineResponsePage({ params }: { params: { id: string
           
           <Card className="p-8 mt-8">
             <div className="space-y-6">
-              <p className="text-xl text-gray-800">
+              <p className="text-xl text-[#BA2525] font-bold">
                 {request.is_anonymous ? 'Someone special' : request.sender.first_name} has sent you a valentine!
               </p>
 
