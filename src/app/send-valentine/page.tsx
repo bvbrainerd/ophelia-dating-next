@@ -68,7 +68,7 @@ export default function SendValentinePage() {
         dynamicTemplateData: {
           senderName: isAnonymous ? 'Someone special' : `${senderProfile?.first_name} ${senderProfile?.last_name}`,
           recipientName: recipientName,
-          valentineLink: `https://opheliadatingapp.com/valentine/${newRequest.id}`
+          valentineLink: 'https://opheliadatingapp.com/valentine/' + newRequest.id
         }
       };
 
