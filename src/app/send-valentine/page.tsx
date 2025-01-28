@@ -68,7 +68,7 @@ export default function SendValentinePage() {
         dynamicTemplateData: {
           senderName: isAnonymous ? 'Someone special' : `${senderProfile?.first_name} ${senderProfile?.last_name}`,
           recipientName: recipientName,
-          valentineLink: `${window.location.origin}/valentine/${newRequest.id}`
+          valentineLink: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/valentine/${newRequest.id}`
         }
       };
 
