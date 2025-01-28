@@ -32,12 +32,31 @@ export default function ValentineResponsePage({ params }: { params: { id: string
   useEffect(() => {
     const checkUserAndFetchRequest = async () => {
       try {
+        // First check if the valentine request exists and get recipient email
+        const { data: valentineRequest, error: valentineError } = await supabase
+          .from('valentine_requests')
+          .select(`
+            recipient_email,
+            status
+          `)
+          .eq('id', params.id)
+          .single();
+
+        if (valentineError) {
+          if (valentineError.code === 'PGRST116') {
+            throw new Error('This valentine request no longer exists or has been removed');
+          }
+          throw valentineError;
+        }
+
+        // Now check user session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          // Store the valentine ID in local storage for after login
+          // Store both valentine ID and recipient email for verification after signup
           localStorage.setItem('pendingValentineId', params.id);
-          router.push(`/auth/signup?valentine=${params.id}`);
+          localStorage.setItem('pendingValentineEmail', valentineRequest.recipient_email);
+          router.push(`/auth/signup?valentine=${params.id}&email=${encodeURIComponent(valentineRequest.recipient_email)}`);
           return;
         }
 
@@ -45,7 +64,13 @@ export default function ValentineResponsePage({ params }: { params: { id: string
         const { data: { user } } = await supabase.auth.getUser();
         setUserEmail(user?.email || null);
 
-        // Fetch valentine request
+        // Verify this valentine is for the current user
+        if (valentineRequest.recipient_email && user?.email && 
+            valentineRequest.recipient_email.toLowerCase() !== user.email.toLowerCase()) {
+          throw new Error('This valentine was sent to a different email address. Please log in with the correct email.');
+        }
+
+        // Fetch full valentine request details
         const { data: request, error: requestError } = await supabase
           .from('valentine_requests')
           .select(`
@@ -60,12 +85,6 @@ export default function ValentineResponsePage({ params }: { params: { id: string
           .single();
 
         if (requestError) throw requestError;
-
-        // Verify this valentine is for the current user
-        if (request.recipient_email.toLowerCase() !== user?.email?.toLowerCase()) {
-          throw new Error('This valentine was sent to a different email address');
-        }
-
         setRequest(request);
       } catch (error) {
         console.error('Error:', error);
@@ -102,46 +121,47 @@ export default function ValentineResponsePage({ params }: { params: { id: string
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
       <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto p-5">
           <Header variant="default" />
-          <div className="mt-8 text-center">
-            <h1 className="text-2xl font-bold text-[#BA2525] mb-4">Oops!</h1>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-6 py-2 bg-[#BA2525] text-white rounded-full"
-            >
-              Go to Dashboard
-            </button>
+          <div className="flex justify-center items-center min-h-[60vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!request) {
+  if (error || !request) {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-4xl mx-auto p-5">
           <Header variant="default" />
           <div className="mt-8 text-center">
-            <h1 className="text-2xl font-bold text-[#BA2525] mb-4">Valentine Not Found</h1>
-            <p className="text-gray-600 mb-4">This valentine request doesn't exist or has been removed.</p>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-6 py-2 bg-[#BA2525] text-white rounded-full"
-            >
-              Go to Dashboard
-            </button>
+            <h1 className="text-4xl font-bold text-[#BA2525] mb-4">Oops!</h1>
+            <div className="bg-white rounded-lg shadow-sm p-8 max-w-lg mx-auto">
+              <p className="text-gray-600 mb-6">{error || 'Valentine request not found'}</p>
+              <p className="text-gray-500 mb-8 text-sm">
+                This might happen if:
+                <br />• The valentine request has been cancelled
+                <br />• The link is incorrect
+                <br />• You're not logged in with the correct email
+              </p>
+              <div className="space-y-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
+                >
+                  Go to Dashboard
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full p-2.5 border-2 border-[#BA2525] text-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
