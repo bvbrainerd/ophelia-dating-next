@@ -58,14 +58,14 @@ const VENUES: Record<string, Venue[]> = {
       distance: "5.8 mi"
     },
     { 
-      id: "bc-hockey",
-      name: "BC Hockey",
+      id: "bc-lacrosse",
+      name: "BC Lacrosse",
       location: "Conte Forum",
       type: "Sports",
       rating: 4.5,
       price: "$$",
-      imageUrl: "/images/venues/bchockey.jpg",
-      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
+      imageUrl: "/images/venues/bclacrosse.jpg",
+      stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
       coordinates: [-71.1677, 42.3357],
       distance: "0.1 mi"
     },
@@ -86,62 +86,74 @@ const VENUES: Record<string, Venue[]> = {
     { 
       id: "barcelona-wine-bar",
       name: "Barcelona Wine Bar",
-      location: "Boston, MA",
-      type: "Spanish",
-      price: "$$$",
+      location: "Back Bay",
+      type: "Restaurant",
       rating: 4.6,
+      price: "$$$",
       imageUrl: "/images/venues/barcelona.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0761, 42.3457],
-      distance: "4.9 mi"
+      distance: "4.8 mi"
     },
     { 
       id: "capo",
       name: "Capo",
       location: "South Boston",
-      type: "Italian",
+      type: "Restaurant",
+      rating: 4.5,
       price: "$$$",
-      rating: 4.5,
       imageUrl: "/images/venues/capo.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0424, 42.3363],
-      distance: "6.7 mi"
-    },
-    { 
-      id: "lolita-back-bay",
-      name: "Lolita Back Bay",
-      location: "Back Bay",
-      type: "Mexican",
-      price: "$$",
-      rating: 4.5,
-      imageUrl: "/images/venues/lolita.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0751, 42.3483],
-      distance: "4.8 mi"
-    },
-    { 
-      id: "blue-ribbon-sushi",
-      name: "Blue Ribbon Sushi",
-      location: "Boston, MA",
-      type: "Japanese",
-      price: "$$$$",
-      rating: 4.7,
-      imageUrl: "/images/venues/blueribbon.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0594, 42.3551],
-      distance: "5.7 mi"
+      stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
+      coordinates: [-71.0472, 42.3352],
+      distance: "6.2 mi"
     },
     { 
       id: "lucca-north-end",
       name: "Lucca North End",
       location: "North End",
-      type: "Italian",
+      type: "Restaurant",
+      rating: 4.7,
       price: "$$$",
-      rating: 4.6,
       imageUrl: "/images/venues/lucca.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
-      coordinates: [-71.0547, 42.3645],
-      distance: "6.0 mi"
+      stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
+      coordinates: [-71.0543, 42.3649],
+      distance: "5.9 mi"
+    },
+    { 
+      id: "blue-ribbon-sushi",
+      name: "Blue Ribbon Sushi",
+      location: "Back Bay",
+      type: "Restaurant",
+      rating: 4.6,
+      price: "$$$$",
+      imageUrl: "/images/venues/blueribbon.jpg",
+      stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
+      coordinates: [-71.0816, 42.3486],
+      distance: "4.5 mi"
+    },
+    { 
+      id: "lolita-back-bay",
+      name: "Lolita Back Bay",
+      location: "Back Bay",
+      type: "Restaurant",
+      rating: 4.5,
+      price: "$$$",
+      imageUrl: "/images/venues/lolita.jpg",
+      stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
+      coordinates: [-71.0816, 42.3486],
+      distance: "4.5 mi"
+    },
+    { 
+      id: "cityside-tavern",
+      name: "Cityside Tavern",
+      location: "Brighton, MA",
+      type: "American",
+      price: "$$",
+      rating: 4.5,
+      imageUrl: "/images/venues/cityside.jpg",
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.1502, 42.3359],
+      distance: "0.2 mi"
     },
     { 
       id: "joes-on-newbury",
@@ -151,9 +163,21 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.4,
       imageUrl: "/images/venues/joes.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0793, 42.3491],
       distance: "4.7 mi"
+    },
+    { 
+      id: "lorettas-last-call",
+      name: "Loretta's Last Call",
+      location: "Fenway",
+      type: "American",
+      price: "$$",
+      rating: 4.5,
+      imageUrl: "/images/venues/lorettas.jpg",
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0950, 42.3467],
+      distance: "3.8 mi"
     },
     { 
       id: "kured",
@@ -163,7 +187,7 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.5,
       imageUrl: "/images/venues/kured.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0712, 42.3589],
       distance: "5.2 mi"
     },
@@ -194,6 +218,34 @@ const VENUES: Record<string, Venue[]> = {
       distance: "3.6 mi"
     },
     { 
+      id: "core-power",
+      name: "Core Power",
+      location: "Newton, MA",
+      type: "Fitness",
+      price: "$$",
+      rating: 4.7,
+      imageUrl: "/images/venues/corepower.jpg",
+      stripeLink: "https://buy.stripe.com/bIY16tcT6a85g1214k",
+      coordinates: [-71.1921, 42.3485],
+      distance: "2.8 mi",
+      requiresWebsiteRegistration: true,
+      websiteUrl: "https://www.corepoweryoga.com/yoga-studios/massachusetts/newton/305-centre-street"
+    },
+    { 
+      id: "solidcore",
+      name: "[solidcore]",
+      location: "Watertown, MA",
+      type: "Fitness",
+      price: "$$",
+      rating: 4.8,
+      imageUrl: "/images/venues/solidcore.jpg",
+      stripeLink: "https://buy.stripe.com/aEUeXj5qE7ZXbKM9AP",
+      coordinates: [-71.1561, 42.3644],
+      distance: "1.5 mi",
+      requiresWebsiteRegistration: true,
+      websiteUrl: "https://www.solidcore.co/location/watertown"
+    },
+    { 
       id: "private-helicopter-ride",
       name: "Private Helicopter Ride",
       location: "Boston, MA",
@@ -213,7 +265,7 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.4,
       imageUrl: "/images/venues/f1arcade.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0595, 42.3501],
       distance: "5.7 mi"
     },
@@ -267,6 +319,139 @@ const categories = [
   { id: 'restaurants', label: 'Restaurants' },
   { id: 'activities', label: 'Activities' },
   { id: 'events', label: 'Events' }
+];
+
+const dateOptions = [
+  {
+    id: 1,
+    title: "Boston Bruins",
+    description: "Watch the Bruins take on their rivals at TD Garden",
+    stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
+  },
+  {
+    id: 2,
+    title: "Celtics",
+    description: "Experience the excitement of NBA basketball at TD Garden",
+    stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
+  },
+  {
+    id: 3,
+    title: "BC Hockey",
+    description: "Cheer on the Eagles at Conte Forum",
+    stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
+  },
+  {
+    id: 4,
+    title: "BC Basketball",
+    description: "Support BC Basketball at Conte Forum",
+    stripeLink: "https://buy.stripe.com/fZebL7bP24NL9CE9AB",
+  },
+  {
+    id: 5,
+    title: "Barcelona Wine Bar",
+    description: "Share tapas and wine in a cozy atmosphere",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 6,
+    title: "Capo",
+    description: "Enjoy upscale Italian dining in South Boston",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 7,
+    title: "Lucca North End",
+    description: "Experience fine Italian dining in the North End",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 8,
+    title: "Blue Ribbon Sushi",
+    description: "Savor premium sushi in a modern setting",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 9,
+    title: "Lolita Back Bay",
+    description: "Modern Mexican cuisine in a vibrant atmosphere",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 10,
+    title: "Joes on Newbury",
+    description: "Classic American dining on iconic Newbury Street",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 11,
+    title: "Kured",
+    description: "Artisanal charcuterie and wine experience",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 12,
+    title: "F1 Arcade",
+    description: "Racing simulation and arcade games",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 13,
+    title: "Museum of Fine Arts",
+    description: "Explore world-class art collections",
+    stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
+  },
+  {
+    id: 14,
+    title: "Private Helicopter Ride",
+    description: "See Boston from above on a private tour",
+    stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
+  },
+  {
+    id: 15,
+    title: "Boston Commons",
+    description: "Picnic and activities in America's oldest park",
+    stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
+  },
+  {
+    id: 16,
+    title: "The Clay Room",
+    description: "Get creative with pottery painting",
+    stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
+  },
+  {
+    id: 17,
+    title: "Boston Duck Tour",
+    description: "Tour Boston by land and water",
+    stripeLink: "https://buy.stripe.com/14k9CZbP20xv7uw28j",
+  },
+  {
+    id: 18,
+    title: "Loretta's Last Call",
+    description: "Country music bar with live bands and Southern comfort food",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 19,
+    title: "Cityside Tavern",
+    description: "Casual American dining with sports viewing in Brighton",
+    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+  },
+  {
+    id: 20,
+    title: "Core Power",
+    description: "High-intensity yoga classes in a modern studio setting. Note: Class registration required through Core Power website.",
+    stripeLink: "https://buy.stripe.com/bIY16tcT6a85g1214k",
+    requiresWebsiteRegistration: true,
+    websiteUrl: "https://www.corepoweryoga.com/yoga-studios/massachusetts/newton/305-centre-street"
+  },
+  {
+    id: 21,
+    title: "[solidcore]",
+    description: "High-intensity, low-impact strength training workouts. Note: Class registration required through [solidcore] website.",
+    stripeLink: "https://buy.stripe.com/aEUeXj5qE7ZXbKM9AP",
+    requiresWebsiteRegistration: true,
+    websiteUrl: "https://www.solidcore.co/location/watertown"
+  }
 ];
 
 export default function DateRequestPage() {

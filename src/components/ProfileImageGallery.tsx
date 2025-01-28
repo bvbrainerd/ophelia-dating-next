@@ -17,38 +17,44 @@ interface ProfileImageGalleryProps {
   mode?: 'edit' | 'view';
 }
 
-const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) return '/images/default-avatar.png';
-  
+const DEFAULT_AVATAR = '/images/default-avatar.png';
+
+const getAvatarUrl = async (path: string): Promise<string> => {
   try {
-    // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
-      return avatarPath;
+    if (!path) return '/images/default-avatar.png';
+    
+    // If it's a default avatar or already a full URL (public or signed), return it as is
+    if (path.includes('default-avatar') || 
+        path.includes('supabase.co/storage/v1/object/public') || 
+        path.includes('supabase.co/storage/v1/object/sign')) {
+      return path;
     }
-
-    // Extract just the filename from the path
-    const filename = avatarPath
-      .split('/')                                // Split by /
-      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
-      .join('/')                                 // Join remaining parts
-      .split('?')[0];                            // Remove query parameters
-
-    console.log('Processing filename:', filename);
-
-    // Get a public URL that doesn't expire
-    const { data: publicUrlData } = supabase
-      .storage
+    
+    // Remove any leading slashes and clean up the path
+    const cleanPath = path.replace(/^\/+/, '').replace(/^avatars\//, '');
+    
+    // Try to get a public URL first
+    const publicUrl = supabase.storage
       .from('avatars')
-      .getPublicUrl(filename);
+      .getPublicUrl(cleanPath);
 
-    if (!publicUrlData?.publicUrl) {
-      throw new Error('Could not generate public URL');
+    if (publicUrl.data?.publicUrl) {
+      return publicUrl.data.publicUrl;
     }
 
-    console.log('Generated public URL:', publicUrlData.publicUrl);
-    return publicUrlData.publicUrl;
+    // Fallback to signed URL if public URL fails
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(cleanPath, 3600);
+
+    if (error || !data) {
+      console.error('Error generating URL:', error);
+      return '/images/default-avatar.png';
+    }
+
+    return data.signedUrl;
   } catch (error) {
-    console.error('Error getting avatar URL:', error);
+    console.error('Error generating URL:', error);
     return '/images/default-avatar.png';
   }
 };
@@ -65,17 +71,31 @@ export default function ProfileImageGallery({
 
   useEffect(() => {
     const processUrls = async () => {
-      const urlMap: { [key: number]: string } = {};
-      for (const image of images) {
-        try {
-          const url = await getAvatarUrl(image.image_url);
-          urlMap[image.id] = url;
-        } catch (error) {
-          console.error('Error processing URL for image:', image.id, error);
-          urlMap[image.id] = '/images/default-avatar.png';
+      try {
+        if (!images || images.length === 0) {
+          setProcessedUrls(['/images/default-avatar.png']);
+          return;
         }
+
+        const urls = await Promise.all(
+          images.map(async (image) => {
+            if (!image?.image_url) return '/images/default-avatar.png';
+            return await getAvatarUrl(image.image_url);
+          })
+        );
+
+        const urlMap: { [key: number]: string } = {};
+        images.forEach((image, index) => {
+          if (image && image.id) {
+            urlMap[image.id] = urls[index];
+          }
+        });
+        
+        setProcessedUrls(urlMap);
+      } catch (error) {
+        console.error('Error processing URLs:', error);
+        setProcessedUrls({});
       }
-      setProcessedUrls(urlMap);
     };
     processUrls();
   }, [images]);

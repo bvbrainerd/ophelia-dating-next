@@ -47,11 +47,11 @@ const SCHOOLS = [
 ] as const;
 
 const ARCHETYPES = [
-  { value: 'Hopeless Romantic', label: 'Hopeless Romantic' },
-  { value: 'Cautious Dater', label: 'Cautious Dater' },
-  { value: 'Commitment Seeker', label: 'Commitment Seeker' },
-  { value: 'Serial Dater', label: 'Serial Dater' },
-  { value: 'Friends with Benefits', label: 'Friends with Benefits' },
+  { value: 'hopelessRomantic', label: 'Hopeless Romantic' },
+  { value: 'cautiousDater', label: 'Cautious Dater' },
+  { value: 'commitmentSeeker', label: 'Commitment Seeker' },
+  { value: 'serialDater', label: 'Serial Dater' },
+  { value: 'friendsWithBenefits', label: 'Friends with Benefits' },
 ] as const;
 
 export default function EditProfilePage() {
@@ -69,9 +69,9 @@ export default function EditProfilePage() {
     preferred_gender: '',
     bio: '',
     dater_archetype: '',
-    school: '',
+    school: 'Boston College',
     avatar_url: null,
-    email: '',
+    email: ''
   });
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -80,8 +80,8 @@ export default function EditProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [profileImages, setProfileImages] = useState<ProfileImage[]>([]);
 
-  // Update fetchProfile to get profile images
-  const fetchProfile = async () => {
+  // Wrap fetchProfile in useCallback to prevent unnecessary re-renders
+  const fetchProfile = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
@@ -97,6 +97,36 @@ export default function EditProfilePage() {
 
       console.log('Raw profile data from edit profile:', profileData);
 
+      // Clean and process avatar URL
+      let processedAvatarUrl = DEFAULT_AVATAR;
+      if (profileData.avatar_url) {
+        const cleanedAvatarPath = profileData.avatar_url
+          .replace(/^\/+|^dashboard\//, '')
+          .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\/avatars\//, '')
+          .replace(/\?.*$/, ''); // Remove any query parameters
+
+        if (cleanedAvatarPath) {
+          const { data: publicUrlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(cleanedAvatarPath);
+          processedAvatarUrl = publicUrlData?.publicUrl || DEFAULT_AVATAR;
+        }
+      }
+
+      // Process the profile data to ensure no null values in select fields
+      const processedData = {
+        ...profileData,
+        gender: profileData.gender || '',
+        preferred_gender: profileData.preferred_gender || '',
+        dater_archetype: profileData.dater_archetype || '',
+        school: profileData.school || 'Boston College',
+        bio: profileData.bio || '',
+        avatar_url: processedAvatarUrl
+      };
+
+      console.log('Processed profile data:', processedData);
+      setProfileData(processedData);
+
       // Fetch profile images
       const { data: imagesData, error: imagesError } = await supabase
         .from('profile_images')
@@ -110,99 +140,41 @@ export default function EditProfilePage() {
 
       // Process image URLs
       const processedImages = await Promise.all(imagesData.map(async (img) => {
-        if (!img.image_url || img.image_url.startsWith('/images/')) {
-          return { ...img, image_url: img.image_url || DEFAULT_AVATAR };
-        }
-
-        try {
-          // First, check if the file exists
-          const { data: existsData, error: existsError } = await supabase.storage
-            .from('avatars')
-            .list('', {
-              limit: 1,
-              search: img.image_url.split('/').pop()?.split('?')[0]
-            });
-
-          if (existsError || !existsData?.length) {
-            console.log('Image file not found:', img.image_url);
-            return { ...img, image_url: DEFAULT_AVATAR };
-          }
-
-          // Get a fresh signed URL
-          const { data, error } = await supabase.storage
-            .from('avatars')
-            .createSignedUrl(existsData[0].name, 365 * 24 * 60 * 60); // 1 year expiry
-
-          if (error || !data?.signedUrl) {
-            throw error || new Error('Failed to generate signed URL');
-          }
-
-          console.log('Generated signed URL for gallery image:', data.signedUrl);
-          return { ...img, image_url: data.signedUrl };
-        } catch (error) {
-          console.error('Error processing image URL:', error);
+        if (!img.image_url) {
           return { ...img, image_url: DEFAULT_AVATAR };
         }
+
+        // Clean the image URL
+        const cleanedPath = img.image_url
+          .replace(/^\/+|^dashboard\//, '')
+          .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\/avatars\//, '')
+          .replace(/\?.*$/, ''); // Remove any query parameters
+
+        if (!cleanedPath) {
+          return { ...img, image_url: DEFAULT_AVATAR };
+        }
+
+        const { data: publicUrlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(cleanedPath);
+
+        return { 
+          ...img, 
+          image_url: publicUrlData?.publicUrl || DEFAULT_AVATAR 
+        };
       }));
 
-      // Handle avatar URL
-      let avatarUrl = profileData.avatar_url;
-      console.log('Initial avatar URL:', avatarUrl);
-
-      if (!avatarUrl || avatarUrl.startsWith('/images/')) {
-        console.log('Using default or static avatar path:', avatarUrl || DEFAULT_AVATAR);
-        avatarUrl = avatarUrl || DEFAULT_AVATAR;
-      } else {
-        try {
-          // Check if the file exists
-          const { data: existsData, error: existsError } = await supabase.storage
-            .from('avatars')
-            .list('', {
-              limit: 1,
-              search: avatarUrl.split('/').pop()?.split('?')[0]
-            });
-
-          if (existsError || !existsData?.length) {
-            console.log('Avatar file not found:', avatarUrl);
-            avatarUrl = DEFAULT_AVATAR;
-          } else {
-            // Get a fresh signed URL
-            const { data, error } = await supabase.storage
-              .from('avatars')
-              .createSignedUrl(existsData[0].name, 365 * 24 * 60 * 60); // 1 year expiry
-
-            if (error || !data?.signedUrl) {
-              throw error || new Error('Failed to generate signed URL');
-            }
-
-            console.log('Generated signed URL for avatar:', data.signedUrl);
-            avatarUrl = data.signedUrl;
-          }
-        } catch (error) {
-          console.error('Error processing avatar URL:', error);
-          avatarUrl = DEFAULT_AVATAR;
-        }
-      }
-
-      console.log('Final profile data:', {
-        ...profileData,
-        avatar_url: avatarUrl
-      });
-
-      setProfileData({
-        ...profileData,
-        avatar_url: avatarUrl
-      });
       setProfileImages(processedImages);
     } catch (error) {
       console.error('Error fetching profile:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch profile');
     }
-  };
+  }, []);  // Empty dependency array since we don't use any external values
 
+  // Only fetch profile data once when component mounts
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+  }, []); // Remove fetchProfile from dependencies
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -462,7 +434,8 @@ export default function EditProfilePage() {
     }
   };
 
-  const handleChange = (field: keyof ProfileData, value: string | number) => {
+  const handleChange = (field: keyof ProfileData, value: string | number | null) => {
+    console.log('Handling change for field:', field, 'value:', value);
     setProfileData(prev => ({
       ...prev,
       [field]: value
@@ -492,7 +465,12 @@ export default function EditProfilePage() {
         }
       }
 
-      // Explicitly specify the fields we want to update
+      // Map the display value to the database value for dater_archetype
+      const daterArchetype = ARCHETYPES.find(
+        archetype => archetype.label === profileData.dater_archetype
+      )?.value || profileData.dater_archetype;
+
+      // Only include fields that exist in the profiles table
       const updates = {
         first_name: profileData.first_name,
         last_name: profileData.last_name,
@@ -500,11 +478,12 @@ export default function EditProfilePage() {
         gender: profileData.gender,
         preferred_gender: profileData.preferred_gender,
         bio: profileData.bio,
-        dater_archetype: profileData.dater_archetype,
+        dater_archetype: daterArchetype,
         school: profileData.school,
-        avatar_url: cleanAvatarUrl,
-        profile_completed: true
+        avatar_url: cleanAvatarUrl
       };
+
+      console.log('Updating profile with:', updates);
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -513,11 +492,11 @@ export default function EditProfilePage() {
 
       if (updateError) throw updateError;
 
-      // Refresh profile to get updated state with correct URLs
-      await fetchProfile();
-      
       // Show success message
       alert('Profile updated successfully!');
+      
+      // Refresh profile to get updated state with correct URLs
+      await fetchProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
       setError(error instanceof Error ? error.message : 'Failed to update profile');
@@ -690,8 +669,8 @@ export default function EditProfilePage() {
             <input
               type="number"
               placeholder="Age"
-              value={profileData.age || ''}
-              onChange={(e) => handleChange('age', e.target.value ? parseInt(e.target.value) : 0)}
+              value={profileData.age === null ? '' : profileData.age}
+              onChange={(e) => handleChange('age', e.target.value === '' ? null : parseInt(e.target.value))}
               className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
               required
               min="18"

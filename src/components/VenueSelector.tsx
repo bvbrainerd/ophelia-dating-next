@@ -51,6 +51,10 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
       );
     }
 
+    if (selectedCategory === 'sports') {
+      return category === 'sports' ? venueList : [];
+    }
+
     if (selectedCategory !== 'all' && selectedCategory !== category) return [];
 
     return venueList.filter(venue => 
@@ -60,11 +64,24 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
     );
   });
 
-  const fetchEventsForVenue = async (venueId: string) => {
+  const fetchEventsForVenue = async (venueId: string, requiresWebsiteRegistration?: boolean) => {
+    // Skip event fetching for venues that require website registration
+    if (requiresWebsiteRegistration) {
+      setEvents([]);
+      return;
+    }
+
     try {
+      // Skip event fetching for now since the API endpoint is not implemented
+      console.log('Event fetching is currently disabled');
+      setEvents([]);
+      
+      // Commented out until API endpoint is implemented
+      /*
       const response = await fetch(`/api/eventbrite/events?venueId=${venueId}`);
       const data = await response.json();
       setEvents(data.events || []);
+      */
     } catch (error) {
       console.error("Error fetching events:", error);
       setEvents([]);
@@ -136,6 +153,8 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                     coordinates: venue.coordinates,
                     title: venue.name
                   }))}
+                  center={[-71.0589, 42.3601]}  // Boston center coordinates
+                  zoom={14}
                 />
               </div>
 
@@ -147,7 +166,7 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
                       key={venue.name}
                       onClick={() => {
                         onVenueSelect(venue.name);
-                        fetchEventsForVenue(venue.id); // Fetch events for the selected venue
+                        fetchEventsForVenue(venue.id, venue.requiresWebsiteRegistration);
                         setShowVenueList(false);
                       }}
                       className="w-full bg-white hover:bg-gray-100 p-4 flex items-start gap-4 transition-colors duration-200"

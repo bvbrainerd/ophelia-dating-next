@@ -47,31 +47,29 @@ const getSignedUrl = async (filePath: string) => {
       return '/images/default-avatar.png';
     }
 
-    // If it's already a full URL, return it
-    if (filePath.startsWith('http')) {
+    // If it's already a full URL, return it as is
+    if (filePath.includes('supabase.co')) {
       return filePath;
     }
 
-    // Clean up the path - remove any leading/trailing slashes and avatars/ prefix
-    const cleanPath = filePath
-      .replace(/^\/+/, '') // Remove leading slashes
-      .replace(/\/+$/, '') // Remove trailing slashes
-      .replace(/^avatars\/?/g, ''); // Remove any avatars/ prefix and optional slash
-    
-    // Get the public URL - Supabase will handle the bucket prefix
-    const { data } = supabase
-      .storage
-      .from('avatars')
-      .getPublicUrl(cleanPath);
+    // For relative paths, clean up the filename
+    const filename = filePath
+      .replace(/^avatars\//, '')  // Remove leading avatars/
+      .split('?')[0];             // Remove query parameters
 
-    if (!data?.publicUrl) {
-      console.error('Could not generate public URL for:', cleanPath);
+    // Get a fresh signed URL
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(filename, 3600); // 1 hour expiry
+
+    if (error || !data) {
+      console.error('Error getting signed URL:', error);
       return '/images/default-avatar.png';
     }
 
-    return data.publicUrl;
+    return data.signedUrl;
   } catch (error) {
-    console.error('Error getting public URL:', error);
+    console.error('Error getting URL:', error);
     return '/images/default-avatar.png';
   }
 };
@@ -117,23 +115,17 @@ export default function UserProfile() {
         // Process image URLs
         let images = [];
         if (imageData?.length > 0) {
-          images = await Promise.all(imageData.map(async (img) => {
-            const publicUrl = await getSignedUrl(img.image_url);
-            return {
-              ...img,
-              image_url: publicUrl
-            };
+          images = imageData.map(img => ({
+            ...img,
+            image_url: img.image_url // Pass the original URL directly
           }));
         } else if (profileData.avatar_url) {
-          // If no profile images but has avatar_url, just use it directly without creating a new entry
-          const publicUrl = await getSignedUrl(profileData.avatar_url);
-          if (publicUrl && publicUrl !== '/images/default-avatar.png') {
-            images = [{
-              id: 0,
-              image_url: publicUrl,
-              is_main: true
-            }];
-          }
+          // If no profile images but has avatar_url, use it directly
+          images = [{
+            id: 0,
+            image_url: profileData.avatar_url, // Pass the original URL directly
+            is_main: true
+          }];
         }
 
         // If still no images, use default avatar

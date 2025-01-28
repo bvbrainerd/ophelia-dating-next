@@ -12,35 +12,53 @@ interface ProfileImageProps {
 }
 
 const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) return '/images/default-avatar.png';
-  
+  if (!avatarPath) {
+    console.log('No avatar path provided');
+    return '/images/default-avatar.png';
+  }
+
   try {
-    // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    // If it's a static image or default avatar, return it directly
+    if (avatarPath.includes('default-avatar') || avatarPath.startsWith('/images/')) {
       return avatarPath;
     }
 
-    // Extract just the filename from the path
+    // Get the Supabase URL from environment variable
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error('Supabase URL not found in environment');
+      return '/images/default-avatar.png';
+    }
+
+    // If it's already a Supabase URL, return it as is
+    if (avatarPath.includes(supabaseUrl)) {
+      return avatarPath;
+    }
+
+    // If it's already a full URL but not Supabase, extract the filename
+    if (avatarPath.startsWith('http')) {
+      const url = new URL(avatarPath);
+      const pathParts = url.pathname.split('/');
+      const filename = pathParts[pathParts.length - 1];
+      
+      // Get a fresh public URL using Supabase client
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filename);
+
+      return data?.publicUrl || '/images/default-avatar.png';
+    }
+
+    // For relative paths, clean up the filename and get a fresh URL
     const filename = avatarPath
-      .split('/')                                // Split by /
-      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
-      .join('/')                                 // Join remaining parts
-      .split('?')[0];                            // Remove query parameters
+      .replace(/^avatars\//, '')  // Remove leading avatars/
+      .split('?')[0];             // Remove query parameters
 
-    console.log('Processing filename:', filename);
-
-    // Get a public URL that doesn't expire
-    const { data: publicUrlData } = supabase
-      .storage
+    const { data } = supabase.storage
       .from('avatars')
       .getPublicUrl(filename);
 
-    if (!publicUrlData?.publicUrl) {
-      throw new Error('Could not generate public URL');
-    }
-
-    console.log('Generated public URL:', publicUrlData.publicUrl);
-    return publicUrlData.publicUrl;
+    return data?.publicUrl || '/images/default-avatar.png';
   } catch (error) {
     console.error('Error getting avatar URL:', error);
     return '/images/default-avatar.png';
@@ -87,13 +105,13 @@ export default function ProfileImage({ user, className = '', priority = true }: 
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative w-full h-full ${className}`}>
       <Image
         src={processedUrl}
         alt={`${user.first_name || 'User'}'s profile picture`}
         onError={handleImageError}
         fill
-        className="object-cover rounded-lg"
+        className="object-cover rounded-lg object-[50%_35%]"
         sizes="(max-width: 768px) 100vw, 50vw"
         priority={priority}
         unoptimized={true}

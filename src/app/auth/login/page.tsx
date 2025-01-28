@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../supabase/client';
 import Link from 'next/link';
@@ -10,6 +10,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Clear any existing sessions on component mount
+  useEffect(() => {
+    const clearSession = async () => {
+      try {
+        await supabase.auth.signOut();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Clear any stored tokens
+          localStorage.removeItem('supabase.auth.token');
+        }
+      } catch (err) {
+        console.error('Error clearing session:', err);
+      }
+    };
+    clearSession();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,23 +54,30 @@ export default function LoginPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // First sign out to clear any existing sessions
+      await supabase.auth.signOut();
+
+      // Then attempt to sign in
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password.trim()
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login')) {
+      if (signInError) {
+        if (signInError.message.includes('Invalid login')) {
           setError('Invalid email or password');
         } else {
-          setError(error.message);
+          setError(signInError.message);
         }
         return;
       }
 
-      if (data.session) {
+      if (data?.session) {
+        // Set the new session
         await supabase.auth.setSession(data.session);
         router.push('/dashboard');
+      } else {
+        setError('Failed to create session. Please try again.');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -112,7 +136,7 @@ export default function LoginPage() {
             autoComplete="email"
             className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
             type='email'
-            placeholder='BC Email (@bc.edu)'
+            placeholder='Email'
             value={email}
             onChange={handleEmailChange}
             disabled={isLoading}

@@ -9,4 +9,6 @@ export interface Venue {
   coordinates: [number, number];
   distance: string;
   stripeLink?: string;
+  requiresWebsiteRegistration?: boolean;
+  websiteUrl?: string;
 } 

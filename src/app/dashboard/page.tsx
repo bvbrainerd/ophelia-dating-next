@@ -12,25 +12,65 @@ import Image from 'next/image';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import DateRecommendations from '@/components/DateRecommendations';
 import { checkAndRefreshSession } from '@/lib/auth';
+import Map from '@/components/Map';
+import ProfileImage from '@/components/ProfileImage';
 
 const MAX_PREVIEW_MATCHES = 6;
+
+// Venue coordinates mapping
+const venueCoordinates: { [key: string]: [number, number] } = {
+  'Blue Ribbon Sushi': [-71.0622, 42.3663],
+  'Barcelona Wine Bar': [-71.0761, 42.3457],
+  'Boston Commons': [-71.0712, 42.3551],
+  'Museum of Fine Arts': [-71.0942, 42.3390],
+  'Cityside Tavern': [-71.1502, 42.3359],
+  'Kured': [-71.0770, 42.3578],
+  'The Clay Room': [-71.1012, 42.3467],
+  'Joes on Newbury': [-71.0812, 42.3489],
+  'Private Helicopter Ride': [-71.0095, 42.3656],
+  'Boston Duck Tour': [-71.0686, 42.3518],
+  'F1 Arcade': [-71.0622, 42.3663],
+  'Lucca North End': [-71.0567, 42.3647],
+  'BC Basketball': [-71.1677, 42.3357],
+  'BC Lacrosse': [-71.1677, 42.3357],
+  'Boston Bruins': [-71.0622, 42.3663],
+  'Lolita Back Bay': [-71.0842, 42.3467],
+  'Capo': [-71.0471, 42.3359],
+  'Lorettas Last Call': [-71.0950, 42.3467]
+};
 
 interface Profile {
   id: string;
   first_name: string;
   last_name: string;
   age: number;
-  avatar_url: string;
+  avatar_url: string | null;
   bio: string;
   school?: string;
   gender: 'male' | 'female' | 'other';
   preferred_gender: 'male' | 'female' | 'other';
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
-  dating_style?: string;
-  rating?: string;
   dater_status?: 'gold' | 'silver' | 'bronze' | null;
   follow_through_rate?: number;
   average_rating?: number;
+  venue?: string;
+  proposed_time?: string;
+}
+
+interface DatabaseDateRequest {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  status: string;
+  split_payment: boolean;
+  sender: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    age: number;
+    avatar_url: string | null;
+    bio: string;
+  } | null;
 }
 
 interface DateRequestResponse {
@@ -74,18 +114,30 @@ interface Venue {
   slug: string;
 }
 
-const VENUE_PAYMENT_LINKS: Record<string, string> = {
+const VENUE_PAYMENT_LINKS: { [key: string]: string } = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
-  'BC Hockey': 'https://buy.stripe.com/bIYcPb3iw6VT5mobIN',
-  'Barcelona Wine Bar': 'https://buy.stripe.com/3cscPb7yMa854ik5kk',
+  'BC Lacrosse': 'https://buy.stripe.com/fZeg1nbP2gwtaGI14l',
+  'Barcelona Wine Bar': 'https://buy.stripe.com/9AQg1n1ao6VTeWY28l',
   'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
-  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
-  // ... add other venue payment links
+  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO'
 };
 
 const VENUES: Record<string, Venue[]> = {
   sports: [
+    { 
+      name: "BC Lacrosse",
+      location: "Chestnut Hill, MA",
+      type: "Sports",
+      category: "Sports",
+      rating: 4.7,
+      price: "$$",
+      imageUrl: "/images/venues/bclacrosse.jpg",
+      stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
+      coordinates: [-71.1677, 42.3357],
+      distance: "4.2 mi",
+      slug: "bc-lacrosse"
+    },
     { 
       name: "Boston Bruins",
       location: "TD Garden",
@@ -111,19 +163,6 @@ const VENUES: Record<string, Venue[]> = {
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi",
       slug: "celtics"
-    },
-    { 
-      name: "BC Hockey",
-      location: "Conte Forum",
-      type: "Sports",
-      category: "Sports & Entertainment",
-      rating: 4.5,
-      price: "$$",
-      imageUrl: "/images/venues/bchockey.jpg",
-      stripeLink: "https://buy.stripe.com/bIYcPb3iw6VT5mobIN",
-      coordinates: [-71.1677, 42.3357],
-      distance: "0.1 mi",
-      slug: "bc-hockey"
     }
   ],
   restaurants: [
@@ -135,7 +174,7 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       rating: 4.6,
       imageUrl: "/images/venues/barcelona.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0761, 42.3457],
       distance: "4.9 mi",
       slug: "barcelona-wine-bar"
@@ -148,10 +187,23 @@ const VENUES: Record<string, Venue[]> = {
       price: "$$",
       rating: 4.5,
       imageUrl: "/images/venues/branchline.jpg",
-      stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.1407, 42.3523],
       distance: "1.5 mi",
       slug: "branchline"
+    },
+    { 
+      name: "Lorettas Last Call",
+      location: "Fenway, Boston",
+      type: "American",
+      category: "Food & Drinks",
+      price: "$$",
+      rating: 4.5,
+      imageUrl: "/images/venues/lorettas.jpg",
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0953, 42.3467],
+      distance: "3.2 mi",
+      slug: "lorettas-last-call"
     }
   ],
   activities: [
@@ -212,40 +264,63 @@ const VENUES: Record<string, Venue[]> = {
   ]
 };
 
+const DEFAULT_AVATAR = '/images/default-avatar.png';
+
 const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) return '/images/default-avatar.png';
+  if (!avatarPath) {
+    console.log('No avatar path provided');
+    return DEFAULT_AVATAR;
+  }
+
+  // If it's the default avatar or starts with /images/, return it directly
+  if (avatarPath.includes('default-avatar') || avatarPath.startsWith('/images/')) {
+    console.log('Using default or static image:', avatarPath);
+    return avatarPath;
+  }
+
+  // If it's already a full URL, return it
+  if (avatarPath.startsWith('http')) {
+    console.log('Using existing URL:', avatarPath);
+    return avatarPath;
+  }
+
+  console.log('Original avatar path:', avatarPath);
   
+  // Remove @ prefix if it exists
+  const pathWithoutAt = avatarPath.startsWith('@') ? avatarPath.slice(1) : avatarPath;
+  
+  // Clean up path by removing query parameters and getting just the filename
+  const cleanPath = pathWithoutAt.split('?')[0];
+  const parts = cleanPath.split('/');
+  const filename = parts[parts.length - 1];
+  
+  if (!filename) {
+    console.log('No filename found in path:', avatarPath);
+    return DEFAULT_AVATAR;
+  }
+
+  console.log('Extracted filename:', filename);
+
   try {
-    // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
-      return avatarPath;
-    }
-
-    // Extract just the filename from the path
-    const filename = avatarPath
-      .split('/')                                // Split by /
-      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
-      .join('/')                                 // Join remaining parts
-      .split('?')[0];                            // Remove query parameters
-
-    // Get a public URL that doesn't expire
-    const { data: publicUrlData } = supabase
-      .storage
+    // Get public URL instead of signed URL
+    const { data } = supabase.storage
       .from('avatars')
       .getPublicUrl(filename);
 
-    if (!publicUrlData?.publicUrl) {
-      throw new Error('Could not generate public URL');
+    if (!data?.publicUrl) {
+      console.error('No public URL generated');
+      return DEFAULT_AVATAR;
     }
 
-    return publicUrlData.publicUrl;
+    console.log('Generated public URL:', data.publicUrl);
+    return data.publicUrl;
   } catch (error) {
-    console.error('Error getting avatar URL:', error);
-    return '/images/default-avatar.png';
+    console.error('Error in getAvatarUrl:', error);
+    return DEFAULT_AVATAR;
   }
 };
 
-const ProfileImage = ({ 
+const LocalProfileImage = ({ 
   src, 
   alt, 
   className = '', 
@@ -318,18 +393,11 @@ const formatDate = (dateString: string) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [avatarKey, setAvatarKey] = useState(Date.now());
-  const [imageKey, setImageKey] = useState(Date.now());
-  const [imageLoadError, setImageLoadError] = useState<Record<string, boolean>>({});
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
-  const [profileAvatarUrls, setProfileAvatarUrls] = useState<Record<string, string>>({});
-  const [storageError, setStorageError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchDateRequests = useCallback(async () => {
     try {
@@ -401,13 +469,11 @@ export default function DashboardPage() {
 
   const fetchMatches = async (userId: string) => {
     try {
-      // Check if we have a valid userId
       if (!userId) {
         console.log('No user ID provided');
-        return;
+        return [];
       }
 
-      // Get user's preferred gender
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
         .select('preferred_gender')
@@ -418,41 +484,42 @@ export default function DashboardPage() {
         throw new Error('User profile not found');
       }
 
-      const { data: matches } = await supabase
+      // Only filter by gender if both user's preferred_gender and potential match's gender are set
+      let query = supabase
         .from('profiles')
         .select('*')
-        .neq('id', userId) // Exclude current user
-        .eq('gender', userProfile.preferred_gender) // Filter by preferred gender
-        .limit(MAX_PREVIEW_MATCHES);
+        .neq('id', userId);
 
-      return matches || [];
+      if (userProfile.preferred_gender) {
+        query = query.eq('gender', userProfile.preferred_gender);
+      }
+
+      const { data: matches } = await query.order('created_at', { ascending: false });
+
+      // Log profile data for debugging
+      console.log('Fetched profiles:', matches);
+      matches?.forEach(match => {
+        console.log(`Profile ${match.first_name} age:`, match.age, 'type:', typeof match.age);
+      });
+
+      // Sort profiles - ones with avatar_url first, then ones without
+      const sortedMatches = (matches as Profile[] || []).sort((a, b) => {
+        // If both have or don't have avatar_url, maintain original order
+        if ((!a.avatar_url && !b.avatar_url) || (a.avatar_url && b.avatar_url)) {
+          return 0;
+        }
+        // If a has avatar_url and b doesn't, a comes first
+        if (a.avatar_url && !b.avatar_url) {
+          return -1;
+        }
+        // If b has avatar_url and a doesn't, b comes first
+        return 1;
+      });
+
+      return sortedMatches;
     } catch (error) {
       console.error('Error fetching matches:', error);
       return [];
-    }
-  };
-
-  const checkSession = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        // Try to refresh the session
-        const { data: { session: refreshedSession }, error: refreshError } = 
-          await supabase.auth.refreshSession();
-        
-        if (refreshError || !refreshedSession) {
-          console.log('Session refresh failed, redirecting to login');
-          router.push('/auth/login');
-          return false;
-        }
-        return true;
-      }
-      return true;
-    } catch (error) {
-      console.error('Error checking session:', error);
-      router.push('/auth/login');
-      return false;
     }
   };
 
@@ -460,91 +527,42 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        const isSessionValid = await checkSession();
-        if (!isSessionValid) return;
-
         const { data: { user } } = await supabase.auth.getUser();
-        
         if (!user) {
-          router.replace('/auth/login');
+          router.push('/auth/login');
           return;
         }
 
-        // Fetch profile with all fields
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
-          .select(`
-            *,
-            dater_archetype,
-            dating_style
-          `)
+          .select('*')
           .eq('id', user.id)
           .single();
 
-        if (profileError) {
-          console.error('Profile fetch error:', profileError);
-          throw profileError;
+        if (profile) {
+          setCurrentUser(profile);
+          const matchedProfiles = await fetchMatches(profile.id);
+          setProfiles(matchedProfiles);
+          await fetchDateRequests();
         }
-
-        if (!profile) {
-          console.log('No profile found, redirecting to quiz');
-          router.replace('/quiz');
-          return;
-        }
-
-        console.log('Fetched profile:', profile);
-        setCurrentUser(profile);
-        
       } catch (error) {
-        console.error('Error in fetchData:', error);
-        if (error instanceof Error && error.message.includes('Invalid Refresh Token')) {
-          router.replace('/auth/login');
-        } else {
-          setError(error instanceof Error ? error.message : 'Failed to load data');
-        }
+        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [router]);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-        router.replace('/auth/login');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (currentUser?.avatar_url) {
-      setAvatarKey(Date.now());
-    }
-  }, [currentUser?.avatar_url]);
-
-  useEffect(() => {
-    if (currentUser?.avatar_url) {
-      setImageKey(Date.now());
-    }
-  }, [currentUser?.avatar_url]);
+  }, [router, fetchDateRequests]);
 
   const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
-      // Find the specific date request
       const request = dateRequests.find(req => req.id === requestId);
       if (!request) {
         console.error('Date request not found');
         return;
       }
 
-      // Update the status in the database
       const { error } = await supabase
         .from('date_requests')
         .update({ status })
@@ -552,26 +570,21 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
-      // If accepted, redirect to payment link
+      // Update local state first
+      setDateRequests(prevRequests =>
+        prevRequests.filter(req => req.id !== requestId)
+      );
+
+      // Only redirect to Stripe if the request was accepted
       if (status === 'accepted') {
         const paymentLink = VENUE_PAYMENT_LINKS[request.venue];
         if (paymentLink) {
           window.location.href = paymentLink;
         } else {
           console.error('No payment link found for venue:', request.venue);
-          // Optionally show an error message to the user
           setError(`Payment link not found for venue: ${request.venue}`);
         }
       }
-
-      // Update local state
-      setDateRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.id === requestId
-            ? { ...req, status }
-            : req
-        )
-      );
 
     } catch (error) {
       console.error('Error handling date request:', error);
@@ -579,91 +592,7 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    const loadMatches = async () => {
-      if (currentUser?.id) {
-        const matchedProfiles = await fetchMatches(currentUser.id);
-        setProfiles(matchedProfiles || []);
-      }
-    };
-
-    loadMatches();
-  }, [currentUser?.id]);
-
-  useEffect(() => {
-    const initializePage = async () => {
-      if (currentUser?.id) {
-        await fetchMatches(currentUser.id);
-        await fetchDateRequests();
-      }
-    };
-
-    initializePage();
-  }, [currentUser?.id, fetchMatches, fetchDateRequests]);
-
-  const DateRequestCard = ({ request }: { request: DateRequestResponse }) => (
-    <Card 
-      key={request.id} 
-      className="mb-3 bg-white p-4 rounded-[30px] shadow-sm"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="relative w-16 h-16">
-            <Image
-              src={request.sender?.avatar_url || '/images/default-avatar.png'}
-              alt={`${request.sender?.first_name || 'User'}'s profile`}
-              fill
-              sizes="(max-width: 640px) 64px, 
-                     (max-width: 768px) 64px,
-                     96px"
-              className="object-cover rounded-full"
-              priority={false}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/images/default-avatar.png';
-              }}
-            />
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold text-[#BA2525]">
-              {request.sender?.first_name}, {request.sender?.age}
-            </h3>
-            <p className="text-gray-500 text-sm">
-              {request.venue} • {
-                request.proposed_time 
-                  ? new Date(request.proposed_time).toLocaleString('en-US', {
-                      weekday: 'long',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true
-                    })
-                  : 'No date specified'
-              }
-              {request.split_payment && ' • Split payment requested'}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-3 w-full sm:w-auto">
-          <button 
-            onClick={() => handleDateRequest(request.id, 'accepted')}
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-[#BA2525] text-white rounded-full text-base hover:bg-[#a02020] transition-colors"
-          >
-            Accept
-          </button>
-          <button 
-            onClick={() => handleDateRequest(request.id, 'declined')}
-            className="flex-1 sm:flex-none px-6 py-2.5 border border-[#BA2525] text-[#BA2525] rounded-full text-base hover:bg-[#ffeeee] transition-colors"
-          >
-            Decline
-          </button>
-        </div>
-      </div>
-    </Card>
-  );
-
-  if (!currentUser) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
@@ -691,160 +620,135 @@ export default function DashboardPage() {
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-white">
-        <div className="max-w-6xl mx-auto p-5 pb-32">
-          <Header variant="matching" />
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {[
-              { icon: Crown, value: currentUser.dater_status || 'Bronze', label: 'Dater Status' },
-              { 
-                icon: null,
-                value: (
-                  <div className="flex items-center">
-                    {Array(5).fill(0).map((_, i) => (
-                      <span key={i} className="text-[#BA2525] text-base">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                      </span>
-                    ))}
-                  </div>
-                ), 
-                label: 'Your Rating' 
-              },
-              { icon: Heart, value: currentUser.follow_through_rate ? `${currentUser.follow_through_rate}%` : '0%', label: 'Date Follow-Through' }
-            ].map(({ icon: Icon, value, label }) => (
-              <div key={label} className="overflow-hidden">
-                <Link href={`/profile/${currentUser.id}`}>
-                  <Card className="col-span-1 bg-white border-2 border-[#BA2525] !rounded-[50px] h-14 shadow-sm overflow-hidden hover:bg-[#ffeeee] transition-colors cursor-pointer">
-                    <CardContent className="p-0 h-full">
-                      <div className="flex flex-col items-center justify-center h-full text-center space-y-0">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {Icon && <Icon className="text-[#BA2525]" size={15} />}
-                          {typeof value === 'string' ? (
-                            <div className="text-base font-medium text-[#BA2525]">{value}</div>
-                          ) : (
-                            value
-                          )}
-                        </div>
-                        <div className="text-[9px] text-[#BA2525]/80 -mt-0.5 px-1 whitespace-nowrap leading-tight">{label}</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen bg-white pb-24">
+      <div className="max-w-6xl mx-auto p-5">
+        <Header variant="default" />
+        
+        {/* Valentine's Day Section */}
+        <div className="bg-[#BA2525] rounded-lg p-12 min-h-[200px] flex flex-col items-center justify-center space-y-6 mt-8">
+          <h2 className="text-xl text-white font-medium">Ditch love at first swipe, for love at first sight.</h2>
+          <Link
+            href="/send-valentine"
+            className="bg-white text-[#BA2525] px-5 py-1.5 rounded-full font-medium hover:bg-gray-100 transition-colors text-sm"
+          >
+            Send Valentine
+          </Link>
+        </div>
 
-          {/* Make Your First Move section */}
-          <div>
-            <Link href="/matching">
-              <h2 className="text-2xl font-bold text-[#BA2525] mb-8 text-center hover:opacity-80 transition-opacity cursor-pointer">
-                Make Your First Move...
-              </h2>
-            </Link>
-            
-            {profiles.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  {profiles.slice(0, 6).map((profile) => (
-                    <Link key={profile.id} href={`/profile/${profile.id}`}>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer overflow-hidden rounded-lg bg-white/90 border border-gray-200">
-                        <CardContent className="p-0">
-                          <div className="relative aspect-[4/3] w-full">
-                            <ProfileImage 
-                              src={profile.avatar_url}
-                              alt={`${profile.first_name}'s profile`}
-                              className="w-full h-full"
-                            />
-                          </div>
-                          <div className="p-3">
-                            <h3 className="text-lg font-semibold text-[#BA2525] mb-0.5">
-                              {profile.first_name}, {profile.age}
-                            </h3>
-                            <p className="text-gray-600 text-xs line-clamp-2">
-                              {profile.bio}
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-                <div className="flex justify-center mb-2">
-                  <Link
-                    href="/matching"
-                    className="px-6 py-3 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                  >
-                    View More Matches →
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8 text-gray-600">
-                No matches available yet
-                <div className="flex justify-center mb-4">
-                  <Link
-                    href="/matching"
-                    className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-                  >
-                    View More Matches →
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
+        <h1 className="text-3xl font-bold text-[#BA2525] text-center mt-12 mb-8">
+          Make Your Move
+        </h1>
 
-          {/* Date Requests section */}
-          <div className="mt-12">
-            <Link href="/daterequests">
-              <h2 className="text-2xl font-bold text-[#BA2525] mb-6 text-center hover:opacity-80 transition-opacity cursor-pointer">
-                Your Story Starts Here...
-              </h2>
-            </Link>
-            {dateRequests.map((request) => (
-              <DateRequestCard key={request.id} request={request} />
-            ))}
-            
-            <div className="flex justify-center mt-6 mb-8">
-              <Link
-                href="/daterequests"
-                className="px-6 py-3 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-              >
-                View More Date Requests →
-              </Link>
-            </div>
-          </div>
-
-          {/* Move DateRecommendations here, before the bottom nav */}
-          <DateRecommendations />
-
-          {/* Bottom Navigation */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-            <div className="max-w-2xl mx-auto flex justify-around">
-              {[
-                { icon: <Home size={24} />, label: 'Home', href: '/dashboard' },
-                { icon: <Users size={24} />, label: 'Matches', href: '/matching' },
-                { icon: <Heart size={24} />, label: 'Dates', href: '/daterequests' },
-                { icon: <Calendar size={24} />, label: 'Upcoming', href: '/dates/upcoming' },
-                { icon: <UserCircle size={24} />, label: 'Profile', href: '/dashboard/editprofile' }
-              ].map(({ icon, label, href }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
+        {/* Matches Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          {profiles.map((profile) => (
+            <Card key={profile.id} className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+              <div className="flex flex-col items-center">
+                <div 
+                  className="relative w-full h-64 mb-4 cursor-pointer overflow-hidden"
+                  onClick={() => router.push(`/profile/${profile.id}`)}
                 >
-                  {icon}
-                  <span className="text-xs mt-1">{label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
+                  <LocalProfileImage
+                    src={profile.avatar_url}
+                    alt={`${profile.first_name}'s profile`}
+                    priority={true}
+                    className="object-cover object-[50%_35%]"
+                  />
+                </div>
+                
+                <h2 className="text-xl font-semibold mb-4 text-[#BA2525]">
+                  {profile.first_name}{typeof profile.age !== 'undefined' && profile.age !== null ? `, ${profile.age}` : ''}
+                </h2>
+
+                {/* Stats Grid */}
+                <div 
+                  className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
+                  onClick={() => router.push(`/profile/${profile.id}`)}
+                >
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
+                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                      <span>♔</span>
+                      <span>{(profile.dater_status || 'bronze').charAt(0).toUpperCase() + (profile.dater_status || 'bronze').slice(1)}</span>
+                    </div>
+                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                      Dater Status
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
+                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                      <span>★</span>
+                      <span>{(profile.average_rating || 0).toFixed(1)}</span>
+                    </div>
+                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                      Dater Rating
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
+                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                      <span>♥</span>
+                      <span>{profile.follow_through_rate || '0'}%</span>
+                    </div>
+                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                      Follow-Through
+                    </div>
+                  </div>
+                </div>
+
+                {/* Venue and Time */}
+                {profile.venue && profile.proposed_time && (
+                  <div className="w-full mb-4 bg-red-50 p-4 rounded-lg">
+                    <div className="text-[#BA2525] font-medium mb-2">
+                      📍 {profile.venue}
+                    </div>
+                    <div className="text-[#BA2525] font-medium">
+                      📅 {new Date(profile.proposed_time).toLocaleString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Map */}
+                {profile.venue && venueCoordinates[profile.venue] && (
+                  <div className="w-full h-40 rounded-lg overflow-hidden mb-4">
+                    <Map 
+                      markers={[{
+                        coordinates: venueCoordinates[profile.venue],
+                        title: profile.venue
+                      }]}
+                      zoom={14}
+                    />
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="space-y-2 w-full">
+                  <button
+                    onClick={() => router.push(`/send-date-request/${profile.id}`)}
+                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                  >
+                    Send Date Request
+                  </button>
+                  <button
+                    onClick={() => router.push(`/profile/${profile.id}`)}
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                  >
+                    View Profile
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
       <BottomNav />
-    </>
+    </div>
   );
 }
