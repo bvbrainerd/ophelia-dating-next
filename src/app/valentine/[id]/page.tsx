@@ -179,7 +179,7 @@ export default function ValentineResponsePage({ params }: { params: { id: string
           <Card className="p-8 mt-8">
             <div className="space-y-6">
               <p className="text-xl text-[#BA2525] font-bold">
-                {request.is_anonymous ? 'Someone special' : request.sender.first_name} has sent you a valentine!
+                {request.is_anonymous ? 'Someone special' : request.sender.first_name} has sent you a Valentine!
               </p>
 
               {request.curated_venue && request.curated_time ? (
@@ -201,7 +201,7 @@ export default function ValentineResponsePage({ params }: { params: { id: string
                 </div>
               ) : (
                 <p className="text-gray-600">
-                  Our matchmakers are working on curating the perfect date for you both!
+                  Our Ophelia matchmakers are working on curating the perfect date for you both!
                 </p>
               )}
 
