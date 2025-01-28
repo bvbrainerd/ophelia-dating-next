@@ -354,7 +354,7 @@ export default function DateRequestsPage() {
               <div className="flex items-start space-x-4 mb-6">
                 <div className="w-16 h-16 relative">
                   <Image
-                    src={request.sender?.avatar_url}
+                    src={request.sender?.avatar_url || '/images/default-avatar.png'}
                     alt={`${request.sender?.first_name}'s profile`}
                     fill
                     className="rounded-lg"
