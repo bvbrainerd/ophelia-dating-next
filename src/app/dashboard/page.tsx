@@ -723,6 +723,7 @@ export default function DashboardPage() {
                         coordinates: venueCoordinates[profile.venue],
                         title: profile.venue
                       }]}
+                      center={venueCoordinates[profile.venue]}
                       zoom={14}
                     />
                   </div>
