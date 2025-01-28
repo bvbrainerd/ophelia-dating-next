@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server';
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL;
+const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'dates@opheliadating.io';
 
 export async function POST(request: Request) {
   if (!SENDGRID_API_KEY) {
     console.error('SendGrid API key is missing');
     return NextResponse.json(
       { error: 'SendGrid API key is missing' },
-      { status: 500 }
-    );
-  }
-
-  if (!SENDGRID_FROM_EMAIL) {
-    console.error('SendGrid from email is missing');
-    return NextResponse.json(
-      { error: 'SendGrid from email is missing' },
       { status: 500 }
     );
   }
@@ -51,7 +43,7 @@ export async function POST(request: Request) {
           dynamic_template_data: dynamicTemplateData,
         }],
         from: { 
-          email: SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
+          email: SENDGRID_FROM_EMAIL,
           name: 'Ophelia Dating'
         },
         template_id: templateId,
