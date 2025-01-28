@@ -128,7 +128,7 @@ export default function AdminValentineMatchesPage() {
             minute: 'numeric',
             hour12: true
           }),
-          valentineLink: `https://opheliadatingapp.com/valentine/${request.id}`
+          valentineLink: 'https://opheliadatingapp.com/valentine/' + request.id
         }
       };
 
