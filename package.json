@@ -7,7 +7,8 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "upload-venues": "ts-node scripts/upload-venues.ts"
     },
     "dependencies": {
         "@radix-ui/react-accordion": "^1.2.1",
@@ -45,6 +46,7 @@
         "@typescript-eslint/eslint-plugin": "^6.21.0",
         "@typescript-eslint/parser": "^6.21.0",
         "autoprefixer": "^10.4.20",
+        "dotenv": "^16.4.7",
         "eslint": "^8.57.1",
         "eslint-config-next": "^15.0.3",
         "eslint-plugin-react": "^7.37.2",
@@ -53,6 +55,7 @@
         "shadcn-ui": "^0.9.2",
         "supabase": "^2.6.8",
         "tailwindcss": "^3.4.17",
+        "ts-node": "^10.9.2",
         "typescript": "^5.6.3"
     }
 }

@@ -104,21 +104,20 @@ const venues: Venue[] = [
     name: "Lolita Back Bay",
     category: ["bar", "restaurant", "dinner"],
     description: "Trendy Mexican restaurant & bar",
-    image: "/venues/lolita.jpg"
+    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lolitabackbay.jpg`
   },
   {
-    name: "Fenway Park",
-    category: ["sports", "activity", "group"],
-    description: "Historic baseball stadium",
-    image: "/venues/fenway.jpg"
+    name: "Boston Commons",
+    category: ["outdoors", "activity", "group"],
+    description: "Historic public park",
+    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`
   },
   {
-    name: "House of Blues",
-    category: ["concert", "activity", "entertainment"],
-    description: "Live music venue",
-    image: "/venues/hob.jpg"
-  },
-  // Add more venues with categories
+    name: "Museum of Fine Arts",
+    category: ["culture", "activity", "entertainment"],
+    description: "World-class art museum",
+    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`
+  }
 ];
 
 const getRecommendedVenues = (quizAnswers: any) => {

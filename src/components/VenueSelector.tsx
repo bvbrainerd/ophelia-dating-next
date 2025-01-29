@@ -46,13 +46,18 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
 
     if (selectedCategory === 'recommended') {
       return venueList.filter(venue => 
-        venue.type.toLowerCase() === 'sports' || 
-        venue.type.toLowerCase() === 'restaurant'
+        venue.type.toLowerCase().includes('sports') || 
+        venue.type.toLowerCase().includes('restaurant') ||
+        venue.type.toLowerCase().includes('bar')
       );
     }
 
     if (selectedCategory === 'sports') {
       return category === 'sports' ? venueList : [];
+    }
+
+    if (selectedCategory === 'restaurants') {
+      return category === 'restaurants' ? venueList : [];
     }
 
     if (selectedCategory !== 'all' && selectedCategory !== category) return [];

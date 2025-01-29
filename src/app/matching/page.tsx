@@ -34,6 +34,7 @@ interface SuggestedDate {
   matchedUser: Profile;
   compatibility: number;
   description: string;
+  isValentineMatch: boolean;
 }
 
 interface DailyMatch {
@@ -285,34 +286,120 @@ export default function MatchingPage() {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.log('No user found');
+        // First check if we have a valid session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          // Clear any stale session data
+          await supabase.auth.signOut();
+          router.push('/auth/login');
           return;
         }
-        console.log('Current user ID:', user.id);
 
-        // Fetch current user's profile
-        const { data: userProfile } = await supabase
+        if (!session?.user) {
+          console.log('No active session found');
+          router.push('/auth/login');
+          return;
+        }
+
+        // Verify the session is still valid with a token refresh attempt
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          console.error('Error refreshing session:', refreshError);
+          await supabase.auth.signOut();
+          router.push('/auth/login');
+          return;
+        }
+
+        // Now proceed with fetching valentine matches
+        const { data: valentineMatches, error: valentineError } = await supabase
+          .from('valentine_requests')
+          .select(`
+            *,
+            sender:profiles!valentine_requests_sender_id_fkey (
+              id,
+              first_name,
+              last_name,
+              age,
+              avatar_url,
+              bio,
+              gender,
+              preferred_gender,
+              dater_archetype,
+              dater_status,
+              average_rating,
+              follow_through_rate
+            )
+          `)
+          .or(`recipient_id.eq.${session.user.id},sender_id.eq.${session.user.id}`)
+          .eq('status', 'accepted');
+
+        if (valentineError) {
+          console.error('Error fetching valentine matches:', valentineError);
+          if (valentineError.message?.includes('JWT')) {
+            // If it's a JWT/auth error, redirect to login
+            await supabase.auth.signOut();
+            router.push('/auth/login');
+            return;
+          }
+        }
+
+        // Process valentine matches into the same format as regular matches
+        const processedValentineMatches = (valentineMatches || []).map((match) => {
+          const isRecipient = match.recipient_id === session.user.id;
+          const matchedUser = isRecipient ? match.sender : match.matched_user;
+          
+          // Generate a date between Feb 7-14 for Valentine's week
+          const valentineDate = new Date('2024-02-14T00:00:00');
+          const daysBeforeValentine = Math.floor(Math.random() * 7); // 0-6 days before Valentine's
+          valentineDate.setDate(valentineDate.getDate() - daysBeforeValentine);
+          
+          // Set time between 6-9 PM
+          const hour = 18 + Math.floor(Math.random() * 3); // 18, 19, or 20 (6-8 PM)
+          const minutes = [0, 30][Math.floor(Math.random() * 2)]; // Either on the hour or half hour
+          valentineDate.setHours(hour, minutes, 0, 0);
+
+          // Romantic venues perfect for Valentine's dates
+          const valentineVenues = [
+            'Barcelona Wine Bar',
+            'Blue Ribbon Sushi',
+            'Lucca North End',
+            'Lolita Back Bay'
+          ];
+          const venue = valentineVenues[Math.floor(Math.random() * valentineVenues.length)];
+          
+          return {
+            id: `valentine-${match.id}`,
+            venue: match.curated_venue || venue,
+            proposedTime: match.curated_time || valentineDate.toISOString(),
+            matchedUser: {
+              ...matchedUser,
+              dater_status: matchedUser.dater_status || 'bronze',
+              average_rating: matchedUser.average_rating || 0,
+              follow_through_rate: matchedUser.follow_through_rate || 0
+            },
+            compatibility: 100, // Valentine matches are special!
+            description: "Your Valentine's Day Match! 💝",
+            isValentineMatch: true
+          };
+        });
+
+        // Then fetch regular matches as before
+        const { data: userProfile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', session.user.id)
           .single();
-
-        if (userProfile) {
-          console.log('Found user profile:', userProfile);
-          setCurrentUser(userProfile);
-        } else {
-          console.log('No user profile found');
-          return;
-        }
+        
+        if (profileError) throw profileError;
 
         // Fetch all potential matches from profiles table
-        console.log('Fetching potential matches for user:', user.id);
+        console.log('Fetching potential matches for user:', session.user.id);
         let query = supabase
           .from('profiles')
           .select('*')
-          .neq('id', user.id);
+          .neq('id', session.user.id);
 
         // Only add gender filters if both values are set
         if (userProfile.preferred_gender && userProfile.gender) {
@@ -336,45 +423,31 @@ export default function MatchingPage() {
         console.log('Raw potential matches:', potentialMatches);
 
         if (potentialMatches && potentialMatches.length > 0) {
-          console.log('Processing matches...');
-          // Shuffle the matches array
-          const shuffledMatches = [...potentialMatches].sort(() => Math.random() - 0.5);
-          
-          const processedDates = shuffledMatches.map((match: Profile) => {
-            // Calculate compatibility score
-            const compatibility = calculateArchetypeCompatibility(userProfile.dater_archetype, match.dater_archetype);
-            
-            // Generate a venue based on the matched user's archetype
+          const processedRegularMatches = potentialMatches.map((match: Profile) => {
             const venue = getRandomVenueForArchetype(match.dater_archetype);
-            console.log('Generated venue for match:', venue);
-            
-            // Generate time based on venue type
-            const baseDate = new Date();
-            baseDate.setDate(baseDate.getDate() + 3); // Schedule for 3 days from now
-            const proposedTime = getTimeForPreference('afternoon', baseDate, venue);
-            console.log('Generated time for match:', proposedTime);
-
             return {
               id: crypto.randomUUID(),
               venue,
-              proposedTime: proposedTime.toISOString(),
+              proposedTime: getTimeForPreference('afternoon', new Date(), venue).toISOString(),
               matchedUser: {
                 ...match,
-                dater_status: match.dater_status || null,
+                dater_status: match.dater_status || 'bronze',
                 average_rating: match.average_rating || 0,
                 follow_through_rate: match.follow_through_rate || 0
-              } as Profile,
-              compatibility,
-              description: `Based on your ${compatibility}% compatibility and shared interests`
+              },
+              compatibility: calculateArchetypeCompatibility(userProfile.dater_archetype, match.dater_archetype),
+              description: `Based on your compatibility and shared interests`,
+              isValentineMatch: false
             };
           });
 
-          console.log('Processed dates:', processedDates);
-          setSuggestedDates(processedDates);
+          // Combine valentine matches with regular matches
+          const allMatches = [...processedValentineMatches, ...processedRegularMatches];
+          setSuggestedDates(allMatches);
         } else {
-          console.log('No potential matches found');
+          setSuggestedDates(processedValentineMatches);
         }
-        
+
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching matches:', error);
@@ -383,7 +456,7 @@ export default function MatchingPage() {
     };
 
     fetchMatches();
-  }, []);
+  }, [router]);
 
   const handleAccept = async () => {
     const currentDate = suggestedDates[currentIndex];
@@ -475,6 +548,12 @@ export default function MatchingPage() {
 
             <Card className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
               <div className="flex flex-col items-center">
+                {currentDate.isValentineMatch && (
+                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-4">
+                    Valentine's Day Match 💝
+                  </div>
+                )}
+                
                 <div 
                   className="relative w-full h-64 mb-4 cursor-pointer"
                   onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
