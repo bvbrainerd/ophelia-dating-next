@@ -132,7 +132,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Sports",
       rating: 4.7,
       price: "$$",
-      imageUrl: "/images/venues/bclacrosse.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bclacrosse.jpg`,
       stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
       coordinates: [-71.1677, 42.3357],
       distance: "4.2 mi",
@@ -145,7 +145,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Sports & Entertainment",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/bruins.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bruins.jpg`,
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi",
@@ -158,7 +158,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Sports & Entertainment",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/celtics.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/celtics.jpg`,
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi",
@@ -173,7 +173,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Food & Drinks",
       price: "$$$",
       rating: 4.6,
-      imageUrl: "/images/venues/barcelona.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/barcelona.jpg`,
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0761, 42.3457],
       distance: "4.9 mi",
@@ -186,7 +186,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Food & Drinks",
       price: "$$",
       rating: 4.5,
-      imageUrl: "/images/venues/branchline.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/branchline.jpg`,
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.1407, 42.3523],
       distance: "1.5 mi",
@@ -199,7 +199,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Food & Drinks",
       price: "$$",
       rating: 4.5,
-      imageUrl: "/images/venues/lorettas.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lorettas.jpg`,
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0953, 42.3467],
       distance: "3.2 mi",
@@ -214,11 +214,24 @@ const VENUES: Record<string, Venue[]> = {
       category: "Arts & Culture",
       rating: 4.8,
       price: "$$",
-      imageUrl: "/images/venues/museum.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`,
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0995, 42.3394],
       distance: "3.6 mi",
       slug: "museum-of-fine-arts"
+    },
+    { 
+      name: "Boston Commons",
+      location: "Boston, MA",
+      type: "Park",
+      category: "Outdoors",
+      rating: 4.7,
+      price: "$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`,
+      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
+      coordinates: [-71.0670, 42.3554],
+      distance: "5.5 mi",
+      slug: "boston-commons"
     },
     { 
       name: "Private Helicopter Ride",
@@ -227,7 +240,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Adventure & Outdoors",
       price: "$$$$",
       rating: 4.9,
-      imageUrl: "/images/venues/helicopter.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/helicopter.jpg`,
       stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
       coordinates: [-71.0217, 42.3656],
       distance: "7.8 mi",
@@ -240,7 +253,7 @@ const VENUES: Record<string, Venue[]> = {
       category: "Arts & Culture",
       rating: 4.6,
       price: "$$",
-      imageUrl: "/images/venues/clayroom.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/clayroom.jpg`,
       stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
       coordinates: [-71.1317, 42.3396],
       distance: "1.9 mi",
@@ -286,26 +299,25 @@ const getAvatarUrl = async (avatarPath: string | null) => {
 
   console.log('Original avatar path:', avatarPath);
   
-  // Remove @ prefix if it exists
-  const pathWithoutAt = avatarPath.startsWith('@') ? avatarPath.slice(1) : avatarPath;
-  
   // Clean up path by removing query parameters and getting just the filename
-  const cleanPath = pathWithoutAt.split('?')[0];
-  const parts = cleanPath.split('/');
-  const filename = parts[parts.length - 1];
+  const cleanPath = avatarPath
+    .replace(/^\/+/, '')  // Remove leading slashes
+    .replace(/^avatars\/avatars\//, '') // Remove double avatars prefix
+    .replace(/^avatars\//, '') // Remove single avatars prefix
+    .split('?')[0];  // Remove query parameters
   
-  if (!filename) {
-    console.log('No filename found in path:', avatarPath);
+  if (!cleanPath) {
+    console.log('No valid path found:', avatarPath);
     return DEFAULT_AVATAR;
   }
 
-  console.log('Extracted filename:', filename);
+  console.log('Cleaned path:', cleanPath);
 
   try {
     // Get public URL instead of signed URL
     const { data } = supabase.storage
       .from('avatars')
-      .getPublicUrl(filename);
+      .getPublicUrl(cleanPath);
 
     if (!data?.publicUrl) {
       console.error('No public URL generated');

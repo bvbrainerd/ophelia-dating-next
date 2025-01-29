@@ -11,4 +11,6 @@ export interface Venue {
   stripeLink?: string;
   requiresWebsiteRegistration?: boolean;
   websiteUrl?: string;
+  payAtVenue?: boolean;
+  restrictions?: string;
 } 

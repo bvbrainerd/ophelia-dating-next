@@ -52,21 +52,36 @@ const getSignedUrl = async (filePath: string) => {
       return filePath;
     }
 
-    // For relative paths, clean up the filename
-    const filename = filePath
-      .replace(/^avatars\//, '')  // Remove leading avatars/
-      .split('?')[0];             // Remove query parameters
+    // Clean the path by removing any prefixes
+    const cleanPath = filePath
+      .replace(/^\/+/, '')  // Remove leading slashes
+      .replace(/^avatars\/avatars\//, '') // Remove double avatars prefix
+      .replace(/^avatars\//, '') // Remove single avatars prefix
+      .split('?')[0];  // Remove query parameters
 
-    // Get a fresh signed URL
+    console.log('Cleaned path:', cleanPath);
+
+    // Try to get a public URL first
+    const { data: publicUrlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(cleanPath);
+
+    if (publicUrlData?.publicUrl) {
+      console.log('Generated public URL:', publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
+    }
+
+    // Fallback to signed URL if public URL fails
     const { data, error } = await supabase.storage
       .from('avatars')
-      .createSignedUrl(filename, 3600); // 1 hour expiry
+      .createSignedUrl(cleanPath, 3600); // 1 hour expiry
 
     if (error || !data) {
       console.error('Error getting signed URL:', error);
       return '/images/default-avatar.png';
     }
 
+    console.log('Generated signed URL:', data.signedUrl);
     return data.signedUrl;
   } catch (error) {
     console.error('Error getting URL:', error);
@@ -115,21 +130,20 @@ export default function UserProfile() {
         // Process image URLs
         let images = [];
         if (imageData?.length > 0) {
-          images = imageData.map(img => ({
+          images = await Promise.all(imageData.map(async img => ({
             ...img,
-            image_url: img.image_url // Pass the original URL directly
-          }));
+            image_url: await getSignedUrl(img.image_url)
+          })));
         } else if (profileData.avatar_url) {
-          // If no profile images but has avatar_url, use it directly
+          // If no profile images but has avatar_url, process it
+          const signedUrl = await getSignedUrl(profileData.avatar_url);
           images = [{
             id: 0,
-            image_url: profileData.avatar_url, // Pass the original URL directly
+            image_url: signedUrl,
             is_main: true
           }];
-        }
-
-        // If still no images, use default avatar
-        if (images.length === 0) {
+        } else {
+          // If no images, use default avatar
           images = [{
             id: 0,
             image_url: '/images/default-avatar.png',

@@ -21,25 +21,33 @@ const DEFAULT_AVATAR = '/images/default-avatar.png';
 
 const getAvatarUrl = async (path: string): Promise<string> => {
   try {
-    if (!path) return '/images/default-avatar.png';
+    if (!path) return DEFAULT_AVATAR;
     
     // If it's a default avatar or already a full URL (public or signed), return it as is
     if (path.includes('default-avatar') || 
         path.includes('supabase.co/storage/v1/object/public') || 
         path.includes('supabase.co/storage/v1/object/sign')) {
+      console.log('Using existing URL:', path);
       return path;
     }
     
-    // Remove any leading slashes and clean up the path
-    const cleanPath = path.replace(/^\/+/, '').replace(/^avatars\//, '');
+    // Clean the path by removing any prefixes
+    const cleanPath = path
+      .replace(/^\/+/, '')  // Remove leading slashes
+      .replace(/^avatars\/avatars\//, '') // Remove double avatars prefix
+      .replace(/^avatars\//, '') // Remove single avatars prefix
+      .split('?')[0];  // Remove query parameters
+    
+    console.log('Cleaned path:', cleanPath);
     
     // Try to get a public URL first
-    const publicUrl = supabase.storage
+    const { data: publicUrlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(cleanPath);
 
-    if (publicUrl.data?.publicUrl) {
-      return publicUrl.data.publicUrl;
+    if (publicUrlData?.publicUrl) {
+      console.log('Generated public URL:', publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
     }
 
     // Fallback to signed URL if public URL fails
@@ -49,13 +57,14 @@ const getAvatarUrl = async (path: string): Promise<string> => {
 
     if (error || !data) {
       console.error('Error generating URL:', error);
-      return '/images/default-avatar.png';
+      return DEFAULT_AVATAR;
     }
 
+    console.log('Generated signed URL:', data.signedUrl);
     return data.signedUrl;
   } catch (error) {
     console.error('Error generating URL:', error);
-    return '/images/default-avatar.png';
+    return DEFAULT_AVATAR;
   }
 };
 
@@ -72,31 +81,34 @@ export default function ProfileImageGallery({
   useEffect(() => {
     const processUrls = async () => {
       try {
+        console.log('Processing images:', images);
+        
         if (!images || images.length === 0) {
-          setProcessedUrls(['/images/default-avatar.png']);
+          console.log('No images found, using default avatar');
+          setProcessedUrls({ 0: DEFAULT_AVATAR });
           return;
         }
 
-        const urls = await Promise.all(
-          images.map(async (image) => {
-            if (!image?.image_url) return '/images/default-avatar.png';
-            return await getAvatarUrl(image.image_url);
-          })
-        );
-
         const urlMap: { [key: number]: string } = {};
-        images.forEach((image, index) => {
-          if (image && image.id) {
-            urlMap[image.id] = urls[index];
+        for (const image of images) {
+          if (!image?.image_url) {
+            urlMap[image.id] = DEFAULT_AVATAR;
+            continue;
           }
-        });
+          
+          console.log('Processing image:', image.id, image.image_url);
+          const processedUrl = await getAvatarUrl(image.image_url);
+          urlMap[image.id] = processedUrl;
+        }
         
+        console.log('Processed URLs:', urlMap);
         setProcessedUrls(urlMap);
       } catch (error) {
         console.error('Error processing URLs:', error);
         setProcessedUrls({});
       }
     };
+    
     processUrls();
   }, [images]);
 
@@ -113,7 +125,7 @@ export default function ProfileImageGallery({
     return (
       <div className={`relative aspect-square w-full ${className}`}>
         <Image
-          src={currentImage ? processedUrls[currentImage.id] || '/images/default-avatar.png' : '/images/default-avatar.png'}
+          src={currentImage ? processedUrls[currentImage.id] || DEFAULT_AVATAR : DEFAULT_AVATAR}
           alt="Profile image"
           fill
           className="object-cover rounded-lg"
@@ -126,9 +138,10 @@ export default function ProfileImageGallery({
             console.error('Error loading gallery image:', {
               originalSrc: target.src,
               imageId: currentImage?.id,
-              imageUrl: currentImage?.image_url
+              imageUrl: currentImage?.image_url,
+              processedUrl: processedUrls[currentImage?.id]
             });
-            target.src = '/images/default-avatar.png';
+            target.src = DEFAULT_AVATAR;
           }}
         />
         {images.length > 1 && (
@@ -162,7 +175,7 @@ export default function ProfileImageGallery({
       {images.map((image) => (
         <div key={image.id} className="relative w-20 h-20">
           <Image
-            src={processedUrls[image.id] || '/images/default-avatar.png'}
+            src={processedUrls[image.id] || DEFAULT_AVATAR}
             alt="Profile image"
             fill
             className="object-cover rounded-full"
@@ -174,9 +187,10 @@ export default function ProfileImageGallery({
               console.error('Error loading thumbnail:', {
                 originalSrc: target.src,
                 imageId: image.id,
-                imageUrl: image.image_url
+                imageUrl: image.image_url,
+                processedUrl: processedUrls[image.id]
               });
-              target.src = '/images/default-avatar.png';
+              target.src = DEFAULT_AVATAR;
             }}
           />
           {image.is_main && (

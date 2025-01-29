@@ -21,7 +21,7 @@ export const VENUES: Record<string, Venue[]> = {
       category: "Sports",
       rating: 4.7,
       price: "$$",
-      imageUrl: "/images/venues/bclacrosse.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bclacrosse.jpg`,
       stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
       coordinates: [-71.1677, 42.3357],
       distance: "4.2 mi",
@@ -34,7 +34,7 @@ export const VENUES: Record<string, Venue[]> = {
       category: "Sports & Entertainment",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/bruins.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bruins.jpg`,
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi",
@@ -49,7 +49,7 @@ export const VENUES: Record<string, Venue[]> = {
       category: "Arts & Culture",
       rating: 4.8,
       price: "$$",
-      imageUrl: "/images/venues/museum.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`,
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0942, 42.3394],
       distance: "3.6 mi",
@@ -99,7 +99,7 @@ export const getVenueImagePath = (venueName: string): string => {
     .replace(/[\s'-]+/g, '')
     .replace(/[^a-z0-9]/g, '');
   
-  return `/images/venues/${formattedName}.jpg`;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/${formattedName}.jpg`;
 };
 
 export const venueCoordinates: Record<string, [number, number]> = {

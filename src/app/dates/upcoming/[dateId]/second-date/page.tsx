@@ -27,7 +27,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/bruins.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bruins.jpg`,
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi"
@@ -39,7 +39,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/celtics.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/celtics.jpg`,
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi"
@@ -53,7 +53,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Spanish",
       price: "$$$",
       rating: 4.6,
-      imageUrl: "/images/venues/barcelona.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/barcelona.jpg`,
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
       coordinates: [-71.0761, 42.3457],
       distance: "4.9 mi"
@@ -65,7 +65,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Italian",
       price: "$$$",
       rating: 4.5,
-      imageUrl: "/images/venues/capo.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/capo.jpg`,
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
       coordinates: [-71.0424, 42.3363],
       distance: "6.7 mi"
@@ -79,10 +79,22 @@ const VENUES: Record<string, Venue[]> = {
       type: "Culture",
       rating: 4.8,
       price: "$$",
-      imageUrl: "/images/venues/museum.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`,
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0995, 42.3394],
       distance: "3.6 mi"
+    },
+    {
+      id: "boston-commons",
+      name: "Boston Commons",
+      location: "Boston, MA",
+      type: "Park",
+      rating: 4.7,
+      price: "$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`,
+      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
+      coordinates: [-71.0670, 42.3554],
+      distance: "5.5 mi"
     }
   ]
 };

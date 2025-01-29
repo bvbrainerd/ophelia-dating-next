@@ -40,7 +40,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/bruins.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bruins.jpg`,
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi"
@@ -52,7 +52,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/celtics.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/celtics.jpg`,
       stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
       coordinates: [-71.0622, 42.3663],
       distance: "5.8 mi"
@@ -64,7 +64,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.5,
       price: "$$",
-      imageUrl: "/images/venues/bclacrosse.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bclacrosse.jpg`,
       stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
       coordinates: [-71.1677, 42.3357],
       distance: "0.1 mi"
@@ -76,7 +76,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Sports",
       rating: 4.5,
       price: "$$",
-      imageUrl: "/images/venues/bcbasketball.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bcbasketball.jpg`,
       stripeLink: "https://buy.stripe.com/fZebL7bP24NL9CE9AB",
       coordinates: [-71.1677, 42.3357],
       distance: "0.1 mi"
@@ -90,7 +90,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.6,
       price: "$$$",
-      imageUrl: "/images/venues/barcelona.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/barcelona.jpg`,
       stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0761, 42.3457],
       distance: "4.8 mi"
@@ -102,7 +102,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.5,
       price: "$$$",
-      imageUrl: "/images/venues/capo.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/capo.jpg`,
       stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0472, 42.3352],
       distance: "6.2 mi"
@@ -114,7 +114,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.7,
       price: "$$$",
-      imageUrl: "/images/venues/lucca.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lucca.jpg`,
       stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0543, 42.3649],
       distance: "5.9 mi"
@@ -126,7 +126,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.6,
       price: "$$$$",
-      imageUrl: "/images/venues/blueribbon.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/blueribbon.jpg`,
       stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0816, 42.3486],
       distance: "4.5 mi"
@@ -138,7 +138,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.5,
       price: "$$$",
-      imageUrl: "/images/venues/lolita.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lolitabackbay.jpg`,
       stripeLink: "https://buy.stripe.com/00gcPb6uIdkh5mofZg",
       coordinates: [-71.0816, 42.3486],
       distance: "4.5 mi"
@@ -150,7 +150,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "American",
       price: "$$",
       rating: 4.5,
-      imageUrl: "/images/venues/cityside.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/cityside.jpg`,
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.1502, 42.3359],
       distance: "0.2 mi"
@@ -162,7 +162,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "American",
       price: "$$",
       rating: 4.4,
-      imageUrl: "/images/venues/joes.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/joes.jpg`,
       stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0793, 42.3491],
       distance: "4.7 mi"
@@ -174,7 +174,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "American",
       price: "$$",
       rating: 4.5,
-      imageUrl: "/images/venues/lorettas.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lorettas.jpg`,
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0950, 42.3467],
       distance: "3.8 mi"
@@ -186,10 +186,11 @@ const VENUES: Record<string, Venue[]> = {
       type: "Charcuterie",
       price: "$$",
       rating: 4.5,
-      imageUrl: "/images/venues/kured.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/kured.jpg`,
       stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0712, 42.3589],
-      distance: "5.2 mi"
+      distance: "5.2 mi",
+      restrictions: "Available 11 AM - 4 PM"
     },
     { 
       id: "branchline",
@@ -198,10 +199,179 @@ const VENUES: Record<string, Venue[]> = {
       type: "American",
       price: "$$",
       rating: 4.6,
-      imageUrl: "/images/venues/branchline.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/branchline.jpg`,
       stripeLink: "https://buy.stripe.com/3cscPb7yMa854ik5kk",
       coordinates: [-71.1407, 42.3523],
       distance: "1.5 mi"
+    },
+    { 
+      id: "capital-grille",
+      name: "Capital Grille",
+      location: "Back Bay",
+      type: "Restaurant",
+      rating: 4.7,
+      price: "$$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/capitalgrille.jpg`,
+      coordinates: [-71.0827, 42.3486],
+      distance: "4.3 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "parla",
+      name: "Parla",
+      location: "North End",
+      type: "Restaurant & Bar",
+      rating: 4.6,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/parla.jpg`,
+      coordinates: [-71.0553, 42.3636],
+      distance: "5.8 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "grill23",
+      name: "Grill 23",
+      location: "Back Bay",
+      type: "Restaurant",
+      rating: 4.8,
+      price: "$$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/grill23.jpg`,
+      coordinates: [-71.0726, 42.3500],
+      distance: "4.9 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "sweetgreen",
+      name: "SweetGreen",
+      location: "Watertown, MA",
+      type: "Restaurant",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/sweetgreen.jpg`,
+      coordinates: [-71.1573, 42.3647],
+      distance: "1.6 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "long-bar",
+      name: "Long Bar & Terrace",
+      location: "Boston, MA",
+      type: "Restaurant & Bar",
+      rating: 4.6,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/longbar.jpg`,
+      coordinates: [-71.0766, 42.3489],
+      distance: "4.7 mi",
+      payAtVenue: true,
+      restrictions: "21+ only, Available after 8 PM"
+    },
+    { 
+      id: "pressed-cafe",
+      name: "Pressed Cafe Newbury",
+      location: "Boston, MA",
+      type: "Restaurant",
+      rating: 4.4,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/pressed.jpg`,
+      coordinates: [-71.0817, 42.3474],
+      distance: "4.5 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "popup-bagel",
+      name: "Popup Bagel",
+      location: "Seaport, Boston",
+      type: "Restaurant",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/popupbagel.jpg`,
+      coordinates: [-71.0434, 42.3519],
+      distance: "6.3 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "serafina",
+      name: "Serafina Seaport",
+      location: "Seaport, Boston",
+      type: "Restaurant",
+      rating: 4.4,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/serafina.jpg`,
+      coordinates: [-71.0434, 42.3534],
+      distance: "6.3 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "white-mountain",
+      name: "White Mountain",
+      location: "Chestnut Hill, MA",
+      type: "Restaurant",
+      rating: 4.6,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/whitemountain.jpg`,
+      coordinates: [-71.1654, 42.3279],
+      distance: "0.3 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "boston-burger",
+      name: "Boston Burger Company",
+      location: "Boston, MA",
+      type: "Restaurant",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bostonburger.jpg`,
+      coordinates: [-71.0945, 42.3474],
+      distance: "3.7 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "lola-42",
+      name: "Lola 42",
+      location: "Seaport, Boston",
+      type: "Restaurant",
+      rating: 4.6,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lola42.jpg`,
+      coordinates: [-71.0434, 42.3534],
+      distance: "6.3 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "bartaco",
+      name: "Bartaco Fenway",
+      location: "Fenway, Boston",
+      type: "Restaurant & Bar",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bartaco.jpg`,
+      coordinates: [-71.0945, 42.3474],
+      distance: "3.7 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "jp-licks",
+      name: "J.P. Licks Newbury",
+      location: "Back Bay, Boston",
+      type: "Restaurant",
+      rating: 4.7,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/jplicks.jpg`,
+      coordinates: [-71.0784, 42.3489],
+      distance: "4.7 mi",
+      payAtVenue: true
+    },
+    { 
+      id: "fuji-ink-block",
+      name: "Fuji at Ink Block",
+      location: "South End, Boston",
+      type: "Restaurant",
+      rating: 4.5,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/fuji.jpg`,
+      coordinates: [-71.0614, 42.3445],
+      distance: "5.1 mi",
+      payAtVenue: true
     }
   ],
   activities: [
@@ -212,10 +382,34 @@ const VENUES: Record<string, Venue[]> = {
       type: "Culture",
       rating: 4.8,
       price: "$$",
-      imageUrl: "/images/venues/museum.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`,
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0995, 42.3394],
       distance: "3.6 mi"
+    },
+    { 
+      id: "boston-commons",
+      name: "Boston Commons",
+      location: "Boston, MA",
+      type: "Park",
+      rating: 4.7,
+      price: "$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`,
+      stripeLink: "https://buy.stripe.com/28o6qN3iwfsp3eg4gz",
+      coordinates: [-71.0640, 42.3554],
+      distance: "5.5 mi"
+    },
+    { 
+      id: "house-of-blues",
+      name: "House of Blues",
+      location: "Boston, MA",
+      type: "Music Venue",
+      rating: 4.6,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/houseofblues.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0945, 42.3474],
+      distance: "3.7 mi"
     },
     { 
       id: "core-power",
@@ -224,7 +418,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Fitness",
       price: "$$",
       rating: 4.7,
-      imageUrl: "/images/venues/corepower.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/corepower.jpg`,
       stripeLink: "https://buy.stripe.com/bIY16tcT6a85g1214k",
       coordinates: [-71.1921, 42.3485],
       distance: "2.8 mi",
@@ -238,7 +432,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Fitness",
       price: "$$",
       rating: 4.8,
-      imageUrl: "/images/venues/solidcore.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/solidcore.jpg`,
       stripeLink: "https://buy.stripe.com/aEUeXj5qE7ZXbKM9AP",
       coordinates: [-71.1561, 42.3644],
       distance: "1.5 mi",
@@ -252,7 +446,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Adventure",
       price: "$$$$",
       rating: 4.9,
-      imageUrl: "/images/venues/helicopter.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/helicopter.jpg`,
       stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
       coordinates: [-71.0217, 42.3656],
       distance: "7.8 mi"
@@ -264,7 +458,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Entertainment",
       price: "$$",
       rating: 4.4,
-      imageUrl: "/images/venues/f1arcade.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/f1arcade.jpg`,
       stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l",
       coordinates: [-71.0595, 42.3501],
       distance: "5.7 mi"
@@ -276,7 +470,7 @@ const VENUES: Record<string, Venue[]> = {
       type: "Creative",
       rating: 4.6,
       price: "$$",
-      imageUrl: "/images/venues/clayroom.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/clayroom.jpg`,
       stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
       coordinates: [-71.1317, 42.3396],
       distance: "1.9 mi"
@@ -288,29 +482,93 @@ const VENUES: Record<string, Venue[]> = {
       type: "Tour",
       price: "$$$",
       rating: 4.7,
-      imageUrl: "/images/venues/ducktour.jpg",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/ducktour.jpg`,
       stripeLink: "https://buy.stripe.com/14k9CZbP20xv7uw28j",
       coordinates: [-71.0737, 42.3587],
       distance: "5.0 mi"
+    },
+    { 
+      id: "faneuil-hall",
+      name: "Faneuil Hall",
+      location: "Boston, MA",
+      type: "Shopping & Entertainment",
+      rating: 4.6,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/faneuilhall.jpg`,
+      stripeLink: "https://buy.stripe.com/9AQ8yV06kcgd3eg9AU",
+      coordinates: [-71.0556, 42.3601],
+      distance: "5.7 mi"
+    },
+    { 
+      id: "escape-room",
+      name: "Escape Room",
+      location: "Boston, MA",
+      type: "Entertainment",
+      rating: 4.7,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/escaperoom.jpg`,
+      stripeLink: "https://buy.stripe.com/dR602pf1e4NLcOQ7sN",
+      coordinates: [-71.0639, 42.3524],
+      distance: "5.4 mi"
+    },
+    { 
+      id: "barrys-bootcamp",
+      name: "Barry's Bootcamp",
+      location: "Chestnut Hill, MA",
+      type: "Fitness",
+      rating: 4.8,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/barrys.jpg`,
+      stripeLink: "https://buy.stripe.com/00g7uR1ao941dSUfZm",
+      coordinates: [-71.1654, 42.3279],
+      distance: "0.3 mi"
+    },
+    { 
+      id: "puttshack",
+      name: "Puttshack Seaport",
+      location: "Seaport, Boston",
+      type: "Entertainment",
+      rating: 4.6,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/puttshack.jpg`,
+      stripeLink: "https://buy.stripe.com/fZe8yV6uI5RPcOQcN9",
+      coordinates: [-71.0434, 42.3519],
+      distance: "6.3 mi"
+    },
+    { 
+      id: "view-boston",
+      name: "View Boston",
+      location: "Back Bay, Boston",
+      type: "Entertainment",
+      rating: 4.7,
+      price: "$$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/viewboston.jpg`,
+      stripeLink: "https://buy.stripe.com/14k8yV1ao1Bz7uwcN8",
+      coordinates: [-71.0817, 42.3474],
+      distance: "4.5 mi"
     }
   ],
-  outdoors: [
-    { 
-      id: "boston-commons",
-      name: "Boston Commons",
-      location: "Boston, MA",
-      type: "Park",
-      rating: 4.7,
-      price: "$",
-      imageUrl: "/images/venues/commons.jpg",
-      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
-      coordinates: [-71.0640, 42.3554],
-      distance: "5.5 mi"
-    }
-  ]
+  outdoors: []
 };
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
+
+const getCleanAvatarUrl = (url: string | null) => {
+  if (!url) return DEFAULT_AVATAR;
+  
+  // If it's a full Supabase URL, clean it
+  if (url.includes('supabase.co')) {
+    // Extract the path after 'avatars/'
+    const match = url.match(/avatars\/(.+?)(?:\?|$)/);
+    if (match) {
+      return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${match[1]}`;
+    }
+  }
+  
+  // If it's a relative path, clean and construct URL
+  const cleanPath = url.replace(/^avatars\/+/, '');
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${cleanPath}`;
+};
 
 const categories = [
   { id: 'all', label: 'All' },
@@ -385,8 +643,8 @@ const dateOptions = [
   {
     id: 11,
     title: "Kured",
-    description: "Artisanal charcuterie and wine experience",
-    stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+    description: "Artisanal charcuterie and wine experience. Note: Available 11 AM - 4 PM",
+    stripeLink: "https://buy.stripe.com/9AQg1n1ao6VTeWY28l"
   },
   {
     id: 12,
@@ -410,7 +668,7 @@ const dateOptions = [
     id: 15,
     title: "Boston Commons",
     description: "Picnic and activities in America's oldest park",
-    stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
+    stripeLink: "https://buy.stripe.com/28o6qN3iwfsp3eg4gz",
   },
   {
     id: 16,
@@ -451,6 +709,90 @@ const dateOptions = [
     stripeLink: "https://buy.stripe.com/aEUeXj5qE7ZXbKM9AP",
     requiresWebsiteRegistration: true,
     websiteUrl: "https://www.solidcore.co/location/watertown"
+  },
+  {
+    id: 22,
+    title: "Barry's Bootcamp",
+    description: "High-intensity interval training in a high-energy atmosphere",
+    stripeLink: "https://buy.stripe.com/00g7uR1ao941dSUfZm"
+  },
+  {
+    id: 23,
+    title: "Puttshack Seaport",
+    description: "High-tech mini golf experience with food and drinks",
+    stripeLink: "https://buy.stripe.com/fZe8yV6uI5RPcOQcN9"
+  },
+  {
+    id: 24,
+    title: "View Boston",
+    description: "360-degree views of Boston from the Prudential Center observation deck",
+    stripeLink: "https://buy.stripe.com/14k8yV1ao1Bz7uwcN8"
+  },
+  {
+    id: 25,
+    title: "Long Bar & Terrace",
+    description: "Sophisticated bar and lounge with craft cocktails and small plates. Note: 21+ only, available after 8 PM",
+    payAtVenue: true
+  },
+  {
+    id: 26,
+    title: "SweetGreen",
+    description: "Fresh, seasonal salads and grain bowls in a modern setting",
+    payAtVenue: true
+  },
+  {
+    id: 27,
+    title: "Pressed Cafe",
+    description: "Fresh sandwiches, smoothies, and coffee in a casual atmosphere",
+    payAtVenue: true
+  },
+  {
+    id: 28,
+    title: "Popup Bagel",
+    description: "Artisanal bagels and creative spreads in the Seaport",
+    payAtVenue: true
+  },
+  {
+    id: 29,
+    title: "Serafina Seaport",
+    description: "Upscale Italian dining with waterfront views",
+    payAtVenue: true
+  },
+  {
+    id: 30,
+    title: "White Mountain",
+    description: "Classic creamery serving homemade ice cream and comfort food",
+    payAtVenue: true
+  },
+  {
+    id: 31,
+    title: "Boston Burger Company",
+    description: "Creative burgers and shakes in a casual setting",
+    payAtVenue: true
+  },
+  {
+    id: 32,
+    title: "Lola 42",
+    description: "Global cuisine with Japanese influence in a sleek setting",
+    payAtVenue: true
+  },
+  {
+    id: 33,
+    title: "Bartaco Fenway",
+    description: "Upscale street food and craft cocktails in a coastal atmosphere",
+    payAtVenue: true
+  },
+  {
+    id: 34,
+    title: "J.P. Licks Newbury",
+    description: "Homemade ice cream and coffee in a charming Back Bay location",
+    payAtVenue: true
+  },
+  {
+    id: 35,
+    title: "Fuji at Ink Block",
+    description: "Contemporary Japanese cuisine and sushi in a stylish South End setting",
+    payAtVenue: true
   }
 ];
 
@@ -490,7 +832,13 @@ export default function DateRequestPage() {
           .single();
         
         if (error) throw error;
-        if (data) setProfile(data);
+        if (data) {
+          // Process the avatar URL before setting the profile
+          setProfile({
+            ...data,
+            avatar_url: getCleanAvatarUrl(data.avatar_url)
+          });
+        }
         
       } catch (err) {
         console.error('Error:', err);
@@ -635,7 +983,7 @@ export default function DateRequestPage() {
           >
             <div className="relative w-16 h-16">
               <Image
-                src={profile.avatar_url || DEFAULT_AVATAR}
+                src={profile.avatar_url}
                 alt={`${profile.first_name}'s avatar`}
                 fill
                 className="rounded-full object-cover"
