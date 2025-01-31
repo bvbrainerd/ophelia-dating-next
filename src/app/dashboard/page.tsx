@@ -57,7 +57,16 @@ interface Profile {
   proposed_time?: string;
 }
 
-interface DatabaseDateRequest {
+interface DatabaseProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  age: number;
+  avatar_url: string | null;
+  bio: string;
+}
+
+interface RawDateRequest {
   id: string;
   venue: string;
   proposed_time: string;
@@ -405,79 +414,11 @@ const formatDate = (dateString: string) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const fetchDateRequests = useCallback(async () => {
-    try {
-      const session = await checkAndRefreshSession(supabase);
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const { data: requests, error: requestsError } = await supabase
-        .from('date_requests')
-        .select(`
-          id,
-          venue,
-          proposed_time,
-          status,
-          split_payment,
-          sender:profiles!date_requests_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url,
-            bio
-          )
-        `)
-        .eq('receiver_id', session.user.id)
-        .eq('status', 'pending')
-        .order('proposed_time', { ascending: true });
-
-      if (requestsError) {
-        console.error('Error fetching date requests:', requestsError);
-        throw requestsError;
-      }
-
-      const processedRequests: DateRequestResponse[] = await Promise.all((requests || []).map(async (request: any) => {
-        try {
-          const avatarUrl = request.sender?.avatar_url ? 
-            await getAvatarUrl(request.sender.avatar_url) : 
-            '/images/default-avatar.png';
-
-          return {
-            id: request.id,
-            venue: request.venue,
-            proposed_time: request.proposed_time,
-            status: request.status,
-            split_payment: request.split_payment,
-            sender: request.sender ? {
-              id: request.sender.id,
-              first_name: request.sender.first_name,
-              last_name: request.sender.last_name,
-              age: request.sender.age,
-              avatar_url: avatarUrl,
-              bio: request.sender.bio
-            } : null
-          };
-        } catch (error) {
-          console.error('Error processing request:', error);
-          return request;
-        }
-      }));
-
-      setDateRequests(processedRequests);
-    } catch (error) {
-      console.error('Error in fetchDateRequests:', error);
-      setError('Failed to load date requests');
-    }
-  }, [router]);
+  const [error, setError] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
 
   const fetchMatches = async (userId: string) => {
     try {
@@ -496,7 +437,6 @@ export default function DashboardPage() {
         throw new Error('User profile not found');
       }
 
-      // Only filter by gender if both user's preferred_gender and potential match's gender are set
       let query = supabase
         .from('profiles')
         .select('*')
@@ -506,101 +446,138 @@ export default function DashboardPage() {
         query = query.eq('gender', userProfile.preferred_gender);
       }
 
-      const { data: matches } = await query.order('created_at', { ascending: false });
+      const { data: matches, error: matchError } = await query.order('created_at', { ascending: false });
 
-      // Log profile data for debugging
-      console.log('Fetched profiles:', matches);
-      matches?.forEach(match => {
-        console.log(`Profile ${match.first_name} age:`, match.age, 'type:', typeof match.age);
-      });
+      if (matchError) throw matchError;
 
-      // Sort profiles - ones with avatar_url first, then ones without
-      const sortedMatches = (matches as Profile[] || []).sort((a, b) => {
-        // If both have or don't have avatar_url, maintain original order
-        if ((!a.avatar_url && !b.avatar_url) || (a.avatar_url && b.avatar_url)) {
-          return 0;
-        }
-        // If a has avatar_url and b doesn't, a comes first
-        if (a.avatar_url && !b.avatar_url) {
-          return -1;
-        }
-        // If b has avatar_url and a doesn't, b comes first
-        return 1;
-      });
-
-      return sortedMatches;
+      return matches || [];
     } catch (error) {
       console.error('Error fetching matches:', error);
       return [];
     }
   };
 
+  const fetchDateRequests = async () => {
+    try {
+      if (!userId) return;
+
+      const { data: requests, error } = await supabase
+        .from('date_requests')
+        .select(`
+          id,
+          venue,
+          proposed_time,
+          status,
+          split_payment,
+          sender:profiles!date_requests_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            age,
+            avatar_url,
+            bio
+          )
+        `)
+        .eq('receiver_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Process the requests to ensure correct typing
+      const processedRequests: DateRequestResponse[] = (requests as RawDateRequest[]).map(request => ({
+        id: request.id,
+        venue: request.venue,
+        proposed_time: request.proposed_time,
+        status: request.status,
+        split_payment: request.split_payment,
+        sender: request.sender ? {
+          id: request.sender.id,
+          first_name: request.sender.first_name,
+          last_name: request.sender.last_name,
+          age: request.sender.age,
+          avatar_url: request.sender.avatar_url || '/images/default-avatar.png',
+          bio: request.sender.bio
+        } : null
+      })) || [];
+
+      setDateRequests(processedRequests);
+    } catch (error) {
+      console.error('Error fetching date requests:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
+    const checkAuthAndInitialize = async () => {
       try {
-        setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push('/auth/login');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw sessionError;
+        }
+
+        if (!session) {
+          // Clear any stale data
+          setUserId(null);
+          setProfiles([]);
+          setDateRequests([]);
+          // Redirect to login
+          router.replace('/auth/login');
           return;
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        setUserId(session.user.id);
+        
+        // Set up auth state change listener
+        const {
+          data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!session) {
+            // Clear data and redirect on session end
+            setUserId(null);
+            setProfiles([]);
+            setDateRequests([]);
+            router.replace('/auth/login');
+          }
+        });
 
-        if (profile) {
-          setCurrentUser(profile);
-          const matchedProfiles = await fetchMatches(profile.id);
-          setProfiles(matchedProfiles);
-          await fetchDateRequests();
-        }
+        // Fetch initial data
+        const matches = await fetchMatches(session.user.id);
+        setProfiles(matches);
+        await fetchDateRequests();
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Auth error:', error);
+        setError('Authentication failed. Please log in again.');
+        router.replace('/auth/login');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [router, fetchDateRequests]);
+    checkAuthAndInitialize();
+  }, [router]);
 
   const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
-      const request = dateRequests.find(req => req.id === requestId);
-      if (!request) {
-        console.error('Date request not found');
-        return;
-      }
-
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('date_requests')
         .update({ status })
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // Update local state first
-      setDateRequests(prevRequests =>
-        prevRequests.filter(req => req.id !== requestId)
+      // Update local state
+      setDateRequests(prevRequests => 
+        prevRequests.filter(request => request.id !== requestId)
       );
-
-      // Only redirect to Stripe if the request was accepted
-      if (status === 'accepted') {
-        const paymentLink = VENUE_PAYMENT_LINKS[request.venue];
-        if (paymentLink) {
-          window.location.href = paymentLink;
-        } else {
-          console.error('No payment link found for venue:', request.venue);
-          setError(`Payment link not found for venue: ${request.venue}`);
-        }
-      }
-
     } catch (error) {
-      console.error('Error handling date request:', error);
-      setError(error instanceof Error ? error.message : 'Failed to handle date request');
+      console.error('Error updating date request:', error);
+      setError('Failed to update date request');
     }
   };
 
