@@ -7,6 +7,7 @@ import { supabase } from '@/supabase/client';
 import type { FC } from 'react';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
+import { Calendar, Chrome } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -61,6 +62,7 @@ const UpcomingDatesPage: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([]);
   const [previousDates, setPreviousDates] = useState<UpcomingDate[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState<string | null>(null);
 
   const fetchDates = async () => {
     try {
@@ -230,6 +232,62 @@ const UpcomingDatesPage: FC = () => {
     }
   };
 
+  const addToCalendar = async (date: UpcomingDate, calendarType: 'google' | 'ical') => {
+    try {
+      setCalendarLoading(`${date.id}-${calendarType}`);
+      
+      if (!date.proposed_time) {
+        throw new Error('Date and time not set');
+      }
+
+      // Calculate end time (2 hours after start time)
+      const startTime = new Date(date.proposed_time);
+      const endTime = new Date(startTime.getTime() + (2 * 60 * 60 * 1000));
+
+      // Validate dates
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        throw new Error('Invalid date format');
+      }
+
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: `Date with ${date.otherPerson.first_name} at ${date.venue}`,
+          description: `Date with ${date.otherPerson.first_name} ${date.otherPerson.last_name} at ${date.venue}.\n\nBooked through Ophelia Dating.`,
+          location: date.venue,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate calendar links');
+      }
+
+      const { googleCalendarLink, iCalLink } = await response.json();
+
+      if (calendarType === 'google') {
+        window.open(googleCalendarLink, '_blank');
+      } else {
+        const link = document.createElement('a');
+        link.href = iCalLink;
+        link.download = `ophelia-date-${date.id}.ics`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error adding to calendar:', error);
+      alert(error instanceof Error ? error.message : 'Failed to add event to calendar. Please try again.');
+    } finally {
+      setCalendarLoading(null);
+    }
+  };
+
   useEffect(() => {
     fetchDates();
   }, [router]);
@@ -310,6 +368,36 @@ const UpcomingDatesPage: FC = () => {
                 >
                   Reschedule or Cancel Date
                 </button>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => addToCalendar(date, 'google')}
+                    disabled={calendarLoading === `${date.id}-google`}
+                    className='flex-1 p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
+                    type="button"
+                  >
+                    {calendarLoading === `${date.id}-google` ? (
+                      <div className="w-5 h-5 border-2 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                        <path d="M21.56 10.738l-9.002-8.002c-.47-.47-1.234-.47-1.704 0l-9.002 8.002c-.47.47-.47 1.234 0 1.704l9.002 8.002c.47.47 1.234.47 1.704 0l9.002-8.002c.47-.47.47-1.234 0-1.704zM12 19.684L3.316 12 12 4.316 20.684 12 12 19.684z"/>
+                      </svg>
+                    )}
+                    Add to Google Calendar
+                  </button>
+                  <button
+                    onClick={() => addToCalendar(date, 'ical')}
+                    disabled={calendarLoading === `${date.id}-ical`}
+                    className='flex-1 p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
+                    type="button"
+                  >
+                    {calendarLoading === `${date.id}-ical` ? (
+                      <div className="w-5 h-5 border-2 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Calendar className="w-5 h-5" />
+                    )}
+                    Add to Apple Calendar
+                  </button>
+                </div>
               </div>
             </div>
           ))}

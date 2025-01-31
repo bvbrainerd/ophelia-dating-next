@@ -24,7 +24,7 @@ interface Profile {
 interface DateRequestForm {
   venue: string;
   proposed_time: string;
-  split_payment: number | null;
+  split_payment: boolean | null;
 }
 
 interface QuizAnswers {
@@ -883,9 +883,35 @@ export default function DateRequestPage() {
     setFormData(prev => ({ 
       ...prev, 
       venue: venueName,
-      split_payment: isRestaurantVenue(venueName) ? prev.split_payment : 0
+      split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
     }));
     setShowVenueList(false);
+  };
+
+  const sendDateRequestNotification = async (receiverEmail: string, requestDetails: any) => {
+    try {
+      const response = await fetch(`/api/send-date-request/${profileId}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          sender_id: requestDetails.sender_id,
+          venue: requestDetails.venue,
+          proposed_time: requestDetails.proposed_time,
+          proposed_payment: requestDetails.split_payment ? 50 : 0
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send date request');
+      }
+    } catch (error) {
+      console.error('Error sending date request notification:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -898,55 +924,21 @@ export default function DateRequestPage() {
       
       if (sessionError) throw sessionError;
       
-      if (!session) {
+      if (!session || !session.user.email) {
         setError('Your session has expired. Please log in again.');
         router.replace('/auth/login');
         return;
       }
 
-      const { error: insertError } = await supabase
-        .from('date_requests')
-        .insert({
-          sender_id: session.user.id,
-          receiver_id: profileId,
-          venue: formData.venue,
-          proposed_time: new Date(formData.proposed_time).toISOString(),
-          split_payment: formData.split_payment,
-          status: 'pending'
-        });
-
-      if (insertError) throw insertError;
-
-      router.push('/daterequests');
-
-      const sendDateRequestNotification = async (receiverEmail: string, requestDetails: any) => {
-        try {
-          await fetch('/api/send-date-request', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: receiverEmail,
-              requestDetails: {
-                sender_name: requestDetails.sender_name,
-                venue: requestDetails.venue,
-                proposed_time: requestDetails.proposed_time,
-                // Add any other details needed for the email template
-              }
-            })
-          });
-        } catch (error) {
-          console.error('Error sending date request notification:', error);
-        }
-      };
-
       const requestDetails = {
-        sender_name: session.user.email,
+        sender_id: session.user.id,
         venue: formData.venue,
         proposed_time: formData.proposed_time,
-        receiver_email: profileId // Assuming profileId is the receiver's email
+        split_payment: formData.split_payment
       };
 
-      await sendDateRequestNotification(requestDetails.receiver_email, requestDetails);
+      await sendDateRequestNotification(session.user.email, requestDetails);
+      router.push('/daterequests');
     } catch (err) {
       setError('Failed to send date request');
       console.error('Error:', err);
@@ -1061,16 +1053,16 @@ export default function DateRequestPage() {
                     Payment Preference
                   </label>
                   <select
-                    value={formData.split_payment?.toString() || ''}
+                    value={formData.split_payment === null ? '' : formData.split_payment.toString()}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
-                      split_payment: e.target.value ? parseFloat(e.target.value) : null
+                      split_payment: e.target.value === '' ? null : e.target.value === 'true'
                     }))}
                     className="w-full p-4 border rounded-lg"
                   >
                     <option value="">Select payment option</option>
-                    <option value="0">Pre-Pay</option>
-                    <option value="50">Pay In-Person</option>
+                    <option value="false">Pre-Pay</option>
+                    <option value="true">Pay In-Person (Split)</option>
                   </select>
                 </>
               ) : formData.venue && (
