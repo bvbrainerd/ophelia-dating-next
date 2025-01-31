@@ -93,7 +93,7 @@ interface DateRequestResponse {
     first_name: string;
     last_name: string;
     age: number;
-    avatar_url: string;
+    avatar_url: string | null;
     bio: string;
   } | null;
 }
@@ -485,7 +485,7 @@ export default function DashboardPage() {
       if (error) throw error;
 
       // Process the requests to ensure correct typing
-      const processedRequests: DateRequestResponse[] = (requests as RawDateRequest[]).map(request => ({
+      const processedRequests: DateRequestResponse[] = (requests as unknown as RawDateRequest[]).map(request => ({
         id: request.id,
         venue: request.venue,
         proposed_time: request.proposed_time,
