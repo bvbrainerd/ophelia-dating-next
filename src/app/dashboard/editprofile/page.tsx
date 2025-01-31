@@ -34,6 +34,7 @@ interface ProfileData {
   avatar_url: string | null;
   email: string;
   profile_images?: ProfileImage[];
+  referral_code?: string;
 }
 
 // Constants
@@ -71,7 +72,8 @@ export default function EditProfilePage() {
     dater_archetype: '',
     school: 'Boston College',
     avatar_url: null,
-    email: ''
+    email: '',
+    referral_code: ''
   });
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -83,19 +85,36 @@ export default function EditProfilePage() {
   // Wrap fetchProfile in useCallback to prevent unnecessary re-renders
   const fetchProfile = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+        return;
+      }
 
-      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single();
 
       if (profileError) throw profileError;
 
-      console.log('Raw profile data from edit profile:', profileData);
+      // Ensure referral_code exists
+      if (!profileData.referral_code) {
+        // Generate a new referral code if one doesn't exist
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('profiles')
+          .update({ referral_code: Math.random().toString(36).substring(2, 10).toUpperCase() })
+          .eq('id', session.user.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        
+        setProfileData(updatedProfile);
+      } else {
+        setProfileData(profileData);
+      }
 
       // Clean and process avatar URL
       let processedAvatarUrl = DEFAULT_AVATAR;
@@ -131,7 +150,7 @@ export default function EditProfilePage() {
       const { data: imagesData, error: imagesError } = await supabase
         .from('profile_images')
         .select('*')
-        .eq('profile_id', user.id)
+        .eq('profile_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (imagesError) throw imagesError;
@@ -167,14 +186,14 @@ export default function EditProfilePage() {
       setProfileImages(processedImages);
     } catch (error) {
       console.error('Error fetching profile:', error);
-      setError(error instanceof Error ? error.message : 'Failed to fetch profile');
+      setError('Failed to load profile');
     }
-  }, []);  // Empty dependency array since we don't use any external values
+  }, [router]);
 
   // Only fetch profile data once when component mounts
   useEffect(() => {
     fetchProfile();
-  }, []); // Remove fetchProfile from dependencies
+  }, [fetchProfile]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -745,8 +764,44 @@ export default function EditProfilePage() {
               onEmailChange={(email) => handleChange('email', email)} 
             />
 
+            {/* Move referral section here, before the buttons */}
+            <div className="mb-8 p-6 bg-white rounded-lg shadow border border-gray-200">
+              <h2 className="text-xl font-semibold text-[#BA2525] mb-4">
+                Your Referral Link
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Tell your friends with your matchmaking referral link! When 10 people join and follow through with dates, earn exclusive perks like complimentary dates, discounts at your favorite spots, access to free merch, and more!
+              </p>
+              <p className="text-sm text-gray-500 mb-2">
+                Your referral code:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={profileData.referral_code ? 
+                    `${window.location.origin}/auth/signup?ref=${profileData.referral_code}` :
+                    'Loading...'
+                  }
+                  readOnly
+                  className="flex-1 p-3 bg-gray-50 border rounded-lg font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    if (profileData.referral_code) {
+                      navigator.clipboard.writeText(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`);
+                      alert('Referral link copied to clipboard!');
+                    }
+                  }}
+                  disabled={!profileData.referral_code}
+                  className="p-3 bg-[#BA2525] text-white rounded-lg hover:bg-[#a02020] transition-colors disabled:opacity-50"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
             {/* Action Buttons */}
-            <div className="space-y-3 pt-4">
+            <div className="space-y-3">
               <button
                 type="submit"
                 className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

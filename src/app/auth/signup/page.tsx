@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '../../../supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import ImageCropper from '@/components/ImageCropper';
@@ -46,6 +46,8 @@ interface ProfileData {
 
 export default function ProfileSetup() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const referralCode = searchParams.get('ref');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -189,6 +191,32 @@ export default function ProfileSetup() {
       if (profileError) {
         console.error('Profile creation error:', profileError);
         throw profileError;
+      }
+
+      // If there's a referral code, create the referral record
+      if (referralCode) {
+        // Get referrer's profile
+        const { data: referrerData, error: referrerError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('referral_code', referralCode)
+          .single();
+
+        if (!referrerError && referrerData) {
+          // Create referral record
+          const { error: referralError } = await supabase
+            .from('referrals')
+            .insert({
+              referrer_id: referrerData.id,
+              referred_id: authData.user.id,
+              referral_code: referralCode,
+              status: 'pending'
+            });
+
+          if (referralError) {
+            console.error('Error creating referral:', referralError);
+          }
+        }
       }
 
       // Redirect to quiz page after successful signup
