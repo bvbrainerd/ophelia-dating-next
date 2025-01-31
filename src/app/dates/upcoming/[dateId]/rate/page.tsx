@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
 import Image from 'next/image';
+import BottomNav from '@/components/BottomNav';
 
 interface Profile {
   first_name: string;
@@ -209,68 +210,99 @@ export default function RatePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-5 pt-8">
-      <Header variant="matching" />
-      <h1 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
-        Rate Your Date
-      </h1>
-
-      {profile && (
-        <div className="text-center mb-8">
-          <div className="relative w-24 h-24 mx-auto mb-4">
-            <Image
-              src={getCleanAvatarUrl(profile.avatar_url)}
-              alt={`${profile.first_name}'s profile`}
-              fill
-              className="object-cover rounded-full"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/images/default-avatar.png';
-              }}
-            />
-          </div>
-          <h2 className="text-xl font-medium">
-            {profile.first_name} {profile.last_name}, {profile.age}
-          </h2>
-        </div>
-      )}
-
-      <div className="space-y-8">
-        <div className="text-center">
-          <h3 className="text-lg font-medium mb-4">How was your date partner?</h3>
-          <StarRating
-            rating={personRating}
-            hover={hoverPerson}
-            setRating={setPersonRating}
-            setHover={setHoverPerson}
+    <div className="min-h-screen bg-white pb-24">
+      <div className="max-w-2xl mx-auto p-5">
+        <Header variant="matching" />
+        
+        <div className="flex flex-col items-center">
+          <Image
+            src="/images/ophelia-logo.png"
+            alt="Ophelia Logo"
+            width={150}
+            height={50}
+            className="mb-4"
           />
+          
+          <h1 className="text-[#BA2525] text-3xl font-bold mb-8">
+            Rate Your Date
+          </h1>
+
+          {profile && (
+            <div className="w-full max-w-md mx-auto">
+              <div className="flex flex-col items-center mb-8">
+                <div className="relative w-32 h-32 mb-4">
+                  <Image
+                    src={profile.avatar_url || '/images/default-avatar.png'}
+                    alt={`${profile.first_name}'s profile`}
+                    fill
+                    className="rounded-full object-cover"
+                    sizes="(max-width: 128px) 100vw, 128px"
+                  />
+                </div>
+                <h2 className="text-2xl font-semibold">
+                  {profile.first_name} {profile.last_name}, {profile.age}
+                </h2>
+              </div>
+
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-xl font-semibold text-center mb-4">
+                    How was your date partner?
+                  </h3>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setPersonRating(star)}
+                        className={`text-4xl ${
+                          star <= personRating ? 'text-[#BA2525]' : 'text-gray-300'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-semibold text-center mb-4">
+                    How was the overall date experience?
+                  </h3>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setDateRating(star)}
+                        className={`text-4xl ${
+                          star <= dateRating ? 'text-[#BA2525]' : 'text-gray-300'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={isLoading || !personRating || !dateRating}
+                  className="w-full p-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? 'Submitting...' : 'Submit Rating'}
+                </button>
+
+                <button
+                  onClick={() => router.push('/dates/upcoming')}
+                  className="w-full p-3 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                >
+                  Back to Upcoming Dates
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        <div className="text-center">
-          <h3 className="text-lg font-medium mb-4">How was the overall date experience?</h3>
-          <StarRating
-            rating={dateRating}
-            hover={hoverDate}
-            setRating={setDateRating}
-            setHover={setHoverDate}
-          />
-        </div>
-
-        <button
-          onClick={handleSubmitRating}
-          disabled={isLoading || !personRating || !dateRating}
-          className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Submitting...' : 'Submit Rating'}
-        </button>
-
-        <button 
-          className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-          onClick={() => router.push('/dates/upcoming')}
-        >
-          Back to Upcoming Dates
-        </button>
       </div>
+      <BottomNav />
     </div>
   );
 } 

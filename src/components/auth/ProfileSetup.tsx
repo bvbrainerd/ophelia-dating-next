@@ -9,8 +9,6 @@ interface ProfileSetupProps {
 }
 
 interface UserData {
-  email: string;
-  password: string;
   first_name: string;
   last_name: string;
   age: number | null;
@@ -25,18 +23,12 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userData, setUserData] = useState<UserData>({
-    email: '',
-    password: '',
     first_name: '',
     last_name: '',
     age: null,
     gender: '',
-    school: '',
+    school: 'Boston College',
   });
-
-  const validateBCEmail = (email: string) => {
-    return email.toLowerCase().endsWith('@bc.edu');
-  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -48,78 +40,38 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
     }));
   };
 
-  const handleQuizComplete = async (datingStyle: string) => {
-    if (!userId) {
-      console.error('No user ID found');
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert([{
-          id: userId,
-          first_name: userData.first_name,
-          last_name: userData.last_name,
-          age: userData.age,
-          gender: userData.gender,
-          school: userData.school,
-          dater_archetype: datingStyle,
-          created_at: new Date().toISOString(),
-          bio: '',
-          preferred_gender: '',
-          avatar_url: null
-        }], {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
-
-      if (upsertError) throw upsertError;
-      
-      // Wait for database to process changes
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Call onComplete before navigation
-      await onComplete();
-      
-      // Navigate to dashboard
-      router.push('/dashboard');
-      
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('Error saving quiz results. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) throw new Error('No user found');
 
-      // Remove updated_at from the update operation
+      // Create initial profile with minimal data
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({
+        .upsert({
+          id: user.id,
           first_name: userData.first_name,
           last_name: userData.last_name,
           age: userData.age,
           gender: userData.gender,
-          school: 'Boston College'
-        })
-        .eq('id', user.id);
+          school: 'Boston College',
+          bio: '',
+          preferred_gender: '',
+          avatar_url: null
+        });
 
       if (updateError) throw updateError;
 
-      // Redirect to quiz
-      router.push('/quiz');
+      // Set userId for quiz completion
+      setUserId(user.id);
+      
+      // Show the quiz instead of redirecting
+      setShowQuiz(true);
 
     } catch (error: any) {
       console.error('Profile setup error:', error);
@@ -136,7 +88,7 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">
           Let's Find Your Dating Style
         </h2>
-        <DatingTypeQuiz onComplete={handleQuizComplete} />
+        <DatingTypeQuiz onComplete={onComplete} />
       </div>
     );
   }
@@ -144,26 +96,8 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
   return (
     <form onSubmit={handleSubmit} className='max-w-md mx-auto p-5'>
       <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
-        Create Your Account
+        Complete Your Profile
       </h2>
-      <input
-        className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-        type='email'
-        name='email'
-        placeholder='BC Email'
-        value={userData.email}
-        onChange={handleChange}
-        required
-      />
-      <input
-        className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-        type='password'
-        name='password'
-        placeholder='Password'
-        value={userData.password}
-        onChange={handleChange}
-        required
-      />
       <input
         className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
         type='text'
@@ -218,8 +152,11 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
         className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
         disabled={isLoading}
       >
-        {isLoading ? 'Creating Account...' : 'Create Account'}
+        {isLoading ? 'Saving Profile...' : 'Save Profile'}
       </button>
+      {error && (
+        <p className="text-red-500 text-sm mt-2 text-center">{error}</p>
+      )}
     </form>
   );
 }
