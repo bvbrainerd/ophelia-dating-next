@@ -770,7 +770,7 @@ export default function EditProfilePage() {
                 Your Referral Link
               </h2>
               <p className="text-gray-600 mb-4">
-                Tell your friends with your matchmaking referral link! When 10 people join and follow through with dates, earn exclusive perks like complimentary dates, discounts at your favorite spots, access to free merch, and more!
+                Tell your friends with your matchmaking referral link! When 10 people join and follow through with dates, earn exclusive perks like complimentary dates, discounts at your favorite spots, access to free merch, and more! ❤️
               </p>
               <p className="text-sm text-gray-500 mb-2">
                 Your referral code:
