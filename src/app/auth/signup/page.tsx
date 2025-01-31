@@ -173,15 +173,18 @@ export default function ProfileSetup() {
         bio: '',
         school: 'Boston College',
         avatar_url: avatarUrl,
-        dater_archetype: userData.dater_archetype,
-        profile_completed: false
+        dater_archetype: userData.dater_archetype
       };
 
-      console.log('Creating profile with data:', profileData);
+      console.log('Updating profile with data:', profileData);
 
+      // Use upsert instead of insert
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([profileData]);
+        .upsert(profileData, {
+          onConflict: 'id',
+          ignoreDuplicates: false
+        });
 
       if (profileError) {
         console.error('Profile creation error:', profileError);

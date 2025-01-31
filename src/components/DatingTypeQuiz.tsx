@@ -100,15 +100,6 @@ const DatingTypeQuiz: React.FC<DatingTypeQuizProps> = ({ onComplete }) => {
   };
 
   const determineDatingStyle = (finalScores: typeof scores) => {
-    // Define relationship preferences based on archetypes shown in the image
-    const archetypePreferences = {
-      cautious: ['relationship'],
-      hopeless: ['relationship', 'hookup'],
-      commitment: ['relationship'],
-      serial: ['situationship', 'relationship', 'hookup'],
-      fwb: ['hookup', 'situationship']
-    };
-
     // Get the highest scoring style
     let maxScore = 0;
     let primaryStyle = '';
@@ -119,16 +110,16 @@ const DatingTypeQuiz: React.FC<DatingTypeQuizProps> = ({ onComplete }) => {
       }
     });
 
-    // Map the internal style names to display names
-    const styleDisplayNames = {
-      cautious: 'Cautious Dater',
-      hopeless: 'Hopeless Romantic',
-      commitment: 'Commitment Seeker',
-      serial: 'Serial Dater',
-      fwb: 'Friends with Benefits'
+    // Map the internal style names to database format
+    const styleDatabaseNames = {
+      cautious: 'cautiousDater',
+      hopeless: 'hopelessRomantic',
+      commitment: 'commitmentSeeker',
+      serial: 'serialDater',
+      fwb: 'friendWithBenefits'
     };
 
-    return styleDisplayNames[primaryStyle as keyof typeof styleDisplayNames];
+    return styleDatabaseNames[primaryStyle as keyof typeof styleDatabaseNames];
   };
 
   return (

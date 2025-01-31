@@ -36,26 +36,10 @@ export default function QuizPage() {
         throw profileError;
       }
 
-      // Prepare profile data, preserving existing data
-      const profileData = {
-        ...existingProfile,
-        id: user.id,
-        dater_archetype: datingStyle,
-        profile_completed: true,
-        first_name: existingProfile?.first_name || 'Anonymous',
-        last_name: existingProfile?.last_name || 'User',
-        age: existingProfile?.age || 18,
-        gender: existingProfile?.gender || 'other',
-        school: existingProfile?.school || 'Boston College',
-        bio: existingProfile?.bio || '',
-        preferred_gender: existingProfile?.preferred_gender || 'other',
-        avatar_url: existingProfile?.avatar_url || null,
-      };
-
-      // Update the profile
+      // Update only the dater_archetype
       const { error: updateError } = await supabase
         .from('profiles')
-        .update(profileData)
+        .update({ dater_archetype: datingStyle })
         .eq('id', user.id);
 
       if (updateError) {
@@ -86,23 +70,7 @@ export default function QuizPage() {
         return;
       }
 
-      // Check profile completion
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('profile_completed')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Profile check error:', profileError);
-        return;
-      }
-
-      if (profile?.profile_completed) {
-        router.push('/dashboard');
-      } else {
-        console.error('Profile not completed:', profile);
-      }
+      router.push('/dashboard');
     } catch (error) {
       console.error('Navigation error:', error);
     }
