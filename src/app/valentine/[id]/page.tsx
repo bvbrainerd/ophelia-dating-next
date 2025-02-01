@@ -174,6 +174,14 @@ export default function ValentineResponsePage({ params }: { params: { id: string
         <Header variant="default" />
         
         <div className="mt-8 text-center">
+          {!userEmail && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 max-w-lg mx-auto">
+              <p className="text-[#BA2525]">
+                ⚠️ You'll need to create an account or sign in to see who sent you this Valentine's date request!
+              </p>
+            </div>
+          )}
+
           <h1 className="text-4xl font-bold text-[#BA2525] mb-4">You've Received a Valentine!</h1>
           
           <Card className="p-8 mt-8">
