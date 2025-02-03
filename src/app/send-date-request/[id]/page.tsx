@@ -372,6 +372,18 @@ const VENUES: Record<string, Venue[]> = {
       coordinates: [-71.0614, 42.3445],
       distance: "5.1 mi",
       payAtVenue: true
+    },
+    { 
+      id: "tatte-bakery-newton",
+      name: "Tatte Bakery & Cafe",
+      location: "1241 Centre St, Newton, MA 02459",
+      type: "Restaurant",
+      rating: 4.7,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/tatte.jpg`,
+      coordinates: [-71.1923, 42.3278],
+      distance: "6.8 mi",
+      payAtVenue: true
     }
   ],
   activities: [
@@ -546,6 +558,19 @@ const VENUES: Record<string, Venue[]> = {
       stripeLink: "https://buy.stripe.com/14k8yV1ao1Bz7uwcN8",
       coordinates: [-71.0817, 42.3474],
       distance: "4.5 mi"
+    },
+    { 
+      id: "madelines-candy-shop",
+      name: "Madeline's Candy Shop",
+      location: "47 Clarendon St, Boston, MA 02116",
+      type: "Activity",
+      rating: 4.6,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/madelinescandy.jpg`,
+      stripeLink: "https://buy.stripe.com/cN25mJ9GU4NL2accNb",
+      coordinates: [-71.0734, 42.3476],
+      distance: "2.1 mi",
+      restrictions: "Closed on Mondays"
     }
   ],
   outdoors: []

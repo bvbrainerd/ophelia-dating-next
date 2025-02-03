@@ -29,14 +29,10 @@ const Map: React.FC<MapProps> = ({ center, zoom, markers = [], onMapLoad }) => {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v12',
-        center: center,
-        zoom: zoom,
+        center: markers.length === 1 ? markers[0].coordinates : center,
+        zoom: markers.length === 1 ? 15 : zoom,
         accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN
       });
-    } else {
-      // Update center and zoom if map exists
-      map.current.setCenter(center);
-      map.current.setZoom(zoom);
     }
 
     // Clear existing markers
@@ -58,55 +54,31 @@ const Map: React.FC<MapProps> = ({ center, zoom, markers = [], onMapLoad }) => {
         el.style.borderRadius = '50%';
         el.style.boxShadow = '0 2px 6px rgba(186, 37, 37, 0.4)';
         el.style.cursor = 'pointer';
-        el.style.transition = 'transform 0.2s';
-        el.style.animation = 'pulse 2s infinite';
-
-        // Add pulse animation
-        if (!document.querySelector('#marker-pulse-animation')) {
-          const style = document.createElement('style');
-          style.id = 'marker-pulse-animation';
-          style.textContent = `
-            @keyframes pulse {
-              0% { transform: scale(1); box-shadow: 0 2px 6px rgba(186, 37, 37, 0.4); }
-              50% { transform: scale(1.1); box-shadow: 0 3px 8px rgba(186, 37, 37, 0.6); }
-              100% { transform: scale(1); box-shadow: 0 2px 6px rgba(186, 37, 37, 0.4); }
-            }
-          `;
-          document.head.appendChild(style);
-        }
-
-        // Add popup with improved styling
-        const popup = new mapboxgl.Popup({ 
-          offset: 25,
-          className: 'custom-popup'
-        })
-          .setHTML(`
-            <h3 style="
-              font-weight: 600; 
-              padding: 12px;
-              color: #BA2525;
-              font-size: 14px;
-              text-align: center;
-            ">${marker.title}</h3>
-          `);
 
         // Create and add marker
         const newMarker = new mapboxgl.Marker(el)
           .setLngLat(marker.coordinates)
-          .setPopup(popup)
-          .addTo(map.current!);
+          .setPopup(
+            new mapboxgl.Popup({ offset: 25 })
+              .setHTML(`<div style="padding: 8px; font-weight: 500;">${marker.title}</div>`)
+          )
+          .addTo(map.current);
 
         markersRef.current.push(newMarker);
       });
 
-      // Fit bounds if there are markers
-      if (markers.length > 0) {
+      // Fit bounds if there are multiple markers
+      if (markers.length > 1) {
         const bounds = new mapboxgl.LngLatBounds();
         markers.forEach(marker => bounds.extend(marker.coordinates));
         map.current.fitBounds(bounds, {
-          padding: 50,
+          padding: { top: 50, bottom: 50, left: 50, right: 50 },
           maxZoom: 15
         });
+      } else if (markers.length === 1) {
+        // For single marker, center on it
+        map.current.setCenter(markers[0].coordinates);
+        map.current.setZoom(15);
       }
     };
 

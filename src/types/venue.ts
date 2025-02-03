@@ -13,4 +13,6 @@ export interface Venue {
   websiteUrl?: string;
   payAtVenue?: boolean;
   restrictions?: string;
+  category?: string;
+  slug?: string;
 } 
