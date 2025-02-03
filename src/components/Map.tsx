@@ -62,7 +62,7 @@ const Map: React.FC<MapProps> = ({ center, zoom, markers = [], onMapLoad }) => {
             new mapboxgl.Popup({ offset: 25 })
               .setHTML(`<div style="padding: 8px; font-weight: 500;">${marker.title}</div>`)
           )
-          .addTo(map.current);
+          .addTo(map.current!);
 
         markersRef.current.push(newMarker);
       });
