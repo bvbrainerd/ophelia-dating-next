@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import EmailUpdateSection from '@/components/EmailUpdateSection';
 import ImageCropper from '@/components/ImageCropper';
 import ProfileImageGallery from '@/components/ProfileImageGallery';
+import DescriptorBubbles, { Descriptor } from '@/components/DescriptorBubbles';
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
@@ -35,6 +36,7 @@ interface ProfileData {
   email: string;
   profile_images?: ProfileImage[];
   referral_code?: string;
+  descriptors: Descriptor[];
 }
 
 // Constants
@@ -73,7 +75,8 @@ export default function EditProfilePage() {
     school: 'Boston College',
     avatar_url: null,
     email: '',
-    referral_code: ''
+    referral_code: '',
+    descriptors: []
   });
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -596,6 +599,40 @@ export default function EditProfilePage() {
     }
   };
 
+  const handleDescriptorSelect = async (descriptor: Descriptor) => {
+    try {
+      // Update local state first for immediate feedback
+      const newDescriptors = profileData.descriptors.some(d => d.label === descriptor.label)
+        ? profileData.descriptors.filter(d => d.label !== descriptor.label)
+        : [...profileData.descriptors, descriptor];
+
+      setProfileData(prev => ({
+        ...prev,
+        descriptors: newDescriptors
+      }));
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      // Update Supabase immediately
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ descriptors: newDescriptors })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+    } catch (error) {
+      console.error('Error updating descriptors:', error);
+      // Revert local state if there was an error
+      setProfileData(prev => ({
+        ...prev,
+        descriptors: profileData.descriptors
+      }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-5xl mx-auto p-5 pb-24">
@@ -729,6 +766,19 @@ export default function EditProfilePage() {
               className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
               required
             />
+
+            {/* Descriptor Section - Moved here */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">Descriptors</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Select words that best describe your personality, interests, and lifestyle.
+              </p>
+              <DescriptorBubbles
+                selectedDescriptors={profileData.descriptors}
+                onSelectDescriptor={handleDescriptorSelect}
+                maxSelections={10}
+              />
+            </div>
 
             {/* Dater Archetype */}
             <select

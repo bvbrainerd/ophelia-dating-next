@@ -81,7 +81,7 @@ export default function PaymentSuccessHandler() {
           router.push('/dates/upcoming');
         }, 2000);
 
-        // After successful payment
+        // After successful payment, send confirmation emails to both users
         const sendDateConfirmationEmails = async (dateId: string) => {
           try {
             // Get date details from Supabase
@@ -89,21 +89,23 @@ export default function PaymentSuccessHandler() {
               .from('date_requests')
               .select(`
                 *,
-                sender:sender_id(email, first_name),
-                receiver:receiver_id(email, first_name)
+                sender:profiles!date_requests_sender_id_fkey(id, email, first_name, last_name),
+                receiver:profiles!date_requests_receiver_id_fkey(id, email, first_name, last_name)
               `)
               .eq('id', dateId)
               .single();
 
             if (dateError) throw dateError;
 
-            // Prepare date details for email templates
+            // Prepare date details for email template
             const dateDetails = {
               date_time: dateRequest.proposed_time,
               venue: dateRequest.venue,
-              sender_name: dateRequest.sender.first_name,
-              receiver_name: dateRequest.receiver.first_name,
-              // Add any other details needed for the email templates
+              sender_name: `${dateRequest.sender.first_name} ${dateRequest.sender.last_name}`,
+              receiver_name: `${dateRequest.receiver.first_name} ${dateRequest.receiver.last_name}`,
+              venue_address: dateRequest.venue_address || '',
+              payment_amount: dateRequest.proposed_payment || '',
+              date_id: dateRequest.id
             };
 
             // Send confirmation emails to both participants
@@ -113,7 +115,11 @@ export default function PaymentSuccessHandler() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   email: dateRequest.sender.email,
-                  dateDetails
+                  dateDetails: {
+                    ...dateDetails,
+                    recipient_name: dateRequest.sender.first_name,
+                    partner_name: dateRequest.receiver.first_name
+                  }
                 })
               }),
               fetch('/api/send-date-confirmation', {
@@ -121,17 +127,22 @@ export default function PaymentSuccessHandler() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   email: dateRequest.receiver.email,
-                  dateDetails
+                  dateDetails: {
+                    ...dateDetails,
+                    recipient_name: dateRequest.receiver.first_name,
+                    partner_name: dateRequest.sender.first_name
+                  }
                 })
               })
             ]);
 
+            console.log('Date confirmation emails sent successfully');
           } catch (error) {
             console.error('Error sending confirmation emails:', error);
           }
         };
 
-        // Add this to your existing payment success handler
+        // Call the function to send emails after payment success
         await sendDateConfirmationEmails(dateId);
 
       } catch (err) {

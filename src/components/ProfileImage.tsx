@@ -108,14 +108,12 @@ export default function ProfileImage({ user, className = '', priority = true }: 
     <div className={`relative w-full h-full ${className}`}>
       <Image
         src={processedUrl}
-        alt={`${user.first_name || 'User'}'s profile picture`}
-        onError={handleImageError}
+        alt={`${user.first_name || 'Profile'}'s photo`}
         fill
-        className="object-cover rounded-lg object-[50%_35%]"
-        sizes="(max-width: 768px) 100vw, 50vw"
         priority={priority}
-        unoptimized={true}
-        crossOrigin="anonymous"
+        className="object-cover object-center"
+        sizes="(max-width: 768px) 100vw, 50vw"
+        onError={handleImageError}
       />
     </div>
   );

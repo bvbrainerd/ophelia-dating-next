@@ -7,6 +7,7 @@ import BottomNav from '@/components/BottomNav';
 import { Crown, Star, Heart } from 'lucide-react';
 import Header from '@/components/Header';
 import ProfileImageGallery from '@/components/ProfileImageGallery';
+import Map from '@/components/Map';
 
 interface ProfileImage {
   id: number;
@@ -30,6 +31,7 @@ interface Profile {
   dater_status: 'gold' | 'silver' | 'bronze' | null;
   follow_through_rate: number | null;
   profile_images?: ProfileImage[];
+  descriptors: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }[];
 }
 
 const archetypeMap = {
@@ -99,6 +101,7 @@ export default function UserProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [venueCoordinates, setVenueCoordinates] = useState<Record<string, [number, number]>>({});
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -243,7 +246,7 @@ export default function UserProfile() {
           {/* Dater Status */}
           <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
             <div className="flex items-center justify-center gap-2">
-              <Crown className="w-5 h-5 text-[#BA2525]" />
+              <Crown className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
               <span className="text-[#BA2525] font-medium capitalize">
                 {profile.dater_status || 'Bronze'}
               </span>
@@ -274,6 +277,28 @@ export default function UserProfile() {
           </div>
         </div>
 
+        {/* Bio Section with Descriptors */}
+        {(profile.bio || (profile.descriptors && profile.descriptors.length > 0)) && (
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h2 className="text-lg font-semibold text-[#BA2525] mb-2">Bio</h2>
+            {profile.bio && (
+              <p className="text-gray-700 whitespace-pre-wrap mb-4">{profile.bio}</p>
+            )}
+            {profile.descriptors && profile.descriptors.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {profile.descriptors.map(descriptor => (
+                  <span
+                    key={descriptor.label}
+                    className="inline-block px-3 py-1 bg-[#BA2525] text-white rounded-full text-sm"
+                  >
+                    {descriptor.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Profile Details */}
         <div className="mb-8 space-y-4">
           {/* Dater Type */}
@@ -295,37 +320,22 @@ export default function UserProfile() {
               <p className="text-gray-700">{profile.school}</p>
             </div>
           )}
-
-          {/* Bio Section - only show if there's content */}
-          {profile.bio && profile.bio.trim() !== '' && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <p className="text-gray-700">{profile.bio}</p>
-            </div>
-          )}
         </div>
 
         {/* Action Buttons */}
         <div>
-          {context !== 'second-date' && currentUserId !== id && (
-            <button
-              type="button"
-              id="send-date-request"
-              name="send-date-request"
-              onClick={handleSendDateRequest}
-              className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-3"
-            >
-              Send Date Request
-            </button>
-          )}
           {error && (
             <div className="text-[#BA2525] text-sm mb-3">
               {error}
             </div>
           )}
           <button
-            type="button"
-            id="back-button"
-            name="back-button"
+            onClick={() => router.push(`/send-date-request/${id}`)}
+            className="w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-2"
+          >
+            Send Date Request
+          </button>
+          <button
             onClick={handleBackButton}
             className="w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
           >

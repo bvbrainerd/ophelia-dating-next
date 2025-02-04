@@ -23,47 +23,46 @@ const getAvatarUrl = async (path: string): Promise<string> => {
   try {
     if (!path) return DEFAULT_AVATAR;
     
-    // If it's a default avatar or already a full URL (public or signed), return it as is
-    if (path.includes('default-avatar') || 
-        path.includes('supabase.co/storage/v1/object/public') || 
-        path.includes('supabase.co/storage/v1/object/sign')) {
-      console.log('Using existing URL:', path);
+    // If it's the default avatar, return it as is
+    if (path.includes('default-avatar')) {
       return path;
     }
-    
-    // Clean the path by removing any prefixes
+
+    // If it's already a full URL with storage/v1/object/public, return it
+    if (path.includes('storage/v1/object/public')) {
+      return path;
+    }
+
+    // If it's already a full URL with storage/v1/object/sign, extract the file path
+    if (path.includes('storage/v1/object/sign')) {
+      const matches = path.match(/avatars\/(.*?)(?:\?|$)/);
+      if (matches && matches[1]) {
+        path = matches[1];
+      }
+    }
+
+    // Clean the path by removing any prefixes and query parameters
     const cleanPath = path
       .replace(/^\/+/, '')  // Remove leading slashes
-      .replace(/^avatars\/avatars\//, '') // Remove double avatars prefix
+      .replace(/^avatars\/avatars\//, 'avatars/') // Fix double avatars prefix
       .replace(/^avatars\//, '') // Remove single avatars prefix
       .split('?')[0];  // Remove query parameters
     
-    console.log('Cleaned path:', cleanPath);
+    console.log('Attempting to get URL for path:', cleanPath);
     
-    // Try to get a public URL first
-    const { data: publicUrlData } = supabase.storage
+    // Use getPublicUrl instead of signed URL
+    const { data } = supabase.storage
       .from('avatars')
       .getPublicUrl(cleanPath);
 
-    if (publicUrlData?.publicUrl) {
-      console.log('Generated public URL:', publicUrlData.publicUrl);
-      return publicUrlData.publicUrl;
-    }
-
-    // Fallback to signed URL if public URL fails
-    const { data, error } = await supabase.storage
-      .from('avatars')
-      .createSignedUrl(cleanPath, 3600);
-
-    if (error || !data) {
-      console.error('Error generating URL:', error);
+    if (!data?.publicUrl) {
+      console.error('Error getting public URL');
       return DEFAULT_AVATAR;
     }
 
-    console.log('Generated signed URL:', data.signedUrl);
-    return data.signedUrl;
+    return data.publicUrl;
   } catch (error) {
-    console.error('Error generating URL:', error);
+    console.error('Error in getAvatarUrl:', error);
     return DEFAULT_AVATAR;
   }
 };

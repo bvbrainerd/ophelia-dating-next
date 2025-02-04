@@ -546,16 +546,16 @@ export default function MatchingPage() {
               ▲
             </button>
 
-            <Card className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
+            <Card className="border-2 border-white rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-[#BA2525] w-full">
               <div className="flex flex-col items-center">
                 {currentDate.isValentineMatch && (
-                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-4">
+                  <div className="bg-white text-[#BA2525] px-4 py-1 rounded-full text-sm font-medium mb-8">
                     Valentine's Day Match 💝
                   </div>
                 )}
                 
                 <div 
-                  className="relative w-full h-64 mb-4 cursor-pointer"
+                  className="relative w-full h-64 mb-4 cursor-pointer border-4 border-white rounded-lg overflow-hidden"
                   onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
                 >
                   <ProfileImage
@@ -567,7 +567,7 @@ export default function MatchingPage() {
                   />
                 </div>
                 
-                <h2 className="text-2xl font-semibold mb-4 text-[#BA2525]">
+                <h2 className="text-2xl font-semibold mb-4 text-white">
                   {currentDate.matchedUser.first_name}{typeof currentDate.matchedUser.age !== 'undefined' && currentDate.matchedUser.age !== null ? `, ${currentDate.matchedUser.age}` : ''}
                 </h2>
 
@@ -576,50 +576,50 @@ export default function MatchingPage() {
                   className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
                   onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
                 >
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
                       <span>♔</span>
-                      <span className="text-[#BA2525] font-medium capitalize">
+                      <span className="text-white font-medium capitalize">
                         {(currentDate.matchedUser.dater_status || 'bronze').charAt(0).toUpperCase() + 
                          (currentDate.matchedUser.dater_status || 'bronze').slice(1)}
                       </span>
                     </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                    <div className="text-white text-xs whitespace-nowrap">
                       Dater Status
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
                       <span>★</span>
                       <span>{(currentDate.matchedUser.average_rating || 0).toFixed(1)}</span>
                     </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                    <div className="text-white text-xs whitespace-nowrap">
                       Dater Rating
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
                       <span>♥</span>
                       <span>{currentDate.matchedUser.follow_through_rate || '0'}%</span>
                     </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
+                    <div className="text-white text-xs whitespace-nowrap">
                       Follow-Through
                     </div>
                   </div>
                 </div>
 
                 {/* Venue and Time Info */}
-                <div className="bg-red-50 rounded-[24px] p-4 w-full mb-6">
-                  <div className="text-gray-600 text-sm space-y-2">
+                <div className="bg-[#BA2525] border-2 border-white rounded-[24px] p-4 w-full mb-6">
+                  <div className="text-white text-sm space-y-2">
                     <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">📍</span>
-                      <span className="text-[#BA2525] font-medium">{currentDate.venue}</span>
+                      <span className="text-white">📍</span>
+                      <span className="text-white font-medium">{currentDate.venue}</span>
                     </p>
                     <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">🗓</span>
-                      <span className="text-[#BA2525] font-medium">
+                      <span className="text-white">🗓</span>
+                      <span className="text-white font-medium">
                         {new Date(currentDate.proposedTime).toLocaleString('en-US', {
                           weekday: 'long',
                           month: 'short',
@@ -633,7 +633,7 @@ export default function MatchingPage() {
                   </div>
 
                   {/* Map Component */}
-                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden">
+                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden border-2 border-white">
                     <Map
                       center={venueCoordinates[currentDate.venue] || [-71.0589, 42.3601]}
                       zoom={14}
@@ -648,22 +648,22 @@ export default function MatchingPage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 w-full">
+                <div className="space-y-2 w-full mb-8">
                   <button
-                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                    className='w-full p-2.5 bg-white text-[#BA2525] rounded-full font-medium hover:bg-gray-100 transition-colors'
                     onClick={handleAccept}
                   >
                     Accept Date
                   </button>
                   <button
                     onClick={() => router.push(`/send-date-request/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                    className='w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                   >
                     Send Other Date Request
                   </button>
                   <button
                     onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                    className='w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                   >
                     View Profile
                   </button>

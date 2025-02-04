@@ -337,7 +337,7 @@ export default function DateRequestsPage() {
       <div className="max-w-4xl mx-auto p-5">
         <Header variant="default" />
         
-        <h1 className="text-3xl font-bold text-[#BA2525] text-center mt-12 mb-8">
+        <h1 className="text-3xl font-bold text-[#BA2525] text-center mt-6 mb-8">
           Date Requests
         </h1>
 
@@ -418,7 +418,7 @@ export default function DateRequestsPage() {
 
           {/* Regular Date Requests */}
           {dateRequests.map((request, index) => (
-            <Card key={request.id} className="bg-white p-6 rounded-[30px] shadow-sm hover:shadow-md transition-shadow">
+            <Card key={request.id} className="bg-[#BA2525] p-6 rounded-[30px] shadow-sm hover:shadow-md transition-shadow">
               {/* Profile and Basic Info */}
               <div className="flex items-start justify-between mb-6">
                 <Link href={`/profile/${request.sender?.id}`} className="flex items-center space-x-4">
@@ -431,7 +431,7 @@ export default function DateRequestsPage() {
                     />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-semibold text-[#BA2525]">
+                    <h3 className="text-2xl font-semibold text-white">
                       {request.sender?.first_name}, {request.sender?.age}
                     </h3>
                   </div>
@@ -441,27 +441,27 @@ export default function DateRequestsPage() {
                 <div className="flex gap-3">
                   <button 
                     onClick={() => handleDateResponse(request.id, 'accepted')}
-                    className="px-6 py-2.5 bg-[#BA2525] text-white rounded-full text-sm font-medium hover:bg-[#a02020] transition-colors shadow-sm"
+                    className="px-6 py-2.5 bg-white text-[#BA2525] rounded-full text-sm font-medium hover:bg-gray-100 transition-colors shadow-sm"
                   >
                     Accept
                   </button>
                   <button 
                     onClick={() => handleDateResponse(request.id, 'declined')}
-                    className="px-6 py-2.5 border-2 border-[#BA2525] text-[#BA2525] rounded-full text-sm font-medium hover:bg-[#ffeeee] transition-colors"
+                    className="px-6 py-2.5 border-2 border-white text-white rounded-full text-sm font-medium hover:bg-[#a02020] transition-colors"
                   >
                     Decline
                   </button>
                 </div>
               </div>
 
-              {/* Venue Image and Details */}
-              <div className="bg-red-50 rounded-[24px] p-4">
+              {/* Date Details and Map Combined */}
+              <div className="bg-white rounded-2xl p-4 border-2 border-white">
                 <div className="flex items-center gap-2 text-[#BA2525] font-medium mb-4">
                   <span className="text-xl">📍</span>
                   {request.venue}
                 </div>
 
-                <div className="relative h-48 rounded-2xl overflow-hidden mb-4">
+                <div className="relative h-48 rounded-xl overflow-hidden mb-4">
                   <Map 
                     markers={[{
                       coordinates: getVenueCoordinates(request.venue),
