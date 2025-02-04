@@ -34,6 +34,14 @@ interface Profile {
   descriptors: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }[];
 }
 
+type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits';
+
+type CompatibilityMap = {
+  [K in DaterArchetype]: {
+    [L in DaterArchetype]: number;
+  };
+};
+
 const archetypeMap = {
   hopelessRomantic: 'Hopeless Romantic',
   cautiousDater: 'Cautious Dater',
@@ -91,6 +99,48 @@ const getSignedUrl = async (filePath: string) => {
   }
 };
 
+const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: DaterArchetype): number => {
+  const compatibilityMap: CompatibilityMap = {
+    'hopelessRomantic': {
+      'hopelessRomantic': 95,
+      'cautiousDater': 85,
+      'commitmentSeeker': 90,
+      'serialDater': 60,
+      'friendWithBenefits': 40
+    },
+    'cautiousDater': {
+      'cautiousDater': 90,
+      'hopelessRomantic': 85,
+      'commitmentSeeker': 80,
+      'serialDater': 50,
+      'friendWithBenefits': 30
+    },
+    'commitmentSeeker': {
+      'commitmentSeeker': 95,
+      'hopelessRomantic': 90,
+      'serialDater': 70,
+      'cautiousDater': 80,
+      'friendWithBenefits': 30
+    },
+    'serialDater': {
+      'serialDater': 90,
+      'commitmentSeeker': 70,
+      'hopelessRomantic': 60,
+      'cautiousDater': 50,
+      'friendWithBenefits': 75
+    },
+    'friendWithBenefits': {
+      'friendWithBenefits': 95,
+      'serialDater': 75,
+      'hopelessRomantic': 40,
+      'cautiousDater': 30,
+      'commitmentSeeker': 30
+    }
+  };
+
+  return compatibilityMap[userArchetype]?.[matchArchetype] || 0;
+};
+
 export default function UserProfile() {
   const { id } = useParams();
   const router = useRouter();
@@ -102,6 +152,7 @@ export default function UserProfile() {
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [venueCoordinates, setVenueCoordinates] = useState<Record<string, [number, number]>>({});
+  const [compatibility, setCompatibility] = useState<number | null>(null);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -110,56 +161,72 @@ export default function UserProfile() {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setCurrentUserId(session.user.id);
+          
+          // Fetch current user's archetype
+          const { data: currentUserData } = await supabase
+            .from('profiles')
+            .select('dater_archetype')
+            .eq('id', session.user.id)
+            .single();
+
+          // Fetch profile data
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          // Calculate compatibility if both archetypes are available
+          if (currentUserData?.dater_archetype && profileData?.dater_archetype) {
+            const score = calculateCompatibility(
+              currentUserData.dater_archetype,
+              profileData.dater_archetype
+            );
+            setCompatibility(score);
+          }
+
+          // Fetch profile images
+          const { data: imageData, error: imageError } = await supabase
+            .from('profile_images')
+            .select('*')
+            .eq('profile_id', id)
+            .order('is_main', { ascending: false });
+
+          if (imageError) throw imageError;
+
+          // Process image URLs
+          let images = [];
+          if (imageData?.length > 0) {
+            images = await Promise.all(imageData.map(async img => ({
+              ...img,
+              image_url: await getSignedUrl(img.image_url)
+            })));
+          } else if (profileData.avatar_url) {
+            // If no profile images but has avatar_url, process it
+            const signedUrl = await getSignedUrl(profileData.avatar_url);
+            images = [{
+              id: 0,
+              image_url: signedUrl,
+              is_main: true
+            }];
+          } else {
+            // If no images, use default avatar
+            images = [{
+              id: 0,
+              image_url: '/images/default-avatar.png',
+              is_main: true
+            }];
+          }
+
+          setProfile({
+            ...profileData,
+            profile_images: images
+          });
+          
+          setError(null);
         }
-
-        // Fetch profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        // Fetch profile images
-        const { data: imageData, error: imageError } = await supabase
-          .from('profile_images')
-          .select('*')
-          .eq('profile_id', id)
-          .order('is_main', { ascending: false });
-
-        if (imageError) throw imageError;
-
-        // Process image URLs
-        let images = [];
-        if (imageData?.length > 0) {
-          images = await Promise.all(imageData.map(async img => ({
-            ...img,
-            image_url: await getSignedUrl(img.image_url)
-          })));
-        } else if (profileData.avatar_url) {
-          // If no profile images but has avatar_url, process it
-          const signedUrl = await getSignedUrl(profileData.avatar_url);
-          images = [{
-            id: 0,
-            image_url: signedUrl,
-            is_main: true
-          }];
-        } else {
-          // If no images, use default avatar
-          images = [{
-            id: 0,
-            image_url: '/images/default-avatar.png',
-            is_main: true
-          }];
-        }
-
-        setProfile({
-          ...profileData,
-          profile_images: images
-        });
-        
-        setError(null);
       } catch (error) {
         console.error('Error fetching profile:', error);
         setError('Failed to load profile.');
@@ -227,13 +294,18 @@ export default function UserProfile() {
       <main className="max-w-md mx-auto p-5 pb-24 bg-white min-h-screen">
         <Header variant="logo-only" />
         
-        {/* Profile Image */}
-        <div className="w-full max-w-lg mx-auto mb-6">
+        {/* Profile Image with Compatibility Score */}
+        <div className="w-full max-w-lg mx-auto mb-6 relative">
           <ProfileImageGallery
             images={profile.profile_images || []}
             mode="view"
             className="rounded-lg shadow-md"
           />
+          {typeof compatibility === 'number' && (
+            <div className="absolute top-2 right-2 z-10 bg-white rounded-full w-10 h-10 flex items-center justify-center">
+              <span className="text-[#BA2525] font-bold text-sm">{compatibility}%</span>
+            </div>
+          )}
         </div>
 
         {/* Basic Info */}
