@@ -9,7 +9,6 @@ import { supabase } from '../../supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import Image from 'next/image';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import DateRecommendations from '@/components/DateRecommendations';
 import { checkAndRefreshSession } from '@/lib/auth';
 import Map from '@/components/Map';
@@ -58,6 +57,8 @@ interface Profile {
   venue?: string;
   proposed_time?: string;
   description?: string;
+  dater_archetype?: DaterArchetype;
+  compatibility?: number | null;
 }
 
 interface DatabaseProfile {
@@ -415,6 +416,56 @@ const formatDate = (dateString: string) => {
   });
 };
 
+type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits';
+
+type CompatibilityMap = {
+  [K in DaterArchetype]: {
+    [L in DaterArchetype]: number;
+  };
+};
+
+const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: DaterArchetype): number => {
+  const compatibilityMap: CompatibilityMap = {
+    'hopelessRomantic': {
+      'hopelessRomantic': 95,
+      'cautiousDater': 85,
+      'commitmentSeeker': 90,
+      'serialDater': 60,
+      'friendWithBenefits': 40
+    },
+    'cautiousDater': {
+      'cautiousDater': 90,
+      'hopelessRomantic': 85,
+      'commitmentSeeker': 80,
+      'serialDater': 50,
+      'friendWithBenefits': 30
+    },
+    'commitmentSeeker': {
+      'commitmentSeeker': 95,
+      'hopelessRomantic': 90,
+      'serialDater': 70,
+      'cautiousDater': 80,
+      'friendWithBenefits': 30
+    },
+    'serialDater': {
+      'serialDater': 90,
+      'commitmentSeeker': 70,
+      'hopelessRomantic': 60,
+      'cautiousDater': 50,
+      'friendWithBenefits': 75
+    },
+    'friendWithBenefits': {
+      'friendWithBenefits': 95,
+      'serialDater': 75,
+      'hopelessRomantic': 40,
+      'cautiousDater': 30,
+      'commitmentSeeker': 30
+    }
+  };
+
+  return compatibilityMap[userArchetype]?.[matchArchetype] || 0;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -422,25 +473,24 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
+  const [userArchetype, setUserArchetype] = useState<DaterArchetype | null>(null);
 
   const fetchMatches = async (userId: string) => {
     try {
-      if (!userId) {
-        console.log('No user ID provided');
-        return [];
-      }
-
-      const { data: userProfile, error: profileError } = await supabase
+      // First get the current user's archetype
+      const { data: userData, error: userError } = await supabase
         .from('profiles')
-        .select('preferred_gender')
+        .select('dater_archetype')
         .eq('id', userId)
         .single();
 
-      if (profileError || !userProfile) {
-        throw new Error('User profile not found');
-      }
+      if (userError) throw userError;
+      const currentUserArchetype = userData?.dater_archetype as DaterArchetype;
+      setUserArchetype(currentUserArchetype);
 
-      let query = supabase
+      console.log('Current user archetype:', currentUserArchetype);
+
+      const { data: matchesData, error: matchesError } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -455,27 +505,59 @@ export default function DashboardPage() {
           descriptors,
           dater_status,
           follow_through_rate,
-          average_rating
+          average_rating,
+          dater_archetype
         `)
-        .neq('id', userId);
+        .neq('id', userId)
+        .eq('school', 'Boston College');
 
-      if (userProfile.preferred_gender) {
-        query = query.eq('gender', userProfile.preferred_gender);
-      }
+      if (matchesError) throw matchesError;
 
-      const { data: matches, error: matchError } = await query.order('created_at', { ascending: false });
+      // Process matches with compatibility scores
+      const matches = await Promise.all((matchesData || []).map(async (m) => {
+        const avatarUrl = m.avatar_url ? await getAvatarUrl(m.avatar_url) : null;
+        let compatibility = null;
+        
+        if (currentUserArchetype && m.dater_archetype) {
+          compatibility = calculateCompatibility(
+            currentUserArchetype,
+            m.dater_archetype as DaterArchetype
+          );
+          console.log(`Calculating compatibility for ${m.first_name}:`, {
+            userArchetype: currentUserArchetype,
+            matchArchetype: m.dater_archetype,
+            score: compatibility
+          });
+        }
 
-      if (matchError) throw matchError;
+        return {
+          id: m.id,
+          first_name: m.first_name,
+          last_name: m.last_name,
+          age: m.age,
+          avatar_url: avatarUrl,
+          bio: m.bio,
+          school: m.school,
+          gender: m.gender,
+          preferred_gender: m.preferred_gender,
+          descriptors: m.descriptors,
+          dater_status: m.dater_status,
+          follow_through_rate: m.follow_through_rate,
+          average_rating: m.average_rating,
+          dater_archetype: m.dater_archetype,
+          compatibility
+        } as Profile;
+      }));
 
-      console.log('Matches with descriptors:', matches?.map(m => ({
-        name: m.first_name,
-        descriptors: m.descriptors
-      })));
-
-      return matches || [];
+      console.log('Processed matches with compatibility:', matches);
+      setProfiles(matches);
+      return matches;
     } catch (error) {
       console.error('Error fetching matches:', error);
+      setError('Failed to load matches');
       return [];
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -561,6 +643,8 @@ export default function DashboardPage() {
             setProfiles([]);
             setDateRequests([]);
             router.replace('/auth/login');
+          } else {
+            setUserId(session.user.id);
           }
         });
 
@@ -666,6 +750,12 @@ export default function DashboardPage() {
                   className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg border-4 border-white"
                   onClick={() => router.push(`/profile/${profile.id}`)}
                 >
+                  {profile.compatibility !== null && (
+                    <div className="absolute top-2 right-2 z-10 bg-white/90 px-2 py-1 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
+                      <Heart size={12} fill="#BA2525" stroke="#BA2525" />
+                      {profile.compatibility}%
+                    </div>
+                  )}
                   <LocalProfileImage
                     src={profile.avatar_url}
                     alt={`${profile.first_name}'s profile`}

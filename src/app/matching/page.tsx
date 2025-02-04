@@ -7,9 +7,10 @@ import { useRouter } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import { supabase } from '../../supabase/client';
 import Header from '@/components/Header';
-import ProfileImage from '../../components/ProfileImage';
+import ProfileImage from '@/components/ProfileImage';
 import { Card } from '@/components/ui/card';
 import Map from '@/components/Map';
+import { Heart } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -546,28 +547,35 @@ export default function MatchingPage() {
               ▲
             </button>
 
-            <Card className="border-2 border-white rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-[#BA2525] w-full">
+            <Card className="rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
               <div className="flex flex-col items-center">
                 {currentDate.isValentineMatch && (
-                  <div className="bg-white text-[#BA2525] px-4 py-1 rounded-full text-sm font-medium mb-8">
+                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-8">
                     Valentine's Day Match 💝
                   </div>
                 )}
                 
                 <div 
-                  className="relative w-full h-64 mb-4 cursor-pointer border-4 border-white rounded-lg overflow-hidden"
+                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg"
                   onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
                 >
+                  {currentDate.compatibility !== null && (
+                    <div className="absolute top-2 right-2 z-10 bg-white/90 px-2 py-1 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
+                      <Heart size={12} fill="#BA2525" stroke="#BA2525" />
+                      {currentDate.compatibility}%
+                    </div>
+                  )}
                   <ProfileImage
                     user={{
                       avatar_url: currentDate.matchedUser.avatar_url || DEFAULT_AVATAR,
                       first_name: currentDate.matchedUser.first_name || 'Profile'
                     }}
                     priority={true}
+                    className="object-cover object-[50%_35%]"
                   />
                 </div>
                 
-                <h2 className="text-2xl font-semibold mb-4 text-white">
+                <h2 className="text-2xl font-semibold mb-4 text-[#BA2525]">
                   {currentDate.matchedUser.first_name}{typeof currentDate.matchedUser.age !== 'undefined' && currentDate.matchedUser.age !== null ? `, ${currentDate.matchedUser.age}` : ''}
                 </h2>
 
@@ -611,15 +619,15 @@ export default function MatchingPage() {
                 </div>
 
                 {/* Venue and Time Info */}
-                <div className="bg-[#BA2525] border-2 border-white rounded-[24px] p-4 w-full mb-6">
-                  <div className="text-white text-sm space-y-2">
+                <div className="bg-white border-2 border-[#BA2525] rounded-[24px] p-4 w-full mb-6">
+                  <div className="text-[#BA2525] text-sm space-y-2">
                     <p className="flex items-center gap-2">
-                      <span className="text-white">📍</span>
-                      <span className="text-white font-medium">{currentDate.venue}</span>
+                      <span className="text-[#BA2525]">📍</span>
+                      <span className="text-[#BA2525] font-medium">{currentDate.venue}</span>
                     </p>
                     <p className="flex items-center gap-2">
-                      <span className="text-white">🗓</span>
-                      <span className="text-white font-medium">
+                      <span className="text-[#BA2525]">🗓</span>
+                      <span className="text-[#BA2525] font-medium">
                         {new Date(currentDate.proposedTime).toLocaleString('en-US', {
                           weekday: 'long',
                           month: 'short',
@@ -633,7 +641,7 @@ export default function MatchingPage() {
                   </div>
 
                   {/* Map Component */}
-                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden border-2 border-white">
+                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden">
                     <Map
                       center={venueCoordinates[currentDate.venue] || [-71.0589, 42.3601]}
                       zoom={14}
@@ -650,20 +658,20 @@ export default function MatchingPage() {
                 {/* Action Buttons */}
                 <div className="space-y-2 w-full mb-8">
                   <button
-                    className='w-full p-2.5 bg-white text-[#BA2525] rounded-full font-medium hover:bg-gray-100 transition-colors'
+                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                     onClick={handleAccept}
                   >
                     Accept Date
                   </button>
                   <button
                     onClick={() => router.push(`/send-date-request/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
                   >
                     Send Other Date Request
                   </button>
                   <button
                     onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
                   >
                     View Profile
                   </button>
