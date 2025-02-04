@@ -7,11 +7,11 @@ export async function POST(request: Request) {
   try {
     const { email, dateDetails } = await request.json();
 
-    // Send immediate confirmation email
+    // Send date confirmation email with new template
     await sgMail.send({
       to: email,
       from: 'noreply@opheliadating.com',
-      templateId: process.env.SENDGRID_DATE_CONFIRMATION_TEMPLATE_ID!,
+      templateId: 'f0924ed2cae7404fa18a063a4f092b0c',
       dynamicTemplateData: dateDetails
     });
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('SendGrid Error:', error);
     return NextResponse.json(
-      { error: 'Failed to send confirmation emails' },
+      { error: 'Failed to send date confirmation email' },
       { status: 500 }
     );
   }

@@ -428,7 +428,7 @@ export default function DateDetailsPage() {
             <div className="flex items-center gap-6 mb-6">
               <div 
                 onClick={() => router.push(`/profile/${suggestedDate.matchedUser.id.split('-1')[0]}`)}
-                className="relative w-32 h-32 flex-shrink-0 rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                className="relative w-32 h-32 flex-shrink-0 rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition-opacity border-2 border-[#BA2525]"
               >
                 <div className="absolute inset-0">
                   <ProfileImage 
@@ -450,26 +450,26 @@ export default function DateDetailsPage() {
                   <h1 className="text-2xl font-bold text-[#BA2525]">
                     {suggestedDate.matchedUser.first_name}, {suggestedDate.matchedUser.age}
                   </h1>
-                  <div className="bg-[#BA2525] text-white px-3 py-1 rounded-full text-sm">
+                  <div className="bg-white border-2 border-[#BA2525] text-[#BA2525] px-3 py-1 rounded-full text-sm">
                     {suggestedDate.compatibility}% Match
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-red-50 text-center">
+                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-white border-2 border-[#BA2525] text-center">
                     <div className="flex items-center gap-2 text-[#BA2525]">
                       <span>♔</span>
                       <span>Bronze</span>
                     </div>
                     <div className="text-xs text-gray-500">Dater Status</div>
                   </div>
-                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-red-50 text-center">
+                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-white border-2 border-[#BA2525] text-center">
                     <div className="flex items-center gap-2 text-[#BA2525]">
                       <span>★</span>
                       <span>0.0</span>
                     </div>
                     <div className="text-xs text-gray-500">Dater Rating</div>
                   </div>
-                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-red-50 text-center">
+                  <div className="flex flex-col items-center px-6 py-2 rounded-full bg-white border-2 border-[#BA2525] text-center">
                     <div className="flex items-center gap-2 text-[#BA2525]">
                       <span>♥</span>
                       <span>0%</span>
@@ -482,27 +482,29 @@ export default function DateDetailsPage() {
 
             <div className="mb-6">
               <h2 className="text-xl font-semibold mb-4">Date Details</h2>
-              <div className="space-y-2 text-gray-600">
-                <p className="flex items-center gap-2">
-                  📍 <span className="font-medium">{suggestedDate.venue}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  🗓 <span className="font-medium">
-                    {new Date(suggestedDate.proposedTime).toLocaleString('en-US', {
-                      weekday: 'long',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </span>
-                </p>
+              <div className="bg-white border-2 border-[#BA2525] rounded-lg p-4">
+                <div className="space-y-2 text-[#BA2525]">
+                  <p className="flex items-center gap-2">
+                    📍 <span className="font-medium">{suggestedDate.venue}</span>
+                  </p>
+                  <p className="flex items-center gap-2">
+                    🗓 <span className="font-medium">
+                      {new Date(suggestedDate.proposedTime).toLocaleString('en-US', {
+                        weekday: 'long',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </span>
+                  </p>
+                </div>
               </div>
             </div>
 
             {venueCoordinates && (
-              <div className="mb-6 h-[300px] rounded-lg overflow-hidden">
+              <div className="mb-6 h-[300px] rounded-lg overflow-hidden border-2 border-[#BA2525]">
                 <Map center={venueCoordinates} zoom={15} markers={[{ coordinates: venueCoordinates, title: suggestedDate.venue }]} />
               </div>
             )}

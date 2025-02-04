@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import ImageCropper from '@/components/ImageCropper';
+import DescriptorBubbles from '@/components/DescriptorBubbles';
 
 interface UserData {
   email: string;
@@ -18,6 +19,8 @@ interface UserData {
   avatar_url: string | null;
   preferred_gender: string;
   dater_archetype: string | null;
+  bio: string;
+  descriptors: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }[];
 }
 
 interface AuthError {
@@ -62,7 +65,9 @@ export default function ProfileSetup() {
     school: 'Boston College',
     avatar_url: null,
     preferred_gender: '',
-    dater_archetype: null
+    dater_archetype: null,
+    bio: '',
+    descriptors: []
   });
   const [showCropper, setShowCropper] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -129,13 +134,24 @@ export default function ProfileSetup() {
     return email.toLowerCase().endsWith('@bc.edu');
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setUserData((prev) => ({
       ...prev,
       [name]: name === 'age' ? (value ? parseInt(value) : null) : value,
     }));
     setError(null);
+  };
+
+  const handleDescriptorSelect = (descriptor: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }) => {
+    setUserData((prev) => ({
+      ...prev,
+      descriptors: prev.descriptors.some(d => d.label === descriptor.label)
+        ? prev.descriptors.filter(d => d.label !== descriptor.label)
+        : [...prev.descriptors, descriptor]
+    }));
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -146,85 +162,133 @@ export default function ProfileSetup() {
     try {
       if (!validateBCEmail(userData.email)) {
         setError('Please use your BC email address (@bc.edu)');
+        setIsLoading(false);
         return;
       }
 
-      // Create auth user
+      // First, create the user in Supabase Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: userData.email.toLowerCase().trim(),
         password: userData.password.trim(),
-      });
-
-      if (signUpError) throw signUpError;
-      if (!authData.user) throw new Error('No user data returned');
-
-      // Upload avatar if exists
-      let avatarUrl = null;
-      if (avatarFile) {
-        avatarUrl = await uploadImage(authData.user.id);
-      }
-
-      const profileData = {
-        id: authData.user.id,
-        email: userData.email.toLowerCase().trim(),
-        first_name: userData.first_name.trim(),
-        last_name: userData.last_name.trim(),
-        age: userData.age,
-        gender: userData.gender,
-        preferred_gender: userData.preferred_gender,
-        bio: '',
-        school: 'Boston College',
-        avatar_url: avatarUrl,
-        dater_archetype: userData.dater_archetype
-      };
-
-      console.log('Updating profile with data:', profileData);
-
-      // Use upsert instead of insert
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert(profileData, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
-      }
-
-      // If there's a referral code, create the referral record
-      if (referralCode) {
-        // Get referrer's profile
-        const { data: referrerData, error: referrerError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('referral_code', referralCode)
-          .single();
-
-        if (!referrerError && referrerData) {
-          // Create referral record
-          const { error: referralError } = await supabase
-            .from('referrals')
-            .insert({
-              referrer_id: referrerData.id,
-              referred_id: authData.user.id,
-              referral_code: referralCode,
-              status: 'pending'
-            });
-
-          if (referralError) {
-            console.error('Error creating referral:', referralError);
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            first_name: userData.first_name,
+            last_name: userData.last_name
           }
         }
+      });
+
+      console.log('Auth response:', { 
+        data: authData,
+        error: signUpError,
+        errorMessage: signUpError?.message,
+        errorDetails: (signUpError as any)?.details,
+        errorStatus: (signUpError as any)?.status
+      });
+
+      if (signUpError) {
+        console.error('Auth error full details:', {
+          message: signUpError.message,
+          details: (signUpError as any).details,
+          status: (signUpError as any).status,
+          name: signUpError.name
+        });
+        if (signUpError.message.includes('already registered')) {
+          setError('This email is already registered. Please log in instead.');
+        } else {
+          setError(`Signup error: ${signUpError.message}`);
+        }
+        setIsLoading(false);
+        return;
       }
 
-      // Redirect to quiz page after successful signup
-      router.push('/quiz');
+      if (!authData?.user?.id) {
+        console.error('No user ID in auth response:', authData);
+        setError('Failed to create account. Please try again.');
+        setIsLoading(false);
+        return;
+      }
 
+      // Send confirmation email using SendGrid
+      const emailResponse = await fetch('/api/send-signup-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email.toLowerCase().trim(),
+          templateId: process.env.NEXT_PUBLIC_SENDGRID_SIGNUP_TEMPLATE_ID || '5ee523f067594b609819e5c4eaddff7c',
+          dynamicTemplateData: {
+            first_name: userData.first_name,
+            last_name: userData.last_name,
+            SiteURL: window.location.origin,
+            ConfirmationURL: `${window.location.origin}/auth/callback`,
+            RedirectTo: `${window.location.origin}/auth/callback`
+          }
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const emailError = await emailResponse.json();
+        console.error('Failed to send confirmation email:', emailError);
+        // Continue with profile creation even if email fails
+      }
+
+      try {
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: userData.email.toLowerCase().trim(),
+            first_name: userData.first_name.trim(),
+            last_name: userData.last_name.trim(),
+            age: userData.age,
+            gender: userData.gender,
+            preferred_gender: userData.preferred_gender,
+            school: 'Boston College',
+            bio: userData.bio.trim(),
+            descriptors: userData.descriptors,
+            dater_status: 'bronze',
+            average_rating: 5.0,
+            follow_through_rate: 100
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          setError('Failed to create profile. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
+        // Handle avatar upload if exists
+        if (avatarFile) {
+          try {
+            const avatarUrl = await uploadImage(authData.user.id);
+            if (avatarUrl) {
+              await supabase
+                .from('profiles')
+                .update({ avatar_url: avatarUrl })
+                .eq('id', authData.user.id);
+            }
+          } catch (error) {
+            console.error('Avatar upload error:', error);
+            // Continue even if avatar upload fails
+          }
+        }
+
+        // Success!
+        alert('Account created! Please check your email to verify your account.');
+        router.push('/quiz');
+      } catch (error: any) {
+        console.error('Profile creation error:', error);
+        setError('Failed to create profile. Please try again.');
+        setIsLoading(false);
+      }
     } catch (error: any) {
       console.error('Signup error:', error);
-      setError(error.message || 'An error occurred during signup');
+      setError(error.message || 'An error occurred during signup. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -393,6 +457,26 @@ export default function ProfileSetup() {
         >
           <option value='Boston College'>Boston College</option>
         </select>
+
+        <textarea
+          className='w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]'
+          name='bio'
+          placeholder='Tell us about yourself...'
+          value={userData.bio}
+          onChange={handleChange}
+          disabled={isLoading}
+        />
+
+        <div className="mb-6" onClick={(e) => e.preventDefault()}>
+          <DescriptorBubbles
+            selectedDescriptors={userData.descriptors}
+            onSelectDescriptor={(descriptor) => {
+              handleDescriptorSelect(descriptor);
+              return false;
+            }}
+            maxSelections={10}
+          />
+        </div>
 
         <button
           type='submit'

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { supabase } from '../../supabase/client';
 import DatingTypeQuiz from '@/components/DatingTypeQuiz';
 import { useRouter } from 'next/navigation';
+import DescriptorBubbles, { Descriptor } from '@/components/DescriptorBubbles';
 
 interface ProfileSetupProps {
   onComplete: () => void;
@@ -14,6 +15,7 @@ interface UserData {
   age: number | null;
   gender: string;
   school: string;
+  descriptors: Descriptor[];
 }
 
 export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
@@ -28,6 +30,7 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
     age: null,
     gender: '',
     school: 'Boston College',
+    descriptors: [],
   });
 
   const handleChange = (
@@ -37,6 +40,15 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
     setUserData((prev) => ({
       ...prev,
       [name]: name === 'age' ? (value ? parseInt(value) : null) : value,
+    }));
+  };
+
+  const handleDescriptorSelect = (descriptor: Descriptor) => {
+    setUserData(prev => ({
+      ...prev,
+      descriptors: prev.descriptors.some(d => d.label === descriptor.label)
+        ? prev.descriptors.filter(d => d.label !== descriptor.label)
+        : [...prev.descriptors, descriptor]
     }));
   };
 
@@ -62,7 +74,8 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
           school: 'Boston College',
           bio: '',
           preferred_gender: '',
-          avatar_url: null
+          avatar_url: null,
+          descriptors: userData.descriptors
         });
 
       if (updateError) throw updateError;
@@ -147,6 +160,19 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
       >
         <option value='Boston College'>Boston College</option>
       </select>
+
+      <div className="mt-6 mb-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Tell us about yourself</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Select descriptors that best match your personality, interests, and lifestyle.
+        </p>
+        <DescriptorBubbles
+          selectedDescriptors={userData.descriptors}
+          onSelectDescriptor={handleDescriptorSelect}
+          maxSelections={10}
+        />
+      </div>
+
       <button
         type="submit"
         className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'

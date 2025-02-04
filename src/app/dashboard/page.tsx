@@ -14,6 +14,8 @@ import DateRecommendations from '@/components/DateRecommendations';
 import { checkAndRefreshSession } from '@/lib/auth';
 import Map from '@/components/Map';
 import ProfileImage from '@/components/ProfileImage';
+import DaterStatus from '@/components/DaterStatus';
+import { DESCRIPTORS, Descriptor } from '@/components/DescriptorBubbles';
 
 const MAX_PREVIEW_MATCHES = 6;
 
@@ -49,12 +51,13 @@ interface Profile {
   school?: string;
   gender: 'male' | 'female' | 'other';
   preferred_gender: 'male' | 'female' | 'other';
-  dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
+  descriptors?: string[];
   dater_status?: 'gold' | 'silver' | 'bronze' | null;
   follow_through_rate?: number;
   average_rating?: number;
   venue?: string;
   proposed_time?: string;
+  description?: string;
 }
 
 interface DatabaseProfile {
@@ -439,7 +442,21 @@ export default function DashboardPage() {
 
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          age,
+          avatar_url,
+          bio,
+          school,
+          gender,
+          preferred_gender,
+          descriptors,
+          dater_status,
+          follow_through_rate,
+          average_rating
+        `)
         .neq('id', userId);
 
       if (userProfile.preferred_gender) {
@@ -449,6 +466,11 @@ export default function DashboardPage() {
       const { data: matches, error: matchError } = await query.order('created_at', { ascending: false });
 
       if (matchError) throw matchError;
+
+      console.log('Matches with descriptors:', matches?.map(m => ({
+        name: m.first_name,
+        descriptors: m.descriptors
+      })));
 
       return matches || [];
     } catch (error) {
@@ -613,8 +635,15 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto p-5">
         <Header variant="default" />
         
+        {/* Dater Status Section */}
+        {userId && (
+          <div className="mt-8 mb-4">
+            <DaterStatus userId={userId} />
+          </div>
+        )}
+        
         {/* Valentine's Day Section */}
-        <div className="bg-[#BA2525] rounded-lg p-12 min-h-[200px] flex flex-col items-center justify-center space-y-6 mt-8">
+        <div className="bg-[#BA2525] rounded-lg p-12 min-h-[200px] flex flex-col items-center justify-center space-y-6">
           <h2 className="text-xl text-white font-medium">Ditch love at first swipe, for love at first sight.</h2>
           <Link
             href="/send-valentine"
@@ -631,10 +660,10 @@ export default function DashboardPage() {
         {/* Matches Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {profiles.map((profile) => (
-            <Card key={profile.id} className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow bg-white">
+            <Card key={profile.id} className="border-2 border-[#BA2525] rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow bg-[#BA2525]">
               <div className="flex flex-col items-center">
                 <div 
-                  className="relative w-full h-64 mb-4 cursor-pointer overflow-hidden"
+                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg border-4 border-white"
                   onClick={() => router.push(`/profile/${profile.id}`)}
                 >
                   <LocalProfileImage
@@ -645,76 +674,22 @@ export default function DashboardPage() {
                   />
                 </div>
                 
-                <h2 className="text-xl font-semibold mb-4 text-[#BA2525]">
+                <h2 className="text-xl font-semibold mb-4 text-white">
                   {profile.first_name}{typeof profile.age !== 'undefined' && profile.age !== null ? `, ${profile.age}` : ''}
                 </h2>
 
-                {/* Stats Grid */}
-                <div 
-                  className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
-                  onClick={() => router.push(`/profile/${profile.id}`)}
-                >
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
-                      <span>♔</span>
-                      <span>{(profile.dater_status || 'bronze').charAt(0).toUpperCase() + (profile.dater_status || 'bronze').slice(1)}</span>
-                    </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
-                      Dater Status
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
-                      <span>★</span>
-                      <span>{(profile.average_rating || 0).toFixed(1)}</span>
-                    </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
-                      Dater Rating
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-red-50 hover:bg-red-100 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[#BA2525] text-base">
-                      <span>♥</span>
-                      <span>{profile.follow_through_rate || '0'}%</span>
-                    </div>
-                    <div className="text-gray-600 text-xs whitespace-nowrap">
-                      Follow-Through
-                    </div>
-                  </div>
-                </div>
-
-                {/* Venue and Time */}
-                {profile.venue && profile.proposed_time && (
-                  <div className="w-full mb-4 bg-red-50 p-4 rounded-lg">
-                    <div className="text-[#BA2525] font-medium mb-2">
-                      📍 {profile.venue}
-                    </div>
-                    <div className="text-[#BA2525] font-medium">
-                      📅 {new Date(profile.proposed_time).toLocaleString('en-US', {
-                        weekday: 'long',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Map */}
-                {profile.venue && venueCoordinates[profile.venue] && (
-                  <div className="w-full h-40 rounded-lg overflow-hidden mb-4">
-                    <Map 
-                      markers={[{
-                        coordinates: venueCoordinates[profile.venue],
-                        title: profile.venue
-                      }]}
-                      center={venueCoordinates[profile.venue]}
-                      zoom={14}
-                    />
+                {/* Descriptor Bubbles */}
+                {profile.descriptors && profile.descriptors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4 justify-center">
+                    {profile.descriptors.map((descriptor: any, index: number) => {
+                      // Handle both string and object descriptors
+                      const descriptorLabel = typeof descriptor === 'string' ? descriptor : descriptor.label;
+                      return (
+                        <span key={index} className="bg-[#BA2525] text-white border-2 border-white px-3 py-1 rounded-full text-sm">
+                          {descriptorLabel}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -722,13 +697,13 @@ export default function DashboardPage() {
                 <div className="space-y-2 w-full">
                   <button
                     onClick={() => router.push(`/send-date-request/${profile.id}`)}
-                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                    className='w-full p-2 bg-white text-[#BA2525] rounded-full font-medium hover:bg-gray-100 transition-colors'
                   >
                     Send Date Request
                   </button>
                   <button
                     onClick={() => router.push(`/profile/${profile.id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
+                    className='w-full p-2 bg-transparent text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                   >
                     View Profile
                   </button>
