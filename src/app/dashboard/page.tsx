@@ -477,10 +477,10 @@ export default function DashboardPage() {
 
   const fetchMatches = async (userId: string) => {
     try {
-      // First get the current user's archetype
+      // First get the current user's profile including gender preferences
       const { data: userData, error: userError } = await supabase
         .from('profiles')
-        .select('dater_archetype')
+        .select('dater_archetype, gender, preferred_gender')
         .eq('id', userId)
         .single();
 
@@ -488,8 +488,9 @@ export default function DashboardPage() {
       const currentUserArchetype = userData?.dater_archetype as DaterArchetype;
       setUserArchetype(currentUserArchetype);
 
-      console.log('Current user archetype:', currentUserArchetype);
+      console.log('Current user data:', userData);
 
+      // Fetch matches with gender preference filtering
       const { data: matchesData, error: matchesError } = await supabase
         .from('profiles')
         .select(`
@@ -509,7 +510,10 @@ export default function DashboardPage() {
           dater_archetype
         `)
         .neq('id', userId)
-        .eq('school', 'Boston College');
+        .eq('school', 'Boston College')
+        // Filter by gender preferences
+        .eq('gender', userData.preferred_gender)
+        .eq('preferred_gender', userData.gender);
 
       if (matchesError) throw matchesError;
 
