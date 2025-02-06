@@ -573,7 +573,177 @@ const VENUES: Record<string, Venue[]> = {
       restrictions: "Closed on Mondays"
     }
   ],
-  outdoors: []
+  outdoors: [],
+  bars: [
+    { 
+      id: "city-tap-house",
+      name: "City Tap House",
+      location: "10 Boston Wharf Road, Boston, MA 02210",
+      type: "Sports Bar",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/citytap.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0478, 42.3512],
+      distance: "5.8 mi"
+    },
+    { 
+      id: "greatest-bar",
+      name: "The Greatest Bar",
+      location: "262 Friend St, Boston, MA 02114",
+      type: "Sports Bar",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/greatestbar.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0614, 42.3642],
+      distance: "5.5 mi"
+    },
+    { 
+      id: "stats-bar",
+      name: "Stats Bar & Grille",
+      location: "77 Dorchester St, Boston, MA 02127",
+      type: "Sports Bar",
+      rating: 4.4,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/stats.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0516, 42.3307],
+      distance: "6.1 mi"
+    },
+    { 
+      id: "lansdowne-pub",
+      name: "The Lansdowne Pub",
+      location: "9 Lansdowne St, Boston, MA 02215",
+      type: "Irish Pub",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lansdowne.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0947, 42.3474],
+      distance: "3.7 mi"
+    },
+    { 
+      id: "hunters-kitchen",
+      name: "Hunters Kitchen & Bar",
+      location: "62 Staniford St, Boston, MA 02114",
+      type: "Bar & Restaurant",
+      rating: 4.4,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/hunters.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0516, 42.3307],
+      distance: "6.1 mi"
+    },
+    { 
+      id: "loco-taqueria",
+      name: "Loco Taqueria & Oyster Bar",
+      location: "412 W Broadway, Boston, MA 02127",
+      type: "Bar & Restaurant",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/loco.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0471, 42.3359],
+      distance: "6.0 mi"
+    },
+    { 
+      id: "luckys-lounge",
+      name: "Lucky's Lounge",
+      location: "355 Congress St, Boston, MA 02210",
+      type: "Bar & Restaurant",
+      rating: 4.4,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/luckyslounge.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0516, 42.3512],
+      distance: "5.8 mi"
+    },
+    { 
+      id: "west-end-johnnies",
+      name: "West End Johnnies",
+      location: "138 Portland St, Boston, MA 02114",
+      type: "Sports Bar",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/westendjohnnies.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0614, 42.3642],
+      distance: "5.5 mi"
+    },
+    { 
+      id: "scholars",
+      name: "Scholars",
+      location: "25 School St, Boston, MA 02108",
+      type: "Bar & Restaurant",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/scholars.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0595, 42.3578],
+      distance: "5.6 mi"
+    },
+    { 
+      id: "cask-n-flagon",
+      name: "Cask n Flagon",
+      location: "62 Brookline Ave, Boston, MA 02215",
+      type: "Sports Bar",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/casknflagan.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0947, 42.3474],
+      distance: "3.7 mi"
+    },
+    { 
+      id: "clerys",
+      name: "Clerys",
+      location: "113 Dartmouth St, Boston, MA 02116",
+      type: "Irish Pub",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/clerys.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0733, 42.3467],
+      distance: "4.8 mi"
+    },
+    { 
+      id: "lincoln-tavern",
+      name: "Lincoln Tavern & Restaurant",
+      location: "425 W Broadway, Boston, MA 02127",
+      type: "Bar & Restaurant",
+      rating: 4.5,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lincoln.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0471, 42.3359],
+      distance: "6.0 mi"
+    },
+    { 
+      id: "bell-in-hand",
+      name: "Bell in Hand Tavern",
+      location: "45 Union St, Boston, MA 02108",
+      type: "Historic Pub",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bellinhand.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0571, 42.3614],
+      distance: "5.7 mi"
+    },
+    { 
+      id: "the-harp",
+      name: "The Harp",
+      location: "85 Causeway St, Boston, MA 02114",
+      type: "Irish Pub",
+      rating: 4.3,
+      price: "$$",
+      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/theharp.jpg`,
+      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
+      coordinates: [-71.0614, 42.3642],
+      distance: "5.5 mi"
+    }
+  ]
 };
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
@@ -905,12 +1075,77 @@ export default function DateRequestPage() {
   };
 
   const handleVenueSelect = (venueName: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      venue: venueName,
-      split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
-    }));
-    setShowVenueList(false);
+    // Check if it's a bar venue
+    const isBarVenue = [
+      'Capo',
+      'Barcelona Wine Bar',
+      'Bartaco',
+      'Lolita Back Bay',
+      'Cityside Tavern',
+      "Loretta's Last Call",
+      'Parla',
+      "Lucky's Lounge",
+      'City Tap House',
+      'The Greatest Bar',
+      'Stats Bar & Grille',
+      'The Lansdowne Pub',
+      'Hunters Kitchen & Bar',
+      'Loco Taqueria & Oyster Bar',
+      'West End Johnnies',
+      'Scholars',
+      'Cask n Flagon',
+      'Clerys',
+      'Lincoln Tavern & Restaurant',
+      'Bell in Hand Tavern',
+      'The Harp'
+    ].includes(venueName);
+
+    if (isBarVenue) {
+      // Check user's age from Supabase
+      const checkAge = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            setError('Please log in to continue');
+            return;
+          }
+
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('age')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) throw error;
+
+          if (!profile?.age || profile.age < 21) {
+            setError('You must be 21 or older to request dates at bar venues');
+            return;
+          }
+
+          // If age check passes, proceed with venue selection
+          setFormData(prev => ({
+            ...prev,
+            venue: venueName,
+            split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
+          }));
+          setShowVenueList(false);
+        } catch (err) {
+          console.error('Error checking age:', err);
+          setError('Failed to verify age requirement');
+        }
+      };
+
+      checkAge();
+    } else {
+      // For non-bar venues, proceed normally
+      setFormData(prev => ({
+        ...prev,
+        venue: venueName,
+        split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
+      }));
+      setShowVenueList(false);
+    }
   };
 
   const sendDateRequestNotification = async (receiverEmail: string, requestDetails: any) => {
@@ -1027,7 +1262,7 @@ export default function DateRequestPage() {
               <h2 className="text-lg font-bold text-gray-800 mb-2">Date Location</h2>
               <VenueSelector 
                 venues={VENUES}
-                onVenueSelect={(venue) => setFormData({ ...formData, venue })}
+                onVenueSelect={handleVenueSelect}
                 selectedVenue={formData.venue}
               />
             </div>

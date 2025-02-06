@@ -13,6 +13,7 @@ interface VenueSelectorProps {
   venues: Record<string, Venue[]>;
   onVenueSelect: (venue: string) => void;
   selectedVenue: string;
+  error?: string;
 }
 
 const categories = [
@@ -20,6 +21,7 @@ const categories = [
   { id: 'recommended', label: 'Recommended' },
   { id: 'sports', label: 'Sports' },
   { id: 'restaurants', label: 'Restaurants' },
+  { id: 'bars', label: 'Bars' },
   { id: 'activities', label: 'Activities' },
   { id: 'events', label: 'Events' }
 ];
@@ -33,7 +35,7 @@ interface EventbriteEvent {
   url: string;
 }
 
-export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: VenueSelectorProps) {
+export default function VenueSelector({ venues, onVenueSelect, selectedVenue, error }: VenueSelectorProps) {
   const [showVenueList, setShowVenueList] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,6 +60,32 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
 
     if (selectedCategory === 'restaurants') {
       return category === 'restaurants' ? venueList : [];
+    }
+
+    if (selectedCategory === 'bars') {
+      const barAndRestaurantVenues = [
+        'Capo',
+        'Barcelona Wine Bar',
+        'Bartaco',
+        'Lolita Back Bay',
+        'Cityside Tavern',
+        "Loretta's Last Call",
+        'Parla'
+      ];
+
+      if (category === 'bars') {
+        return venueList;
+      }
+      
+      if (category === 'restaurants') {
+        return venueList.filter(venue => barAndRestaurantVenues.includes(venue.name));
+      }
+
+      return [];
+    }
+
+    if (selectedCategory === 'activities') {
+      return category === 'activities' ? venueList : [];
     }
 
     if (selectedCategory !== 'all' && selectedCategory !== category) return [];
@@ -96,15 +124,20 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue }: 
   return (
     <div>
       {!showVenueList ? (
-        <button
-          onClick={() => setShowVenueList(true)}
-          className="w-full p-3 text-left border rounded-lg flex items-center justify-between hover:border-[#cc0000] transition-colors"
-        >
-          <span className="text-black">
-            {selectedVenue || 'Select venue'}
-          </span>
-          <MapPin className="text-[#cc0000]" />
-        </button>
+        <div>
+          <button
+            onClick={() => setShowVenueList(true)}
+            className="w-full p-3 text-left border rounded-lg flex items-center justify-between hover:border-[#cc0000] transition-colors"
+          >
+            <span className="text-black">
+              {selectedVenue || 'Select venue'}
+            </span>
+            <MapPin className="text-[#cc0000]" />
+          </button>
+          {error && (
+            <p className="text-red-500 text-sm mt-2">{error}</p>
+          )}
+        </div>
       ) : (
         <div className="fixed inset-0 bg-white z-50">
           <div className="h-full flex flex-col">
