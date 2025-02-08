@@ -160,6 +160,13 @@ export default function ProfileSetup() {
     setError(null);
 
     try {
+      // Check if profile picture is uploaded
+      if (!avatarFile) {
+        setError('Please upload a profile picture');
+        setIsLoading(false);
+        return;
+      }
+
       if (!validateBCEmail(userData.email)) {
         setError('Please use your BC email address (@bc.edu)');
         setIsLoading(false);
@@ -318,7 +325,7 @@ export default function ProfileSetup() {
 
       <form onSubmit={handleSignUp} className="space-y-4">
         {/* Profile Picture */}
-        <div className="flex items-center justify-center w-full mb-6">
+        <div className="flex flex-col items-center justify-center w-full mb-6">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
             {previewUrl ? (
               <div className="relative w-full h-full">
@@ -349,6 +356,9 @@ export default function ProfileSetup() {
                 <p className="mb-2 text-xs text-gray-500 text-center">
                   Add Photo
                 </p>
+                <p className="text-xs text-red-500 text-center">
+                  Required
+                </p>
               </div>
             )}
             <input
@@ -357,6 +367,7 @@ export default function ProfileSetup() {
               accept="image/*"
               onChange={handleImageUpload}
               disabled={isLoading}
+              required
             />
           </label>
         </div>
