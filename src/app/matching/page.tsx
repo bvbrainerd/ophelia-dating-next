@@ -250,38 +250,52 @@ export default function MatchingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [suggestedDates, setSuggestedDates] = useState<SuggestedDate[]>([]);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [lastMatchDate, setLastMatchDate] = useState<string | null>(null);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState({
+    archetype: '',
+    school: '',
+    minAge: '',
+    maxAge: ''
+  });
+  
+  const PROFILES_PER_PAGE = 10;
+  const archetypeOptions = [
+    { value: 'cautiousDater', label: 'Cautious Dater' },
+    { value: 'hopelessRomantic', label: 'Hopeless Romantic' },
+    { value: 'serialDater', label: 'Serial Dater' },
+    { value: 'commitmentSeeker', label: 'Commitment Seeker' },
+    { value: 'friendWithBenefits', label: 'Friend with Benefits' }
+  ];
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchStart(e.targetTouches[0].clientY);
-  };
+  const schoolOptions = [
+    { value: 'Boston College', label: 'Boston College' },
+    { value: 'Harvard', label: 'Harvard' },
+    { value: 'MIT', label: 'MIT' },
+    { value: 'Northeastern', label: 'Northeastern' },
+    { value: 'Boston University', label: 'Boston University' }
+  ];
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchEnd(e.targetTouches[0].clientY);
-  };
+  const filteredProfiles = suggestedDates.filter(profile => {
+    if (filters.archetype && profile.matchedUser.dater_archetype !== filters.archetype) return false;
+    if (filters.school && profile.matchedUser.school !== filters.school) return false;
+    if (filters.minAge && profile.matchedUser.age < parseInt(filters.minAge)) return false;
+    if (filters.maxAge && profile.matchedUser.age > parseInt(filters.maxAge)) return false;
+    return true;
+  });
 
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isSwipeDown = distance < -50;
-    const isSwipeUp = distance > 50;
-    
-    if (isSwipeUp && currentIndex < suggestedDates.length - 1) {
-      navigateToDate(currentIndex + 1);
-    } else if (isSwipeDown && currentIndex > 0) {
-      navigateToDate(currentIndex - 1);
-    }
-    
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
+  const paginatedProfiles = filteredProfiles.slice(
+    (currentPage - 1) * PROFILES_PER_PAGE,
+    currentPage * PROFILES_PER_PAGE
+  );
 
-  const navigateToDate = (index: number) => {
-    setCurrentIndex(index);
+  const totalPages = Math.ceil(filteredProfiles.length / PROFILES_PER_PAGE);
+
+  const handleFilterChange = (filterType: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   useEffect(() => {
@@ -459,10 +473,7 @@ export default function MatchingPage() {
     fetchMatches();
   }, [router]);
 
-  const handleAccept = async () => {
-    const currentDate = suggestedDates[currentIndex];
-    if (!currentDate) return;
-
+  const handleAccept = async (profile: SuggestedDate) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -470,14 +481,14 @@ export default function MatchingPage() {
         return;
       }
 
-      // Create a date request with split_payment as a number
+      // Create a date request
       const { data: dateRequest, error: dateRequestError } = await supabase
         .from('date_requests')
         .insert({
           sender_id: user.id,
-          receiver_id: currentDate.matchedUser.id,
-          venue: currentDate.venue,
-          proposed_time: currentDate.proposedTime,
+          receiver_id: profile.matchedUser.id,
+          venue: profile.venue,
+          proposed_time: profile.proposedTime,
           status: 'pending',
           split_payment: 0
         })
@@ -504,201 +515,179 @@ export default function MatchingPage() {
     );
   }
 
-  const currentDate = suggestedDates[currentIndex];
+  return (
+    <div className="min-h-screen bg-white pb-24">
+      <div className="max-w-6xl mx-auto p-5">
+        <Header variant="matching" />
+        
+        <h1 className="text-3xl font-bold text-[#BA2525] mt-8 mb-8 text-center">Your Matches</h1>
 
-  if (!currentDate) {
-    return (
-      <div className="min-h-screen bg-white pb-24">
-        <div className="max-w-6xl mx-auto p-5">
-          <Header variant="matching" />
-          <div className="text-center mt-10">
-            <h2 className="text-2xl font-bold text-[#BA2525]">No More Matches Available</h2>
-            <p className="text-gray-600 mt-2">Check back later for new matches!</p>
+        {/* Filters Section */}
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6 mb-4 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-semibold text-[#BA2525] mb-2 sm:mb-4">Filters</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+            {/* Archetype Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Dater Archetype</label>
+              <select
+                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                value={filters.archetype}
+                onChange={(e) => handleFilterChange('archetype', e.target.value)}
+              >
+                <option value="">All Archetypes</option>
+                {archetypeOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* School Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">School</label>
+              <select
+                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                value={filters.school}
+                onChange={(e) => handleFilterChange('school', e.target.value)}
+              >
+                <option value="">All Schools</option>
+                {schoolOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Age Range Filters */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Min Age</label>
+              <input
+                type="number"
+                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                value={filters.minAge}
+                onChange={(e) => handleFilterChange('minAge', e.target.value)}
+                min="18"
+                max="100"
+                placeholder="18"
+              />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Max Age</label>
+              <input
+                type="number"
+                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                value={filters.maxAge}
+                onChange={(e) => handleFilterChange('maxAge', e.target.value)}
+                min="18"
+                max="100"
+                placeholder="100"
+              />
+            </div>
           </div>
         </div>
-        <BottomNav />
-      </div>
-    );
-  }
 
-  return (
-    <>
-      <div 
-        className="min-h-screen bg-white pb-24"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <div className="max-w-6xl mx-auto p-5">
-          <Header variant="matching" />
-          
-          <h1 className="text-3xl font-bold text-[#BA2525] mt-8 mb-8 text-center">Your Curated Dates</h1>
-
-          <div className="max-w-md mx-auto relative">
-            {/* Previous Arrow */}
-            <button
-              onClick={() => navigateToDate(currentIndex - 1)}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-8 p-3 ${
-                currentIndex > 0 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-              } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
-              disabled={currentIndex === 0}
-              aria-label="Previous date"
-            >
-              ▲
-            </button>
-
-            <Card className="rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
-              <div className="flex flex-col items-center">
-                {currentDate.isValentineMatch && (
-                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-8">
+        {/* Profile Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-2 sm:px-4 max-w-6xl mx-auto">
+          {paginatedProfiles.map((profile, index) => (
+            <Card key={profile.id} className="rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow bg-white">
+              <div className="flex flex-col">
+                {profile.isValentineMatch && (
+                  <div className="bg-[#BA2525] text-white px-3 py-1 rounded-full text-sm font-medium mb-3 self-center">
                     Valentine's Day Match 💝
                   </div>
                 )}
                 
                 <div 
-                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg"
-                  onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
+                  className="relative w-full h-[300px] sm:h-[350px] mb-4 sm:mb-6 cursor-pointer overflow-hidden rounded-lg"
+                  onClick={() => router.push(`/profile/${profile.matchedUser.id}`)}
                 >
-                  {currentDate.compatibility !== null && (
-                    <div className="absolute top-2 right-2 z-10 bg-white/90 px-2 py-1 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
+                  {profile.compatibility !== null && (
+                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-white/90 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
                       <Heart size={12} fill="#BA2525" stroke="#BA2525" />
-                      {currentDate.compatibility}%
+                      {profile.compatibility}%
                     </div>
                   )}
                   <ProfileImage
                     user={{
-                      avatar_url: currentDate.matchedUser.avatar_url || DEFAULT_AVATAR,
-                      first_name: currentDate.matchedUser.first_name || 'Profile'
+                      avatar_url: profile.matchedUser.avatar_url || DEFAULT_AVATAR,
+                      first_name: profile.matchedUser.first_name
                     }}
-                    priority={true}
-                    className="object-cover object-[50%_35%]"
+                    priority={index < 4}
+                    className="object-cover"
                   />
                 </div>
-                
-                <h2 className="text-2xl font-semibold mb-4 text-[#BA2525]">
-                  {currentDate.matchedUser.first_name}{typeof currentDate.matchedUser.age !== 'undefined' && currentDate.matchedUser.age !== null ? `, ${currentDate.matchedUser.age}` : ''}
+
+                <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-[#BA2525] text-center">
+                  {profile.matchedUser.first_name}
+                  {profile.matchedUser.age ? `, ${profile.matchedUser.age}` : ''}
                 </h2>
 
                 {/* Stats Grid */}
-                <div 
-                  className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
-                  onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
-                >
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>♔</span>
-                      <span className="text-white font-medium capitalize">
-                        {(currentDate.matchedUser.dater_status || 'bronze').charAt(0).toUpperCase() + 
-                         (currentDate.matchedUser.dater_status || 'bronze').slice(1)}
-                      </span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Dater Status
-                    </div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
+                    <div className="text-[#BA2525] text-sm sm:text-base">♔ {profile.matchedUser.dater_status ? profile.matchedUser.dater_status.charAt(0).toUpperCase() + profile.matchedUser.dater_status.slice(1) : 'Bronze'}</div>
+                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Status</div>
                   </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>★</span>
-                      <span>{(currentDate.matchedUser.average_rating || 0).toFixed(1)}</span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Dater Rating
-                    </div>
+                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
+                    <div className="text-[#BA2525] text-sm sm:text-base">★ {(profile.matchedUser.average_rating || 0).toFixed(1)}</div>
+                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Rating</div>
                   </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>♥</span>
-                      <span>{currentDate.matchedUser.follow_through_rate || '0'}%</span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Follow-Through
-                    </div>
-                  </div>
-                </div>
-
-                {/* Venue and Time Info */}
-                <div className="bg-white border-2 border-[#BA2525] rounded-[24px] p-4 w-full mb-6">
-                  <div className="text-[#BA2525] text-sm space-y-2">
-                    <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">📍</span>
-                      <span className="text-[#BA2525] font-medium">{currentDate.venue}</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">🗓</span>
-                      <span className="text-[#BA2525] font-medium">
-                        {new Date(currentDate.proposedTime).toLocaleString('en-US', {
-                          weekday: 'long',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Map Component */}
-                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden">
-                    <Map
-                      center={venueCoordinates[currentDate.venue] || [-71.0589, 42.3601]}
-                      zoom={14}
-                      markers={[
-                        {
-                          coordinates: venueCoordinates[currentDate.venue] || [-71.0589, 42.3601],
-                          title: currentDate.venue
-                        }
-                      ]}
-                    />
+                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
+                    <div className="text-[#BA2525] text-sm sm:text-base">♥ {profile.matchedUser.follow_through_rate}%</div>
+                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Follow-Through</div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 w-full mb-8">
+                <div className="space-y-2 sm:space-y-3">
                   <button
-                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
-                    onClick={handleAccept}
-                  >
-                    Accept Date
-                  </button>
-                  <button
-                    onClick={() => router.push(`/send-date-request/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
-                  >
-                    Send Other Date Request
-                  </button>
-                  <button
-                    onClick={() => router.push(`/profile/${currentDate.matchedUser.id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
+                    onClick={() => router.push(`/profile/${profile.matchedUser.id}`)}
+                    className='w-full p-3 sm:p-4 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors text-sm sm:text-base'
                   >
                     View Profile
+                  </button>
+                  <button
+                    onClick={() => router.push(`/send-date-request/${profile.matchedUser.id}`)}
+                    className='w-full p-3 sm:p-4 bg-[#BA2525] text-white border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm sm:text-base'
+                  >
+                    Send Date Request
                   </button>
                 </div>
               </div>
             </Card>
-
-            {/* Next Arrow */}
-            <button
-              onClick={() => navigateToDate(currentIndex + 1)}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-8 p-3 ${
-                currentIndex < suggestedDates.length - 1 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-              } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
-              disabled={currentIndex === suggestedDates.length - 1}
-              aria-label="Next date"
-            >
-              ▼
-            </button>
-
-            {/* Match Count */}
-            <div className="text-[#BA2525] font-medium text-center mt-6">
-              {currentIndex + 1} / {suggestedDates.length}
-            </div>
-          </div>
+          ))}
         </div>
-        <BottomNav />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-8 gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-full ${
+                currentPage === 1 
+                  ? 'bg-gray-200 text-gray-500' 
+                  : 'bg-[#BA2525] text-white hover:bg-[#a02020]'
+              } transition-colors`}
+            >
+              Previous
+            </button>
+            <span className="px-4 py-2 text-[#BA2525] font-medium">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-full ${
+                currentPage === totalPages 
+                  ? 'bg-gray-200 text-gray-500' 
+                  : 'bg-[#BA2525] text-white hover:bg-[#a02020]'
+              } transition-colors`}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
-    </>
+      <BottomNav />
+    </div>
   );
 }

@@ -179,8 +179,9 @@ export default function ProfileImageGallery({
             fill
             className="object-cover rounded-full"
             sizes="80px"
-            unoptimized={true}
-            crossOrigin="anonymous"
+            quality={95}
+            priority={true}
+            unoptimized={false}
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               console.error('Error loading thumbnail:', {

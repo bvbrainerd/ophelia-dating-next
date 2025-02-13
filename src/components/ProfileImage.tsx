@@ -112,8 +112,10 @@ export default function ProfileImage({ user, className = '', priority = true }: 
         fill
         priority={priority}
         className="object-cover object-center"
-        sizes="(max-width: 768px) 100vw, 50vw"
+        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+        quality={95}
         onError={handleImageError}
+        unoptimized={false}
       />
     </div>
   );
