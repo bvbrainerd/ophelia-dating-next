@@ -23,7 +23,7 @@ export default function LoginSignup({ onLogin, onSignup }: LoginSignupProps) {
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
 
   const validateBCEmail = (email: string): boolean => {
-    return email.toLowerCase().endsWith('@bc.edu')
+    return email.toLowerCase().endsWith('.edu');
   }
 
   const handleLogin = (): void => {

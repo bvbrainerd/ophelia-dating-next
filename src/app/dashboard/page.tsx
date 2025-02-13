@@ -55,34 +55,36 @@ const venueCoordinates: { [key: string]: [number, number] } = {
   'The Harp': [-71.0614, 42.3642]
 };
 
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  age: number;
-  avatar_url: string | null;
-  bio: string;
-  school?: string;
-  gender: 'male' | 'female' | 'other';
-  preferred_gender: 'male' | 'female' | 'other';
-  descriptors?: string[];
-  dater_status?: 'gold' | 'silver' | 'bronze' | null;
-  follow_through_rate?: number;
-  average_rating?: number;
-  venue?: string;
-  proposed_time?: string;
-  description?: string;
-  dater_archetype?: DaterArchetype;
-  compatibility?: number | null;
-}
-
 interface DatabaseProfile {
   id: string;
   first_name: string;
   last_name: string;
-  age: number;
+  age: number | null;
   avatar_url: string | null;
   bio: string;
+  dater_status: string;
+  average_rating: number;
+  follow_through_rate: number;
+  dater_archetype: DaterArchetype;
+}
+
+interface Profile {
+  id: string;
+  first_name: string;
+  age: number | null;
+  avatar_url: string;
+  dater_status: string;
+  average_rating: number;
+  follow_through_rate: number;
+  compatibility: number | null;
+  dater_archetype: DaterArchetype;
+  venue: {
+    name: string;
+    address: string;
+    coordinates: [number, number];
+  };
+  proposed_time: string;
+  isValentineMatch?: boolean;
 }
 
 interface RawDateRequest {
@@ -615,15 +617,17 @@ const formatDate = (dateString: string) => {
   });
 };
 
-type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits';
+type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits' | null;
 
 type CompatibilityMap = {
-  [K in DaterArchetype]: {
-    [L in DaterArchetype]: number;
+  [K in NonNullable<DaterArchetype>]: {
+    [L in NonNullable<DaterArchetype>]: number;
   };
 };
 
 const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: DaterArchetype): number => {
+  if (!userArchetype || !matchArchetype) return 85; // Default compatibility score
+
   const compatibilityMap: CompatibilityMap = {
     'hopelessRomantic': {
       'hopelessRomantic': 95,
@@ -662,8 +666,37 @@ const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: D
     }
   };
 
-  return compatibilityMap[userArchetype]?.[matchArchetype] || 0;
+  return compatibilityMap[userArchetype]?.[matchArchetype] || 85;
 };
+
+interface MapProps {
+  center: [number, number];
+  zoom: number;
+  markers: Array<{
+    coordinates: [number, number];
+    title: string;
+  }>;
+}
+
+interface MatchFeedProfile {
+  id: string;
+  first_name: string;
+  age: number | null;
+  avatar_url: string | null;
+  dater_status: string;
+  average_rating: number;
+  follow_through_rate: number;
+  dater_archetype: DaterArchetype;
+}
+
+interface MatchFeedResponse {
+  id: string;
+  user_id: string;
+  potential_match_id: string;
+  status: string;
+  created_at: string;
+  profiles: MatchFeedProfile;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -673,6 +706,9 @@ export default function DashboardPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
   const [userArchetype, setUserArchetype] = useState<DaterArchetype | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const fetchMatches = async (userId: string) => {
     try {
@@ -689,72 +725,141 @@ export default function DashboardPage() {
 
       console.log('Current user data:', userData);
 
-      // Fetch matches with gender preference filtering
+      // First fetch valentine matches
+      const { data: valentineMatches, error: valentineError } = await supabase
+        .from('valentine_requests')
+        .select(`
+          *,
+          sender:profiles!valentine_requests_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            age,
+            avatar_url,
+            bio,
+            gender,
+            preferred_gender,
+            dater_archetype,
+            dater_status,
+            average_rating,
+            follow_through_rate
+          )
+        `)
+        .or(`recipient_id.eq.${userId},sender_id.eq.${userId}`)
+        .eq('status', 'accepted');
+
+      if (valentineError) {
+        console.error('Error fetching valentine matches:', valentineError);
+        if (valentineError.message?.includes('JWT')) {
+          await supabase.auth.signOut();
+          router.push('/auth/login');
+          return;
+        }
+      }
+
+      // Process valentine matches
+      const processedValentineMatches: Profile[] = (valentineMatches || []).map((match) => {
+        const isRecipient = match.recipient_id === userId;
+        const matchedUser = isRecipient ? match.sender : match.matched_user;
+        
+        // Generate a date between Feb 7-14 for Valentine's week
+        const valentineDate = new Date('2024-02-14T00:00:00');
+        const daysBeforeValentine = Math.floor(Math.random() * 7); // 0-6 days before Valentine's
+        valentineDate.setDate(valentineDate.getDate() - daysBeforeValentine);
+        
+        // Set time between 6-9 PM
+        const hour = 18 + Math.floor(Math.random() * 3); // 18, 19, or 20 (6-8 PM)
+        const minutes = [0, 30][Math.floor(Math.random() * 2)]; // Either on the hour or half hour
+        valentineDate.setHours(hour, minutes, 0, 0);
+
+        // Romantic venues perfect for Valentine's dates
+        const valentineVenues = [
+          'Barcelona Wine Bar',
+          'Blue Ribbon Sushi',
+          'Lucca North End',
+          'Lolita Back Bay'
+        ];
+        const venue = valentineVenues[Math.floor(Math.random() * valentineVenues.length)];
+        
+        return {
+          id: matchedUser.id,
+          first_name: matchedUser.first_name,
+          age: matchedUser.age,
+          avatar_url: matchedUser.avatar_url,
+          dater_status: matchedUser.dater_status || 'bronze',
+          average_rating: matchedUser.average_rating || 0,
+          follow_through_rate: matchedUser.follow_through_rate || 0,
+          compatibility: 100,
+          venue: {
+            name: venue,
+            address: venueCoordinates[venue][0].toString() + ', ' + venueCoordinates[venue][1].toString(),
+            coordinates: venueCoordinates[venue]
+          },
+          proposed_time: valentineDate.toISOString(),
+          isValentineMatch: true
+        } as Profile;
+      });
+
+      // Then fetch regular matches
       const { data: matchesData, error: matchesError } = await supabase
         .from('profiles')
         .select(`
           id,
           first_name,
-          last_name,
           age,
           avatar_url,
-          bio,
-          school,
-          gender,
-          preferred_gender,
-          descriptors,
           dater_status,
-          follow_through_rate,
           average_rating,
+          follow_through_rate,
           dater_archetype
         `)
         .neq('id', userId)
         .eq('school', 'Boston College')
-        // Filter by gender preferences
         .eq('gender', userData.preferred_gender)
         .eq('preferred_gender', userData.gender);
 
       if (matchesError) throw matchesError;
 
-      // Process matches with compatibility scores
-      const matches = await Promise.all((matchesData || []).map(async (m) => {
+      // Process regular matches
+      const processedRegularMatches: Profile[] = await Promise.all((matchesData || []).map(async (m: any) => {
         const avatarUrl = m.avatar_url ? await getAvatarUrl(m.avatar_url) : null;
         let compatibility = null;
         
         if (currentUserArchetype && m.dater_archetype) {
           compatibility = calculateCompatibility(
             currentUserArchetype,
-            m.dater_archetype as DaterArchetype
+            m.dater_archetype
           );
-          console.log(`Calculating compatibility for ${m.first_name}:`, {
-            userArchetype: currentUserArchetype,
-            matchArchetype: m.dater_archetype,
-            score: compatibility
-          });
         }
+
+        const randomVenue = Object.keys(venueCoordinates)[Math.floor(Math.random() * Object.keys(venueCoordinates).length)];
+        const coordinates = venueCoordinates[randomVenue];
 
         return {
           id: m.id,
           first_name: m.first_name,
-          last_name: m.last_name,
           age: m.age,
-          avatar_url: avatarUrl,
-          bio: m.bio,
-          school: m.school,
-          gender: m.gender,
-          preferred_gender: m.preferred_gender,
-          descriptors: m.descriptors,
-          dater_status: m.dater_status,
-          follow_through_rate: m.follow_through_rate,
-          average_rating: m.average_rating,
+          avatar_url: avatarUrl || DEFAULT_AVATAR,
+          dater_status: m.dater_status || 'bronze',
+          average_rating: m.average_rating || 0,
+          follow_through_rate: m.follow_through_rate || 0,
+          compatibility,
           dater_archetype: m.dater_archetype,
-          compatibility
+          venue: {
+            name: randomVenue,
+            address: coordinates ? `${coordinates[0]}, ${coordinates[1]}` : '',
+            coordinates: coordinates || [-71.1677, 42.3357]
+          },
+          proposed_time: new Date().toISOString(),
+          isValentineMatch: false
         } as Profile;
       }));
 
-      console.log('Processed matches with compatibility:', matches);
-      setProfiles(matches);
-      return matches;
+      // Combine and set all matches
+      const allMatches: Profile[] = [...processedValentineMatches, ...processedRegularMatches];
+      setProfiles(allMatches);
+      return allMatches;
+
     } catch (error) {
       console.error('Error fetching matches:', error);
       setError('Failed to load matches');
@@ -815,61 +920,20 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const checkAuthAndInitialize = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          throw sessionError;
-        }
-
-        if (!session) {
-          // Clear any stale data
-          setUserId(null);
-          setProfiles([]);
-          setDateRequests([]);
-          // Redirect to login
-          router.replace('/auth/login');
-          return;
-        }
-
-        setUserId(session.user.id);
-        
-        // Set up auth state change listener
-        const {
-          data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (!session) {
-            // Clear data and redirect on session end
-            setUserId(null);
-            setProfiles([]);
-            setDateRequests([]);
-            router.replace('/auth/login');
-          } else {
-            setUserId(session.user.id);
-          }
-        });
-
-        // Fetch initial data
-        const matches = await fetchMatches(session.user.id);
-        setProfiles(matches);
-        await fetchDateRequests();
-
-        return () => {
-          subscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error('Auth error:', error);
-        setError('Authentication failed. Please log in again.');
-        router.replace('/auth/login');
-      } finally {
-        setIsLoading(false);
+    const fetchProfiles = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth/login');
+        return;
       }
+
+      setUserId(user.id);
+      await fetchMatches(user.id);
+      await fetchDateRequests();
     };
 
-    checkAuthAndInitialize();
-  }, [router]);
+    fetchProfiles();
+  }, []);
 
   const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
@@ -887,6 +951,74 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Error updating date request:', error);
       setError('Failed to update date request');
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isSwipeDown = distance < -50;
+    const isSwipeUp = distance > 50;
+    
+    if (isSwipeUp && currentIndex < profiles.length - 1) {
+      navigateToDate(currentIndex + 1);
+    } else if (isSwipeDown && currentIndex > 0) {
+      navigateToDate(currentIndex - 1);
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  const navigateToDate = (index: number) => {
+    if (index >= 0 && index < profiles.length) {
+      setCurrentIndex(index);
+    }
+  };
+
+  const handleAccept = async () => {
+    const currentProfile = profiles[currentIndex];
+    if (!currentProfile) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found');
+        return;
+      }
+
+      // Create a date request
+      const { data: dateRequest, error: dateRequestError } = await supabase
+        .from('date_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: currentProfile.id,
+          venue: currentProfile.venue.name,
+          proposed_time: currentProfile.proposed_time,
+          status: 'pending',
+          split_payment: 0
+        })
+        .select()
+        .single();
+
+      if (dateRequestError) {
+        console.error('Error creating date request:', dateRequestError);
+        return;
+      }
+
+      // Navigate to the dashboard after sending the request
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Error in handleAccept:', error);
     }
   };
 
@@ -940,70 +1072,179 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-[#BA2525] text-center mt-12 mb-8">
-          Make Your Move
-        </h1>
+        {/* Card Swipe Interface */}
+        <div 
+          className="max-w-md mx-auto relative mt-12"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Previous Arrow */}
+          <button
+            onClick={() => navigateToDate(currentIndex - 1)}
+            className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-8 p-3 ${
+              currentIndex > 0 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
+            } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
+            disabled={currentIndex === 0}
+            aria-label="Previous date"
+          >
+            ▲
+          </button>
 
-        {/* Matches Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {profiles.map((profile) => (
-            <Card key={profile.id} className="border-2 border-[#BA2525] rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow bg-[#BA2525]">
+          {profiles.length > 0 && (
+            <Card className="rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
               <div className="flex flex-col items-center">
+                {profiles[currentIndex].isValentineMatch && (
+                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-8">
+                    Valentine's Day Match 💝
+                  </div>
+                )}
+                
                 <div 
-                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg border-4 border-white"
-                  onClick={() => router.push(`/profile/${profile.id}`)}
+                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg"
+                  onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
                 >
-                  {profile.compatibility !== null && (
+                  {profiles[currentIndex].compatibility !== null && (
                     <div className="absolute top-2 right-2 z-10 bg-white/90 px-2 py-1 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
                       <Heart size={12} fill="#BA2525" stroke="#BA2525" />
-                      {profile.compatibility}%
+                      {profiles[currentIndex].compatibility}%
                     </div>
                   )}
                   <LocalProfileImage
-                    src={profile.avatar_url}
-                    alt={`${profile.first_name}'s profile`}
+                    src={profiles[currentIndex].avatar_url}
+                    alt={`${profiles[currentIndex].first_name}'s profile`}
                     priority={true}
                     className="object-cover object-[50%_35%]"
                   />
                 </div>
-                
-                <h2 className="text-xl font-semibold mb-4 text-white">
-                  {profile.first_name}{typeof profile.age !== 'undefined' && profile.age !== null ? `, ${profile.age}` : ''}
+
+                <h2 className="text-2xl font-semibold mb-4 text-[#BA2525]">
+                  {profiles[currentIndex].first_name}
+                  {typeof profiles[currentIndex].age !== 'undefined' && profiles[currentIndex].age !== null ? `, ${profiles[currentIndex].age}` : ''}
                 </h2>
 
-                {/* Descriptor Bubbles */}
-                {profile.descriptors && profile.descriptors.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4 justify-center">
-                    {profile.descriptors.map((descriptor: any, index: number) => {
-                      // Handle both string and object descriptors
-                      const descriptorLabel = typeof descriptor === 'string' ? descriptor : descriptor.label;
-                      return (
-                        <span key={index} className="bg-[#BA2525] text-white border-2 border-white px-3 py-1 rounded-full text-sm">
-                          {descriptorLabel}
-                        </span>
-                      );
-                    })}
+                {/* Stats Grid */}
+                <div 
+                  className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
+                  onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
+                >
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
+                      <span>♔</span>
+                      <span className="text-white font-medium capitalize">
+                        {(profiles[currentIndex].dater_status || 'bronze').charAt(0).toUpperCase() + 
+                         (profiles[currentIndex].dater_status || 'bronze').slice(1)}
+                      </span>
+                    </div>
+                    <div className="text-white text-xs whitespace-nowrap">
+                      Dater Status
+                    </div>
                   </div>
-                )}
+
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
+                      <span>★</span>
+                      <span>{(profiles[currentIndex].average_rating || 0).toFixed(1)}</span>
+                    </div>
+                    <div className="text-white text-xs whitespace-nowrap">
+                      Dater Rating
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
+                    <div className="flex items-center gap-1.5 text-white text-base">
+                      <span>♥</span>
+                      <span>{profiles[currentIndex].follow_through_rate || '0'}%</span>
+                    </div>
+                    <div className="text-white text-xs whitespace-nowrap">
+                      Follow-Through
+                    </div>
+                  </div>
+                </div>
+
+                {/* Venue and Time Info */}
+                <div className="bg-white border-2 border-[#BA2525] rounded-[24px] p-4 w-full mb-6">
+                  <div className="text-[#BA2525] text-sm space-y-2">
+                    <p className="flex items-center gap-2">
+                      <span className="text-[#BA2525]">📍</span>
+                      <span className="text-[#BA2525] font-medium">{profiles[currentIndex].venue.name || 'Venue TBD'}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="text-[#BA2525]">🗓</span>
+                      <span className="text-[#BA2525] font-medium">
+                        {profiles[currentIndex].proposed_time ? new Date(profiles[currentIndex].proposed_time).toLocaleString('en-US', {
+                          weekday: 'long',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        }) : 'Time TBD'}
+                      </span>
+                    </p>
+                  </div>
+
+                  {/* Map Component */}
+                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden">
+                    <Map
+                      center={profiles[currentIndex].venue.coordinates}
+                      zoom={14}
+                      markers={[
+                        {
+                          coordinates: profiles[currentIndex].venue.coordinates,
+                          title: profiles[currentIndex].venue.name
+                        }
+                      ]}
+                    />
+                  </div>
+                </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 w-full">
+                <div className="space-y-2 w-full mb-8">
                   <button
-                    onClick={() => router.push(`/send-date-request/${profile.id}`)}
-                    className='w-full p-2 bg-white text-[#BA2525] rounded-full font-medium hover:bg-gray-100 transition-colors'
+                    onClick={handleAccept}
+                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                   >
-                    Send Date Request
+                    Accept
                   </button>
                   <button
-                    onClick={() => router.push(`/profile/${profile.id}`)}
-                    className='w-full p-2 bg-transparent text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                    onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
                   >
                     View Profile
                   </button>
                 </div>
+
+                {/* Match Count */}
+                <div className="text-[#BA2525] font-medium text-center">
+                  {currentIndex + 1} / {profiles.length}
+                </div>
               </div>
             </Card>
-          ))}
+          )}
+
+          {/* Next Arrow */}
+          <button
+            onClick={() => navigateToDate(currentIndex + 1)}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-8 p-3 ${
+              currentIndex < profiles.length - 1 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
+            } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
+            disabled={currentIndex === profiles.length - 1}
+            aria-label="Next date"
+          >
+            ▼
+          </button>
+        </div>
+
+        {/* View More Button */}
+        <div className="flex justify-center mt-12">
+          <Link
+            href="/matching"
+            className="bg-[#BA2525] text-white px-6 py-2 rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm flex items-center gap-2"
+          >
+            View More Matches
+            <span className="text-lg">→</span>
+          </Link>
         </div>
       </div>
       <BottomNav />

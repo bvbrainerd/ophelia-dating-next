@@ -18,8 +18,8 @@ export default function ForgotPassword() {
 
     try {
       // Validate BC email
-      if (!email.toLowerCase().endsWith('@bc.edu')) {
-        setMessage({ text: 'Please enter a valid BC email address', type: 'error' });
+      if (!email.toLowerCase().endsWith('.edu')) {
+        setMessage({ text: 'Please use your .edu email address', type: 'error' });
         return;
       }
 
@@ -50,7 +50,7 @@ export default function ForgotPassword() {
         <div className="text-center">
           <h2 className="text-3xl font-bold text-[#BA2525]">Reset Password</h2>
           <p className="mt-2 text-gray-600">
-            Enter your BC email to reset your password
+            Enter your email to reset your password
           </p>
         </div>
 
@@ -60,7 +60,7 @@ export default function ForgotPassword() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="BC Email"
+              placeholder="Email"
               className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
               disabled={isLoading}
               required

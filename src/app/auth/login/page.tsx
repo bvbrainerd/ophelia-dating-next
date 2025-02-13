@@ -35,14 +35,14 @@ export default function LoginPage() {
 
     // Validate email and password
     if (!email.trim()) {
-      setError('Email is required');
+      setError('Please enter your email address first');
       setIsLoading(false);
       return;
     }
 
     // Validate BC email domain
-    if (!email.toLowerCase().endsWith('@bc.edu')) {
-      setError('Please use your BC email address (@bc.edu)');
+    if (!email.toLowerCase().endsWith('.edu')) {
+      setError('Please use your .edu email address');
       setIsLoading(false);
       return;
     }
@@ -91,8 +91,8 @@ export default function LoginPage() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim().toLowerCase();
     setEmail(value);
-    if (value && !value.endsWith('@bc.edu')) {
-      setError('Please use your BC email address (@bc.edu)');
+    if (value && !value.endsWith('.edu')) {
+      setError('Please use your .edu email address');
     } else {
       setError(null);
     }
@@ -104,12 +104,12 @@ export default function LoginPage() {
 
   const handleForgotPassword = () => {
     if (!email.trim()) {
-      setError('Please enter your BC email address first');
+      setError('Please enter your email address first');
       return;
     }
 
-    if (!email.toLowerCase().endsWith('@bc.edu')) {
-      setError('Please use your BC email address (@bc.edu)');
+    if (!email.toLowerCase().endsWith('.edu')) {
+      setError('Please use your .edu email address');
       return;
     }
 
@@ -166,7 +166,7 @@ export default function LoginPage() {
             onClick={handleSignup}
             disabled={isLoading}
           >
-            {isLoading ? 'Loading...' : 'Sign Up with BC Email'}
+            {isLoading ? 'Loading...' : 'Sign Up with Email'}
           </button>
 
           <button

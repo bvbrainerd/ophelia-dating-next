@@ -131,7 +131,7 @@ export default function ProfileSetup() {
   };
 
   const validateBCEmail = (email: string): boolean => {
-    return email.toLowerCase().endsWith('@bc.edu');
+    return email.toLowerCase().endsWith('.edu');
   };
 
   const handleChange = (
@@ -168,7 +168,7 @@ export default function ProfileSetup() {
       }
 
       if (!validateBCEmail(userData.email)) {
-        setError('Please use your BC email address (@bc.edu)');
+        setError('Please use your .edu email address');
         setIsLoading(false);
         return;
       }
@@ -377,7 +377,7 @@ export default function ProfileSetup() {
           className='w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
           type='email'
           name='email'
-          placeholder='BC Email'
+          placeholder='.edu Email'
           value={userData.email}
           onChange={handleChange}
           disabled={isLoading}
