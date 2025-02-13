@@ -1205,7 +1205,13 @@ export default function DashboardPage() {
                     onClick={handleAccept}
                     className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
                   >
-                    Accept
+                    Accept Date
+                  </button>
+                  <button
+                    onClick={() => router.push(`/send-date-request/${profiles[currentIndex].id}`)}
+                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
+                  >
+                    Send Other Date Request
                   </button>
                   <button
                     onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
