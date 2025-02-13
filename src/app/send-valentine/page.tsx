@@ -27,8 +27,8 @@ export default function SendValentinePage() {
         throw new Error('Please fill in all fields');
       }
 
-      if (!recipientEmail.toLowerCase().endsWith('@bc.edu')) {
-        throw new Error('Please enter a valid BC email address (@bc.edu)');
+      if (!recipientEmail.toLowerCase().endsWith('.edu')) {
+        throw new Error('Please enter a valid .edu email address');
       }
 
       // Get current user's session

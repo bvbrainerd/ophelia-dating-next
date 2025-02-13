@@ -34,12 +34,12 @@ export default function LoginSignup() {
     e.preventDefault();
     
     if (!email) {
-      setError('Please enter your BC email first');
+      setError('Please enter your email address first');
       return;
     }
 
-    if (!email.toLowerCase().endsWith('@bc.edu')) {
-      setError('Please enter a valid BC email address');
+    if (!email.toLowerCase().endsWith('.edu')) {
+      setError('Please use your .edu email address');
       return;
     }
 
@@ -108,7 +108,7 @@ export default function LoginSignup() {
             href="/auth/signup"
             className="text-[#BA2525] hover:underline"
           >
-            Don't have an account? Sign Up with BC Email
+            Don't have an account? Sign Up with Email
           </Link>
         </div>
       </form>

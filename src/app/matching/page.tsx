@@ -538,9 +538,9 @@ export default function MatchingPage() {
             {/* Previous Arrow */}
             <button
               onClick={() => navigateToDate(currentIndex - 1)}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-16 p-4 ${
+              className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-8 p-3 ${
                 currentIndex > 0 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-              } transition-opacity text-2xl`}
+              } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
               disabled={currentIndex === 0}
               aria-label="Previous date"
             >
@@ -682,9 +682,9 @@ export default function MatchingPage() {
             {/* Next Arrow */}
             <button
               onClick={() => navigateToDate(currentIndex + 1)}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-16 p-4 ${
+              className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-8 p-3 ${
                 currentIndex < suggestedDates.length - 1 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-              } transition-opacity text-2xl`}
+              } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
               disabled={currentIndex === suggestedDates.length - 1}
               aria-label="Next date"
             >
