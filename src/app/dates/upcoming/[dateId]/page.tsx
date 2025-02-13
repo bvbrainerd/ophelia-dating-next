@@ -41,7 +41,7 @@ export default function DateRequestDetails() {
                 Date Details
             </h1>
             <div className="space-y-4">
-                <button onClick={() => router.push(`/upcoming-dates/${params.id}/messaging`)}>
+                <button onClick={() => router.push(`/dates/upcoming/${params.dateId}/messaging`)}>
                     Go to Messaging
                 </button>
                 <button onClick={() => router.push(`/upcoming-dates/${params.id}/status`)}>

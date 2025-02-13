@@ -75,11 +75,12 @@ export async function POST(
       );
     }
 
+    // Create the date request
     const { error: insertError } = await supabase
       .from('date_requests')
       .insert({
         sender_id: user.id,
-        receiver_id: id,  // Using id from URL
+        receiver_id: id,
         venue: body.venue,
         proposed_time: body.proposed_time,
         proposed_payment: body.proposed_payment,
@@ -118,34 +119,62 @@ export async function POST(
       throw new Error('Failed to fetch sender profile');
     }
 
-    // Send email notification
+    // Send email using SendGrid template
     const msg = {
       to: receiverProfile.email,
-      from: 'noreply@opheliadating.com', // Replace with your verified SendGrid sender
-      subject: 'New Date Request on Ophelia Dating!',
-      text: `${senderProfile.first_name} has sent you a date request!`,
-      html: `
-        <div style="background-color: #f9f9f9; padding: 20px;">
-          <h1 style="color: #cc0000;">New Date Request!</h1>
-          <p>Hi ${receiverProfile.first_name},</p>
-          <p>${senderProfile.first_name} ${senderProfile.last_name} has sent you a date request!</p>
-          <p>Venue: ${body.venue}</p>
-          <p>Proposed Time: ${new Date(body.proposed_time).toLocaleString()}</p>
-          ${body.proposed_payment ? `<p>Proposed Payment: $${body.proposed_payment}</p>` : ''}
-          <a href="${process.env.NEXT_PUBLIC_BASE_URL}/matching" 
-             style="background-color: #cc0000; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 15px;">
-            View Request
-          </a>
-        </div>
-      `
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
+        name: 'Ophelia Dating'
+      },
+      templateId: process.env.SENDGRID_DATE_REQUEST_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        recipientName: receiverProfile.first_name,
+        senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
+        venue: body.venue,
+        dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true
+        }),
+        paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
+        dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
+      },
+      asm: {
+        groupId: 20158, // Unsubscribe group ID
+        groupsToDisplay: [20158]
+      },
+      mailSettings: {
+        bypassListManagement: {
+          enable: true // This is a transactional email
+        },
+        sandboxMode: {
+          enable: false
+        }
+      },
+      trackingSettings: {
+        clickTracking: {
+          enable: true
+        },
+        openTracking: {
+          enable: true
+        }
+      }
     };
 
     try {
-      await sgMail.send(msg);
-      console.log('Email notification sent successfully');
-    } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
-      // Don't throw here - we still want to return success even if email fails
+      const emailResult = await sgMail.send(msg);
+      console.log('Email sent successfully:', emailResult);
+    } catch (emailError: any) {
+      console.error('SendGrid Error:', emailError);
+      if (emailError.response?.body) {
+        console.error(emailError.response.body);
+      }
+      // Don't throw here - we still want to return success for the date request
+      // but we should log the error for monitoring
     }
 
     return NextResponse.json({ success: true });
