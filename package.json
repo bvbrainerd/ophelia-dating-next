@@ -6,12 +6,10 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "postbuild": "next-vercel-build",
         "start": "next start",
         "lint": "next lint",
         "clean": "rm -rf .next && rm -rf .vercel/output",
-        "prebuild": "npm run clean",
-        "upload-venues": "ts-node scripts/upload-venues.ts"
+        "prebuild": "npm run clean"
     },
     "dependencies": {
         "@radix-ui/react-accordion": "^1.2.1",
