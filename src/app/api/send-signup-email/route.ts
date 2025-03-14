@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+
+if (!SENDGRID_API_KEY) {
+  console.error('SendGrid API key is missing');
+} else {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
 
 export async function POST(request: Request) {
+  if (!SENDGRID_API_KEY) {
+    console.error('SendGrid API key is missing');
+    return NextResponse.json(
+      { error: 'Email service is not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
     const { email, templateId, dynamicTemplateData } = await request.json();
 
@@ -13,6 +27,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    console.log('Sending signup email with data:', {
+      to: email,
+      templateId,
+      dynamicTemplateData
+    });
 
     const msg = {
       to: {
@@ -33,12 +53,12 @@ export async function POST(request: Request) {
         email: email
       },
       asm: {
-        groupId: 20158, // Your unsubscribe group ID
+        groupId: 20158,
         groupsToDisplay: [20158]
       },
       mailSettings: {
         bypassListManagement: {
-          enable: true // This is a transactional email
+          enable: true
         },
         sandboxMode: {
           enable: false
@@ -51,16 +71,19 @@ export async function POST(request: Request) {
         openTracking: {
           enable: true
         }
-      },
-      ipPoolName: "transactional_emails" // Use a dedicated IP pool if available
+      }
     };
 
-    await sgMail.send(msg);
+    const response = await sgMail.send(msg);
+    console.log('SendGrid response:', response);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('SendGrid Error:', error);
+    if (error.response) {
+      console.error(error.response.body);
+    }
     return NextResponse.json(
-      { error: 'Failed to send signup email' },
+      { error: 'Failed to send signup email', details: error.message },
       { status: 500 }
     );
   }

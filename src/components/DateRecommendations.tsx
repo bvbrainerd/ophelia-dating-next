@@ -1,7 +1,7 @@
 'use client';
 
 import { MapPin, Wine, Bike, Palette, Book, Coffee, Trophy } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Map from './Map';
@@ -11,6 +11,8 @@ const categories = [
   { id: 'recommended', label: 'Recommended' },
   { id: 'sports', label: 'Sports' },
   { id: 'restaurants', label: 'Restaurants' },
+  { id: 'bars', label: 'Bars' },
+  { id: 'cafes', label: 'Cafes' },
   { id: 'activities', label: 'Activities' },
   { id: 'events', label: 'Events' }
 ];
@@ -18,14 +20,15 @@ const categories = [
 interface DateSpot {
   id: string;
   name: string;
-  category: string;
+  category?: string;
+  type?: string;
   location: string;
   distance: string;
   imageUrl: string;
   coordinates: [number, number];
   description?: string;
   rating?: number;
-  price?: string;
+  price: string;
   slug: string;
 }
 
@@ -33,10 +36,10 @@ const sampleDateSpots: DateSpot[] = [
   {
     id: '1',
     name: 'Boston Bruins',
-    category: 'Sports & Entertainment',
+    category: 'sports',
     location: 'TD Garden',
     distance: '5.8 mi',
-    imageUrl: '/images/venues/bruins.jpg',
+    imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bruins.jpg",
     coordinates: [-71.0622, 42.3663],
     rating: 4.7,
     price: '$$$',
@@ -45,10 +48,10 @@ const sampleDateSpots: DateSpot[] = [
   {
     id: '2',
     name: 'Barcelona Wine Bar',
-    category: 'Food & Drinks',
+    category: 'restaurant/bar',
     location: 'South End, Boston',
     distance: '4.9 mi',
-    imageUrl: '/images/venues/barcelona.jpg',
+    imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/barcelona.jpg",
     coordinates: [-71.0761, 42.3457],
     rating: 4.6,
     price: '$$$',
@@ -57,10 +60,10 @@ const sampleDateSpots: DateSpot[] = [
   {
     id: '3',
     name: 'Museum of Fine Arts',
-    category: 'Arts & Culture',
+    category: 'activities',
     location: 'Boston, MA',
     distance: '3.6 mi',
-    imageUrl: '/images/venues/museum.jpg',
+    imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/museum.jpg",
     coordinates: [-71.0995, 42.3394],
     rating: 4.8,
     price: '$$',
@@ -69,10 +72,10 @@ const sampleDateSpots: DateSpot[] = [
   {
     id: '4',
     name: 'The Clay Room',
-    category: 'Arts & Culture',
+    category: 'activities',
     location: 'Brookline, MA',
     distance: '1.9 mi',
-    imageUrl: '/images/venues/clayroom.jpg',
+    imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/clayroom.jpg",
     coordinates: [-71.1317, 42.3396],
     rating: 4.6,
     price: '$$',
@@ -81,10 +84,10 @@ const sampleDateSpots: DateSpot[] = [
   {
     id: '5',
     name: 'Boston Celtics Game',
-    category: 'Events',
+    category: 'sports',
     location: 'TD Garden',
     distance: '5.8 mi',
-    imageUrl: '/images/venues/celtics.jpg',
+    imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/celtics.jpg",
     coordinates: [-71.0622, 42.3663],
     rating: 4.8,
     price: '$$$',
@@ -102,21 +105,45 @@ interface Venue {
 const venues: Venue[] = [
   {
     name: "Lolita Back Bay",
-    category: ["bar", "restaurant", "dinner"],
+    category: ["restaurant", "bar"],
     description: "Trendy Mexican restaurant & bar",
-    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lolitabackbay.jpg`
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lolitabackbay.jpg"
+  },
+  {
+    name: "Parla",
+    category: ["restaurant", "bar"],
+    description: "Intimate Italian restaurant & cocktail bar",
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/parla.jpg"
+  },
+  {
+    name: "Bartaco",
+    category: ["restaurant", "bar"],
+    description: "Upscale street food & craft cocktails",
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bartaco.jpg"
+  },
+  {
+    name: "Loco Taqueria",
+    category: ["restaurant", "bar"],
+    description: "Vibrant Mexican restaurant & tequila bar",
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/loco.jpg"
   },
   {
     name: "Boston Commons",
-    category: ["outdoors", "activity", "group"],
+    category: ["activities"],
     description: "Historic public park",
-    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/commons.jpg"
   },
   {
     name: "Museum of Fine Arts",
-    category: ["culture", "activity", "entertainment"],
+    category: ["activities"],
     description: "World-class art museum",
-    image: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/museum.jpg"
+  },
+  {
+    name: "Greatest Bar",
+    category: ["bar"],
+    description: "Popular sports bar near TD Garden",
+    image: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/greatestbar.jpg"
   }
 ];
 
@@ -144,19 +171,51 @@ const getRecommendedVenues = (quizAnswers: any) => {
 export default function DateRecommendations() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateSpots, setDateSpots] = useState<DateSpot[]>(sampleDateSpots);
 
   const filteredSpots = selectedCategory === 'all' 
-    ? dateSpots 
+    ? sampleDateSpots 
     : selectedCategory === 'recommended'
-    ? dateSpots.filter(spot => (spot.rating ?? 0) >= 4.6)
-    : selectedCategory === 'restaurants'
-    ? dateSpots.filter(spot => spot.category === 'Food & Drinks')
+    ? sampleDateSpots.filter(spot => (spot.rating ?? 0) >= 4.6)
     : selectedCategory === 'sports'
-    ? dateSpots.filter(spot => spot.category === 'Sports & Entertainment')
+    ? sampleDateSpots.filter(spot => spot.category === 'sports')
+    : selectedCategory === 'restaurants'
+    ? sampleDateSpots.filter(spot => {
+        const category = spot.category?.toLowerCase() || '';
+        const type = spot.type?.toLowerCase() || '';
+        return (category.includes('restaurant') && !category.includes('bar')) || 
+               (type.includes('restaurant') && !type.includes('bar')) ||
+               category === 'restaurant/bar' ||
+               type === 'restaurant/bar' ||
+               category === 'bar/restaurant' ||
+               type === 'bar/restaurant';
+      })
+    : selectedCategory === 'bars'
+    ? sampleDateSpots.filter(spot => {
+        const category = spot.category?.toLowerCase() || '';
+        const type = spot.type?.toLowerCase() || '';
+        return category === 'bar' ||
+               type === 'bar' ||
+               category.includes('bar') ||
+               type.includes('bar');
+      })
+    : selectedCategory === 'cafes'
+    ? sampleDateSpots.filter(spot => {
+        const category = spot.category?.toLowerCase() || '';
+        const type = spot.type?.toLowerCase() || '';
+        return category.includes('cafe') || type.includes('cafe');
+      })
     : selectedCategory === 'activities'
-    ? dateSpots.filter(spot => spot.category === 'Arts & Culture' || spot.category === 'Adventure & Outdoors')
-    : dateSpots.filter(spot => spot.category === 'Events');
+    ? sampleDateSpots.filter(spot => spot.category === 'activities')
+    : sampleDateSpots.filter(spot => spot.category === 'events');
+
+  const searchFilteredSpots = useMemo(() => {
+    if (!searchQuery) return filteredSpots;
+    
+    return filteredSpots.filter((spot: DateSpot) => 
+      spot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      spot.location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [filteredSpots, searchQuery]);
 
   return (
     <div className="max-w-6xl mx-auto p-5">
@@ -213,12 +272,12 @@ export default function DateRecommendations() {
         {/* Map Section */}
         <div className="bg-white rounded-[30px] h-[400px] lg:sticky lg:top-4 shadow-sm overflow-hidden">
           <Map 
-            markers={filteredSpots.map(spot => ({
+            markers={searchFilteredSpots.map((spot: DateSpot) => ({
               coordinates: spot.coordinates,
               title: spot.name
             }))}
-            center={filteredSpots.length > 0 
-              ? filteredSpots[0].coordinates 
+            center={searchFilteredSpots.length > 0 
+              ? searchFilteredSpots[0].coordinates 
               : [-71.0589, 42.3601] // Boston coordinates as default
             }
             zoom={13}
@@ -228,39 +287,34 @@ export default function DateRecommendations() {
         {/* Listings Section */}
         <div className="max-h-[500px] overflow-y-auto">
           <div className="space-y-4">
-            {filteredSpots
-              .filter(spot => 
-                spot.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                spot.location.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map(spot => (
-                <Link href="/matching" key={spot.id}>
-                  <div className="bg-white rounded-[30px] p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex gap-4">
-                      <div className="relative w-24 h-24 flex-shrink-0">
-                        <Image
-                          src={spot.imageUrl}
-                          alt={spot.name}
-                          fill
-                          sizes="(max-width: 768px) 96px,
-                                 (max-width: 1200px) 96px,
-                                 96px"
-                          className="object-cover rounded-lg"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-[#BA2525]">{spot.name}</h3>
-                        <p className="text-gray-500 text-sm">
-                          {spot.location} • {spot.distance}
-                        </p>
-                        <p className="text-gray-500 text-sm">
-                          {spot.price}
-                        </p>
-                      </div>
+            {searchFilteredSpots.map((spot: DateSpot) => (
+              <Link href="/matching" key={spot.id}>
+                <div className="bg-white rounded-[30px] p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex gap-4">
+                    <div className="relative w-24 h-24 flex-shrink-0">
+                      <Image
+                        src={spot.imageUrl}
+                        alt={spot.name}
+                        fill
+                        sizes="(max-width: 768px) 96px,
+                               (max-width: 1200px) 96px,
+                               96px"
+                        className="object-cover rounded-lg"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg text-[#BA2525]">{spot.name}</h3>
+                      <p className="text-gray-500 text-sm">
+                        {spot.location} • {spot.distance}
+                      </p>
+                      <p className="text-gray-500 text-sm">
+                        {spot.price}
+                      </p>
                     </div>
                   </div>
-                </Link>
-              ))}
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </div>

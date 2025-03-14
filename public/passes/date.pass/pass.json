@@ -1,0 +1,53 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.com.ophelia.dating",
+  "serialNumber": "PLACEHOLDER",
+  "teamIdentifier": "PLACEHOLDER",
+  "organizationName": "Ophelia Dating",
+  "description": "Ophelia Dating Pass",
+  "backgroundColor": "rgb(186, 37, 37)",
+  "foregroundColor": "rgb(255, 255, 255)",
+  "labelColor": "rgb(255, 255, 255)",
+  "eventTicket": {
+    "headerFields": [
+      {
+        "key": "venue",
+        "label": "VENUE",
+        "value": "PLACEHOLDER"
+      }
+    ],
+    "primaryFields": [
+      {
+        "key": "date",
+        "label": "DATE",
+        "value": "PLACEHOLDER"
+      }
+    ],
+    "secondaryFields": [
+      {
+        "key": "time",
+        "label": "TIME",
+        "value": "PLACEHOLDER"
+      },
+      {
+        "key": "person",
+        "label": "DATE WITH",
+        "value": "PLACEHOLDER"
+      }
+    ],
+    "auxiliaryFields": [
+      {
+        "key": "ticketId",
+        "label": "TICKET ID",
+        "value": "PLACEHOLDER"
+      }
+    ],
+    "backFields": [
+      {
+        "key": "terms",
+        "label": "Terms & Conditions",
+        "value": "This ticket is non-transferable and non-refundable. Please arrive 10 minutes before your scheduled time."
+      }
+    ]
+  }
+} 

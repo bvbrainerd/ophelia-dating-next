@@ -5,10 +5,12 @@ import Image from 'next/image';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabase/client';
 import { cn } from '../utils/cn';
+import { useRouter, usePathname } from 'next/navigation';
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
 interface Profile {
+  id: string;
   first_name: string;
   avatar_url: string | null;
 }
@@ -52,6 +54,20 @@ const getAvatarUrl = async (avatarPath: string | null) => {
 export default function Header({ variant = 'default' }: HeaderProps) {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [avatarError, setAvatarError] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  const isAuthPage = pathname?.startsWith('/auth/');
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   const fetchUser = useCallback(async () => {
     try {
@@ -82,7 +98,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   }, []);
 
   useEffect(() => {
-    if (variant === 'logo-only') return; // Don't fetch user data for logo-only variant
+    if (variant === 'logo-only' || isAuthPage) return; // Don't fetch user data for logo-only variant or auth pages
     
     fetchUser();
   }, [variant, fetchUser]);
@@ -92,45 +108,45 @@ export default function Header({ variant = 'default' }: HeaderProps) {
       "flex justify-between items-center py-4 px-5",
       variant === "dashboard" ? "bg-transparent" : "bg-transparent"
     )}>
+      {/* Left side - Empty for balance */}
       <div className="flex-1" />
       
+      {/* Center - Logo */}
       <div className="flex-1 flex justify-center">
         <Link href="/dashboard">
-          <h1 className="text-3xl font-bold text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity">
+          <h1 className={cn(
+            "text-3xl font-bold cursor-pointer hover:opacity-80 transition-opacity",
+            variant === "logo-only" ? "text-white" :
+            pathname === '/dashboard/editprofile' || pathname?.includes('editprofile') ? "text-[#BA2525]" :
+            pathname?.startsWith('/challenges') ? "text-[#BA2525]" :
+            pathname?.startsWith('/send-date-request') ? "text-[#BA2525]" :
+            variant === "matching" ? "text-white" : 
+            pathname?.startsWith('/dashboard') ? "text-white" :
+            pathname?.startsWith('/matching') ? "text-white" :
+            pathname?.startsWith('/daterequests') ? "text-[#BA2525]" :
+            variant === "dashboard" ? "text-white" : 
+            "text-[#BA2525]"
+          )}>
             Ophelia
           </h1>
         </Link>
       </div>
 
+      {/* Right side - Profile */}
       <div className="flex-1 flex justify-end">
-        {currentUser && variant !== 'logo-only' && (
-          <div className="flex items-center gap-3">
-            <div className="text-sm font-medium text-[#BA2525]">
-              {currentUser.first_name}
+        {currentUser && !isAuthPage && variant !== 'logo-only' && (
+          <Link href={`/profile/${currentUser?.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden shadow-md">
+              <Image
+                src={currentUser?.avatar_url || DEFAULT_AVATAR}
+                alt={`${currentUser?.first_name}'s profile`}
+                fill
+                className="object-cover"
+                priority
+                onError={() => setAvatarError(true)}
+              />
             </div>
-            <Link href="/dashboard/editprofile">
-              <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full cursor-pointer overflow-hidden">
-                <div className="relative w-10 h-10">
-                  <Image
-                    src={currentUser.avatar_url || DEFAULT_AVATAR}
-                    alt={`${currentUser.first_name}'s profile`}
-                    fill
-                    sizes="40px"
-                    priority
-                    unoptimized={true}
-                    crossOrigin="anonymous"
-                    className="object-cover rounded-full"
-                    onError={(e) => {
-                      console.error('Error loading image in header:', currentUser.avatar_url);
-                      setAvatarError(true);
-                      const target = e.target as HTMLImageElement;
-                      target.src = DEFAULT_AVATAR;
-                    }}
-                  />
-                </div>
-              </div>
-            </Link>
-          </div>
+          </Link>
         )}
       </div>
     </div>

@@ -1,1259 +1,520 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Heart, Calendar, MessageCircle, UserCircle, Trophy, Crown, Users, Coffee, Home } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../supabase/client';
-import BottomNav from '@/components/BottomNav';
-import Header from '@/components/Header';
-import Image from 'next/image';
-import DateRecommendations from '@/components/DateRecommendations';
-import { checkAndRefreshSession } from '@/lib/auth';
-import Map from '@/components/Map';
+import { supabase } from '@/supabase/client';
+import { Camera, Clock, Heart, MessagesSquare, Trophy, Globe, Search, PlusCircle, Bell, User, MapPin, Users, Plus } from 'lucide-react';
+import { Prompt } from 'next/font/google';
 import ProfileImage from '@/components/ProfileImage';
-import DaterStatus from '@/components/DaterStatus';
-import { DESCRIPTORS, Descriptor } from '@/components/DescriptorBubbles';
+import dynamic from 'next/dynamic';
+import Header from '@/components/Header';
+import BottomNav from '@/components/BottomNav';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Link from 'next/link';
+import Image from 'next/image';
+import PenaltyDare from '@/components/PenaltyDare';
 
-const MAX_PREVIEW_MATCHES = 6;
+const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
-// Venue coordinates mapping
-const venueCoordinates: { [key: string]: [number, number] } = {
-  'Blue Ribbon Sushi': [-71.0622, 42.3663],
-  'Barcelona Wine Bar': [-71.0761, 42.3457],
-  'Boston Commons': [-71.0712, 42.3551],
-  'Museum of Fine Arts': [-71.0942, 42.3390],
-  'Cityside Tavern': [-71.1502, 42.3359],
-  'Kured': [-71.0770, 42.3578],
-  'The Clay Room': [-71.1012, 42.3467],
-  'Joes on Newbury': [-71.0812, 42.3489],
-  'Private Helicopter Ride': [-71.0095, 42.3656],
-  'Boston Duck Tour': [-71.0686, 42.3518],
-  'F1 Arcade': [-71.0622, 42.3663],
-  'Lucca North End': [-71.0567, 42.3647],
-  'BC Basketball': [-71.1677, 42.3357],
-  'BC Lacrosse': [-71.1677, 42.3357],
-  'Boston Bruins': [-71.0622, 42.3663],
-  'Lolita Back Bay': [-71.0842, 42.3467],
-  'Capo': [-71.0471, 42.3359],
-  'Lorettas Last Call': [-71.0950, 42.3467],
-  // Bar venues
-  'City Tap House': [-71.0478, 42.3512],
-  'The Greatest Bar': [-71.0614, 42.3642],
-  'Stats Bar & Grille': [-71.0516, 42.3307],
-  'The Lansdowne Pub': [-71.0947, 42.3474],
-  'Hunters Kitchen & Bar': [-71.0516, 42.3307],
-  'Loco Taqueria & Oyster Bar': [-71.0471, 42.3359],
-  'Luckys Lounge': [-71.0516, 42.3512],
-  'West End Johnnies': [-71.0614, 42.3642],
-  'Scholars': [-71.0595, 42.3578],
-  'Cask n Flagon': [-71.0947, 42.3474],
-  'Clerys': [-71.0733, 42.3467],
-  'Lincoln Tavern & Restaurant': [-71.0471, 42.3359],
-  'Bell in Hand Tavern': [-71.0571, 42.3614],
-  'The Harp': [-71.0614, 42.3642]
-};
+const prompt = Prompt({
+  weight: ['400', '700'],
+  subsets: ['latin']
+});
 
-interface DatabaseProfile {
+interface DatePost {
   id: string;
-  first_name: string;
-  last_name: string;
-  age: number | null;
-  avatar_url: string | null;
-  bio: string;
-  dater_status: string;
-  average_rating: number;
-  follow_through_rate: number;
-  dater_archetype: DaterArchetype;
-}
-
-interface Profile {
-  id: string;
-  first_name: string;
-  age: number | null;
-  avatar_url: string;
-  dater_status: string;
-  average_rating: number;
-  follow_through_rate: number;
-  compatibility: number | null;
-  dater_archetype: DaterArchetype;
-  venue: {
-    name: string;
-    address: string;
-    coordinates: [number, number];
-  };
-  proposed_time: string;
-  isValentineMatch?: boolean;
-}
-
-interface RawDateRequest {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: string;
-  split_payment: boolean;
-  sender: {
+  user: {
     id: string;
     first_name: string;
-    last_name: string;
-    age: number;
     avatar_url: string | null;
-    bio: string;
-  } | null;
-}
-
-interface DateRequestResponse {
-  id: string;
+  };
   venue: string;
-  proposed_time: string;
-  status: string;
-  split_payment: boolean;
-  sender: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    age: number;
-    avatar_url: string | null;
-    bio: string;
-  } | null;
-}
-
-interface ImageProps {
-  src: string | null;
-  alt: string;
-  className?: string;
-  style?: React.CSSProperties;
-  priority?: boolean;
-  width?: number;
-  height?: number;
-  sizes?: string;
-}
-
-interface Venue {
-  name: string;
-  location: string;
-  type: string;
-  category: string;
-  rating: number;
-  imageUrl: string;
-  stripeLink: string;
-  coordinates: [number, number];
-  price?: string;
-  distance: string;
-  slug: string;
-}
-
-const VENUE_PAYMENT_LINKS: { [key: string]: string } = {
-  'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
-  'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
-  'BC Lacrosse': 'https://buy.stripe.com/fZeg1nbP2gwtaGI14l',
-  'Barcelona Wine Bar': 'https://buy.stripe.com/9AQg1n1ao6VTeWY28l',
-  'Museum of Fine Arts': 'https://buy.stripe.com/aEU8yV7yM5RP8yA3ce',
-  'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO'
-};
-
-const VENUES: Record<string, Venue[]> = {
-  sports: [
-    { 
-      name: "BC Lacrosse",
-      location: "Chestnut Hill, MA",
-      type: "Sports",
-      category: "Sports",
-      rating: 4.7,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bclacrosse.jpg`,
-      stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
-      coordinates: [-71.1677, 42.3357],
-      distance: "4.2 mi",
-      slug: "bc-lacrosse"
-    },
-    { 
-      name: "Boston Bruins",
-      location: "TD Garden",
-      type: "Sports",
-      category: "Sports & Entertainment",
-      rating: 4.7,
-      price: "$$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bruins.jpg`,
-      stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
-      coordinates: [-71.0622, 42.3663],
-      distance: "5.8 mi",
-      slug: "boston-bruins"
-    },
-    { 
-      name: "Celtics",
-      location: "TD Garden",
-      type: "Sports",
-      category: "Sports & Entertainment",
-      rating: 4.7,
-      price: "$$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/celtics.jpg`,
-      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
-      coordinates: [-71.0622, 42.3663],
-      distance: "5.8 mi",
-      slug: "celtics"
-    }
-  ],
-  restaurants: [
-    { 
-      name: "Barcelona Wine Bar",
-      location: "South End, Boston",
-      type: "Spanish",
-      category: "Food & Drinks",
-      price: "$$$",
-      rating: 4.6,
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/barcelona.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0761, 42.3457],
-      distance: "4.9 mi",
-      slug: "barcelona-wine-bar"
-    },
-    { 
-      name: "Branchline",
-      location: "Brookline, MA",
-      type: "American",
-      category: "Food & Drinks",
-      price: "$$",
-      rating: 4.5,
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/branchline.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1407, 42.3523],
-      distance: "1.5 mi",
-      slug: "branchline"
-    },
-    { 
-      name: "Lorettas Last Call",
-      location: "Fenway, Boston",
-      type: "American",
-      category: "Food & Drinks",
-      price: "$$",
-      rating: 4.5,
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lorettas.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0953, 42.3467],
-      distance: "3.2 mi",
-      slug: "lorettas-last-call"
-    }
-  ],
-  activities: [
-    { 
-      name: "Museum of Fine Arts",
-      location: "Boston, MA",
-      type: "Culture",
-      category: "Arts & Culture",
-      rating: 4.8,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/museum.jpg`,
-      stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
-      coordinates: [-71.0995, 42.3394],
-      distance: "3.6 mi",
-      slug: "museum-of-fine-arts"
-    },
-    { 
-      name: "Boston Commons",
-      location: "Boston, MA",
-      type: "Park",
-      category: "Outdoors",
-      rating: 4.7,
-      price: "$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/commons.jpg`,
-      stripeLink: "https://buy.stripe.com/eVaaH31ao2FDbKM3ck",
-      coordinates: [-71.0670, 42.3554],
-      distance: "5.5 mi",
-      slug: "boston-commons"
-    },
-    { 
-      name: "Private Helicopter Ride",
-      location: "Boston, MA",
-      type: "Adventure",
-      category: "Adventure & Outdoors",
-      price: "$$$$",
-      rating: 4.9,
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/helicopter.jpg`,
-      stripeLink: "https://buy.stripe.com/14k2ax7yM0xv6qs8wz",
-      coordinates: [-71.0217, 42.3656],
-      distance: "7.8 mi",
-      slug: "private-helicopter-ride"
-    },
-    { 
-      name: "The Clay Room",
-      location: "Brookline, MA",
-      type: "Creative",
-      category: "Arts & Culture",
-      rating: 4.6,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/clayroom.jpg`,
-      stripeLink: "https://buy.stripe.com/00g8yVaKYgwt4ikaEO",
-      coordinates: [-71.1317, 42.3396],
-      distance: "1.9 mi",
-      slug: "the-clay-room"
-    }
-  ],
-  events: [
-    { 
-      name: "Boston Celtics Game",
-      location: "TD Garden",
-      type: "Sports",
-      category: "Events",
-      rating: 4.8,
-      price: "$$$",
-      imageUrl: "/images/venues/celtics.jpg",
-      stripeLink: "https://buy.stripe.com/5kA8yVf1e0xvg12eV0",
-      coordinates: [-71.0622, 42.3663],
-      distance: "5.8 mi",
-      slug: "boston-celtics-game"
-    }
-  ],
-  bars: [
-    {
-      name: "City Tap House",
-      location: "10 Boston Wharf Road, Boston, MA 02210",
-      type: "Bar & Restaurant",
-      category: "Bars",
-      rating: 4.5,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/citytap.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0478, 42.3512],
-      distance: "5.8 mi",
-      slug: "city-tap-house"
-    },
-    {
-      name: "The Greatest Bar",
-      location: "262 Friend Street, Boston, MA 02114",
-      type: "Sports Bar",
-      category: "Bars",
-      rating: 4.3,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/greatestbar.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0614, 42.3642],
-      distance: "5.5 mi",
-      slug: "greatest-bar"
-    },
-    {
-      name: "Stats Bar & Grille",
-      location: "77 Dorchester Street, Boston, MA 02127",
-      type: "Sports Bar",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/statsbar.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0516, 42.3307],
-      distance: "6.2 mi",
-      slug: "stats-bar"
-    },
-    {
-      name: "The Lansdowne Pub",
-      location: "9 Lansdowne Street, Boston, MA 02215",
-      type: "Irish Pub",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lansdowne.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0947, 42.3474],
-      distance: "3.8 mi",
-      slug: "lansdowne-pub"
-    },
-    {
-      name: "Hunters Kitchen & Bar",
-      location: "110 Dorchester Street, Boston, MA 02127",
-      type: "Bar & Restaurant",
-      category: "Bars",
-      rating: 4.5,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/hunters.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0516, 42.3307],
-      distance: "6.2 mi",
-      slug: "hunters-kitchen"
-    },
-    {
-      name: "Loco Taqueria & Oyster Bar",
-      location: "412 W Broadway, Boston, MA 02127",
-      type: "Bar & Restaurant",
-      category: "Bars",
-      rating: 4.6,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/loco.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0471, 42.3359],
-      distance: "6.0 mi",
-      slug: "loco-taqueria"
-    },
-    {
-      name: "Luckys Lounge",
-      location: "355 Congress Street, Boston, MA 02210",
-      type: "Bar & Lounge",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/luckyslounge.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0516, 42.3512],
-      distance: "5.9 mi",
-      slug: "luckys-lounge"
-    },
-    {
-      name: "West End Johnnies",
-      location: "138 Portland Street, Boston, MA 02114",
-      type: "Sports Bar",
-      category: "Bars",
-      rating: 4.3,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/westend.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0614, 42.3642],
-      distance: "5.5 mi",
-      slug: "west-end-johnnies"
-    },
-    {
-      name: "Scholars",
-      location: "25 School Street, Boston, MA 02108",
-      type: "Bar & Restaurant",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/scholars.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0595, 42.3578],
-      distance: "5.6 mi",
-      slug: "scholars"
-    },
-    {
-      name: "Cask n Flagon",
-      location: "62 Brookline Avenue, Boston, MA 02215",
-      type: "Sports Bar",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/caskflagon.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0947, 42.3474],
-      distance: "3.8 mi",
-      slug: "cask-n-flagon"
-    },
-    {
-      name: "Clerys",
-      location: "113 Dartmouth Street, Boston, MA 02116",
-      type: "Irish Pub",
-      category: "Bars",
-      rating: 4.3,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/clerys.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0733, 42.3467],
-      distance: "4.9 mi",
-      slug: "clerys"
-    },
-    {
-      name: "Lincoln Tavern & Restaurant",
-      location: "425 W Broadway, Boston, MA 02127",
-      type: "Bar & Restaurant",
-      category: "Bars",
-      rating: 4.5,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/lincoln.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0471, 42.3359],
-      distance: "6.0 mi",
-      slug: "lincoln-tavern"
-    },
-    {
-      name: "Bell in Hand Tavern",
-      location: "45 Union Street, Boston, MA 02108",
-      type: "Historic Pub",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/bellinhand.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0571, 42.3614],
-      distance: "5.7 mi",
-      slug: "bell-in-hand"
-    },
-    {
-      name: "The Harp",
-      location: "85 Causeway Street, Boston, MA 02114",
-      type: "Irish Pub",
-      category: "Bars",
-      rating: 4.4,
-      price: "$$",
-      imageUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/venues/harp.jpg`,
-      stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0614, 42.3642],
-      distance: "5.5 mi",
-      slug: "the-harp"
-    }
-  ]
-};
-
-const DEFAULT_AVATAR = '/images/default-avatar.png';
-
-const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) {
-    console.log('No avatar path provided');
-    return DEFAULT_AVATAR;
-  }
-
-  // If it's the default avatar or starts with /images/, return it directly
-  if (avatarPath.includes('default-avatar') || avatarPath.startsWith('/images/')) {
-    console.log('Using default or static image:', avatarPath);
-    return avatarPath;
-  }
-
-  // If it's already a full URL, return it
-  if (avatarPath.startsWith('http')) {
-    console.log('Using existing URL:', avatarPath);
-    return avatarPath;
-  }
-
-  console.log('Original avatar path:', avatarPath);
-  
-  // Clean up path by removing query parameters and getting just the filename
-  const cleanPath = avatarPath
-    .replace(/^\/+/, '')  // Remove leading slashes
-    .replace(/^avatars\/avatars\//, '') // Remove double avatars prefix
-    .replace(/^avatars\//, '') // Remove single avatars prefix
-    .split('?')[0];  // Remove query parameters
-  
-  if (!cleanPath) {
-    console.log('No valid path found:', avatarPath);
-    return DEFAULT_AVATAR;
-  }
-
-  console.log('Cleaned path:', cleanPath);
-
-  try {
-    // Get public URL instead of signed URL
-    const { data } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(cleanPath);
-
-    if (!data?.publicUrl) {
-      console.error('No public URL generated');
-      return DEFAULT_AVATAR;
-    }
-
-    console.log('Generated public URL:', data.publicUrl);
-    return data.publicUrl;
-  } catch (error) {
-    console.error('Error in getAvatarUrl:', error);
-    return DEFAULT_AVATAR;
-  }
-};
-
-const LocalProfileImage = ({ 
-  src, 
-  alt, 
-  className = '', 
-  style = {},
-  priority = false,
-  width,
-  height 
-}: ImageProps) => {
-  const [imageUrl, setImageUrl] = useState<string>('/images/default-avatar.png');
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadImage = async () => {
-      try {
-        const url = await getAvatarUrl(src);
-        if (mounted) {
-          setImageUrl(url);
-        }
-      } catch (err) {
-        console.error('Error loading image:', err);
-        if (mounted) {
-          setImageUrl('/images/default-avatar.png');
-        }
-      }
-    };
-
-    loadImage();
-
-    return () => {
-      mounted = false;
-    };
-  }, [src]);
-
-  return (
-    <div 
-      className={`relative ${className}`} 
-      style={{ 
-        width: width ? `${width}px` : '100%',
-        height: height ? `${height}px` : '100%',
-        ...style
-      }}
-    >
-      <Image
-        src={imageUrl}
-        alt={alt}
-        fill
-        sizes="(max-width: 640px) 100vw, 
-               (max-width: 1024px) 50vw,
-               33vw"
-        priority={priority}
-        className="object-cover rounded-lg"
-        unoptimized={imageUrl.startsWith('http')} // Skip optimization for external URLs
-      />
-    </div>
-  );
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true
-  });
-};
-
-type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits' | null;
-
-type CompatibilityMap = {
-  [K in NonNullable<DaterArchetype>]: {
-    [L in NonNullable<DaterArchetype>]: number;
+  location?: {
+    lat: number;
+    lng: number;
   };
-};
-
-const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: DaterArchetype): number => {
-  if (!userArchetype || !matchArchetype) return 85; // Default compatibility score
-
-  const compatibilityMap: CompatibilityMap = {
-    'hopelessRomantic': {
-      'hopelessRomantic': 95,
-      'cautiousDater': 85,
-      'commitmentSeeker': 90,
-      'serialDater': 60,
-      'friendWithBenefits': 40
-    },
-    'cautiousDater': {
-      'cautiousDater': 90,
-      'hopelessRomantic': 85,
-      'commitmentSeeker': 80,
-      'serialDater': 50,
-      'friendWithBenefits': 30
-    },
-    'commitmentSeeker': {
-      'commitmentSeeker': 95,
-      'hopelessRomantic': 90,
-      'serialDater': 70,
-      'cautiousDater': 80,
-      'friendWithBenefits': 30
-    },
-    'serialDater': {
-      'serialDater': 90,
-      'commitmentSeeker': 70,
-      'hopelessRomantic': 60,
-      'cautiousDater': 50,
-      'friendWithBenefits': 75
-    },
-    'friendWithBenefits': {
-      'friendWithBenefits': 95,
-      'serialDater': 75,
-      'hopelessRomantic': 40,
-      'cautiousDater': 30,
-      'commitmentSeeker': 30
-    }
-  };
-
-  return compatibilityMap[userArchetype]?.[matchArchetype] || 85;
-};
-
-interface MapProps {
-  center: [number, number];
-  zoom: number;
-  markers: Array<{
-    coordinates: [number, number];
+  challenge: {
     title: string;
-  }>;
+    points: number;
+  };
+  created_at: string;
+  watcher_votes: number;
+  comments_count: number;
+  proof_media_url?: string | null;
+  hasLiked?: boolean;
+  visibility: string;
+  group_id: string;
+  group_name?: string;
 }
 
-interface MatchFeedProfile {
+interface Group {
+  id: string;
+  name: string;
+  group_photo_url?: string | null;
+}
+
+interface GroupMember {
+  group_id: string;
+  groups: Group;
+}
+
+interface LiveDate {
+  id: string;
+  venue: string;
+  created_at: string;
+  watcher_votes: number;
+  challenge_title: string;
+  user_id: string;
+  first_name: string;
+  avatar_url: string | null;
+  challenge_points: number;
+  latitude: number | null;
+  longitude: number | null;
+  visibility: string;
+  group_id: string;
+  groups: {
+    name: string;
+  } | null;
+}
+
+interface User {
   id: string;
   first_name: string;
-  age: number | null;
   avatar_url: string | null;
-  dater_status: string;
-  average_rating: number;
-  follow_through_rate: number;
-  dater_archetype: DaterArchetype;
-}
-
-interface MatchFeedResponse {
-  id: string;
-  user_id: string;
-  potential_match_id: string;
-  status: string;
-  created_at: string;
-  profiles: MatchFeedProfile;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [datePosts, setDatePosts] = useState<DatePost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [dateRequests, setDateRequests] = useState<DateRequestResponse[]>([]);
-  const [userArchetype, setUserArchetype] = useState<DaterArchetype | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [selectedPost, setSelectedPost] = useState<DatePost | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [selectedTab, setSelectedTab] = useState<string>('all');
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [showPenaltyDare, setShowPenaltyDare] = useState(true);
 
-  const fetchMatches = async (userId: string) => {
-    try {
-      // First get the current user's profile including gender preferences
-      const { data: userData, error: userError } = await supabase
-        .from('profiles')
-        .select('dater_archetype, gender, preferred_gender')
-        .eq('id', userId)
-        .single();
+  useEffect(() => {
+    // Get current user and their groups
+    const getCurrentUserAndGroups = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUser({
+          id: user.id,
+          first_name: user.user_metadata.first_name,
+          avatar_url: user.user_metadata.avatar_url
+        });
+        
+        // Fetch user's groups with complete group details including photo
+        const { data: groupsData } = await supabase
+          .from('group_members')
+          .select(`
+            groups (
+              id,
+              name,
+              group_photo_url
+            )
+          `)
+          .eq('user_id', user.id);
 
-      if (userError) throw userError;
-      const currentUserArchetype = userData?.dater_archetype as DaterArchetype;
-      setUserArchetype(currentUserArchetype);
-
-      console.log('Current user data:', userData);
-
-      // First fetch valentine matches
-      const { data: valentineMatches, error: valentineError } = await supabase
-        .from('valentine_requests')
-        .select(`
-          *,
-          sender:profiles!valentine_requests_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url,
-            bio,
-            gender,
-            preferred_gender,
-            dater_archetype,
-            dater_status,
-            average_rating,
-            follow_through_rate
-          )
-        `)
-        .or(`recipient_id.eq.${userId},sender_id.eq.${userId}`)
-        .eq('status', 'accepted');
-
-      if (valentineError) {
-        console.error('Error fetching valentine matches:', valentineError);
-        if (valentineError.message?.includes('JWT')) {
-          await supabase.auth.signOut();
-          router.push('/auth/login');
-          return;
+        if (groupsData) {
+          const groups: Group[] = groupsData.map((g: any) => ({
+            id: g.groups.id,
+            name: g.groups.name,
+            group_photo_url: g.groups.group_photo_url
+          }));
+          setUserGroups(groups);
         }
       }
+    };
+    getCurrentUserAndGroups();
+  }, []);
 
-      // Process valentine matches
-      const processedValentineMatches: Profile[] = (valentineMatches || []).map((match) => {
-        const isRecipient = match.recipient_id === userId;
-        const matchedUser = isRecipient ? match.sender : match.matched_user;
-        
-        // Generate a date between Feb 7-14 for Valentine's week
-        const valentineDate = new Date('2024-02-14T00:00:00');
-        const daysBeforeValentine = Math.floor(Math.random() * 7); // 0-6 days before Valentine's
-        valentineDate.setDate(valentineDate.getDate() - daysBeforeValentine);
-        
-        // Set time between 6-9 PM
-        const hour = 18 + Math.floor(Math.random() * 3); // 18, 19, or 20 (6-8 PM)
-        const minutes = [0, 30][Math.floor(Math.random() * 2)]; // Either on the hour or half hour
-        valentineDate.setHours(hour, minutes, 0, 0);
+  const handleLike = async (postId: string) => {
+    if (!currentUser) return;
 
-        // Romantic venues perfect for Valentine's dates
-        const valentineVenues = [
-          'Barcelona Wine Bar',
-          'Blue Ribbon Sushi',
-          'Lucca North End',
-          'Lolita Back Bay'
-        ];
-        const venue = valentineVenues[Math.floor(Math.random() * valentineVenues.length)];
-        
-        return {
-          id: matchedUser.id,
-          first_name: matchedUser.first_name,
-          age: matchedUser.age,
-          avatar_url: matchedUser.avatar_url,
-          dater_status: matchedUser.dater_status || 'bronze',
-          average_rating: matchedUser.average_rating || 0,
-          follow_through_rate: matchedUser.follow_through_rate || 0,
-          compatibility: 100,
-          venue: {
-            name: venue,
-            address: venueCoordinates[venue][0].toString() + ', ' + venueCoordinates[venue][1].toString(),
-            coordinates: venueCoordinates[venue]
-          },
-          proposed_time: valentineDate.toISOString(),
-          isValentineMatch: true
-        } as Profile;
-      });
+    try {
+      // Check if user has already liked
+      const { data: existingLike } = await supabase
+        .from('date_likes')
+        .select('id')
+        .eq('date_id', postId)
+        .eq('user_id', currentUser.id)
+        .single();
 
-      // Then fetch regular matches
-      const { data: matchesData, error: matchesError } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          first_name,
-          age,
-          avatar_url,
-          dater_status,
-          average_rating,
-          follow_through_rate,
-          dater_archetype
-        `)
-        .neq('id', userId)
-        .eq('school', 'Boston College')
-        .eq('gender', userData.preferred_gender)
-        .eq('preferred_gender', userData.gender);
+      if (existingLike) {
+        // Unlike
+        await supabase
+          .from('date_likes')
+          .delete()
+          .eq('id', existingLike.id);
 
-      if (matchesError) throw matchesError;
+        // Update local state
+        setDatePosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, watcher_votes: post.watcher_votes - 1, hasLiked: false }
+            : post
+        ));
+      } else {
+        // Like
+        await supabase
+          .from('date_likes')
+          .insert({ date_id: postId, user_id: currentUser.id });
 
-      // Process regular matches
-      const processedRegularMatches: Profile[] = await Promise.all((matchesData || []).map(async (m: any) => {
-        const avatarUrl = m.avatar_url ? await getAvatarUrl(m.avatar_url) : null;
-        let compatibility = null;
-        
-        if (currentUserArchetype && m.dater_archetype) {
-          compatibility = calculateCompatibility(
-            currentUserArchetype,
-            m.dater_archetype
-          );
-        }
-
-        const randomVenue = Object.keys(venueCoordinates)[Math.floor(Math.random() * Object.keys(venueCoordinates).length)];
-        const coordinates = venueCoordinates[randomVenue];
-
-        return {
-          id: m.id,
-          first_name: m.first_name,
-          age: m.age,
-          avatar_url: avatarUrl || DEFAULT_AVATAR,
-          dater_status: m.dater_status || 'bronze',
-          average_rating: m.average_rating || 0,
-          follow_through_rate: m.follow_through_rate || 0,
-          compatibility,
-          dater_archetype: m.dater_archetype,
-          venue: {
-            name: randomVenue,
-            address: coordinates ? `${coordinates[0]}, ${coordinates[1]}` : '',
-            coordinates: coordinates || [-71.1677, 42.3357]
-          },
-          proposed_time: new Date().toISOString(),
-          isValentineMatch: false
-        } as Profile;
-      }));
-
-      // Combine and set all matches
-      const allMatches: Profile[] = [...processedValentineMatches, ...processedRegularMatches];
-      setProfiles(allMatches);
-      return allMatches;
-
+      // Update local state
+        setDatePosts(prev => prev.map(post => 
+          post.id === postId 
+            ? { ...post, watcher_votes: post.watcher_votes + 1, hasLiked: true }
+            : post
+        ));
+      }
     } catch (error) {
-      console.error('Error fetching matches:', error);
-      setError('Failed to load matches');
-      return [];
-    } finally {
-      setIsLoading(false);
+      console.error('Error handling like:', error);
     }
   };
 
-  const fetchDateRequests = async () => {
-    try {
-      if (!userId) return;
+  const handleComment = (post: DatePost) => {
+    router.push(`/date/${post.id}/comments`);
+  };
 
-      const { data: requests, error } = await supabase
-        .from('date_requests')
-        .select(`
-          id,
-          venue,
-          proposed_time,
-          status,
-          split_payment,
-          sender:profiles!date_requests_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            age,
-            avatar_url,
-            bio
-          )
-        `)
-        .eq('receiver_id', userId)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+  const handleShowMap = (post: DatePost) => {
+    setSelectedPost(post);
+    setShowMap(true);
+  };
 
-      if (error) throw error;
-
-      // Process the requests to ensure correct typing
-      const processedRequests: DateRequestResponse[] = (requests as unknown as RawDateRequest[]).map(request => ({
-        id: request.id,
-        venue: request.venue,
-        proposed_time: request.proposed_time,
-        status: request.status,
-        split_payment: request.split_payment,
-        sender: request.sender ? {
-          id: request.sender.id,
-          first_name: request.sender.first_name,
-          last_name: request.sender.last_name,
-          age: request.sender.age,
-          avatar_url: request.sender.avatar_url || '/images/default-avatar.png',
-          bio: request.sender.bio
-        } : null
-      })) || [];
-
-      setDateRequests(processedRequests);
-    } catch (error) {
-      console.error('Error fetching date requests:', error);
-    }
+  const handleGroupSelect = (groupId: string) => {
+    setSelectedTab(groupId);
+    setShowGroupMenu(false);
+    const selectedGroup = userGroups.find(g => g.id === groupId);
+    setSelectedGroup(selectedGroup || null);
   };
 
   useEffect(() => {
-    const fetchProfiles = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/auth/login');
-        return;
-      }
+    const fetchDatePosts = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('No user found');
 
-      setUserId(user.id);
-      await fetchMatches(user.id);
-      await fetchDateRequests();
+        // Get user's groups
+        const { data: userGroups } = await supabase
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', user.id);
+
+        const groupIds = userGroups?.map(g => g.group_id) || [];
+
+        // Base query
+        let query = supabase
+          .from('live_dates')
+          .select(`
+            id,
+            venue,
+            created_at,
+            watcher_votes,
+            challenge_title,
+            user_id,
+            first_name,
+            avatar_url,
+            challenge_points,
+            latitude,
+            longitude,
+            visibility,
+            group_id,
+            groups:groups!inner (
+              name
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        // Apply group filter if selected
+        if (selectedTab !== 'all') {
+          query = query.eq('group_id', selectedTab);
+        } else {
+          // Show all accessible posts
+          query = query.or(`visibility.eq.public,and(visibility.eq.private,group_id.in.(${groupIds.join(',')})),and(visibility.eq.private,user_id.eq.${user.id})`);
+        }
+
+        const { data: liveDates, error } = await query;
+
+        if (error) throw error;
+
+        // Get user's likes
+        const { data: likes } = await supabase
+          .from('date_likes')
+          .select('date_id')
+          .eq('user_id', user.id);
+        
+        const userLikes = likes?.map(like => like.date_id) || [];
+
+        const formattedPosts = (liveDates as unknown as LiveDate[]).map(date => ({
+          id: date.id,
+          user: {
+            id: date.user_id,
+            first_name: date.first_name,
+            avatar_url: date.avatar_url
+          },
+          venue: date.venue,
+          location: date.latitude && date.longitude ? {
+            lat: date.latitude,
+            lng: date.longitude
+          } : undefined,
+          challenge: {
+            title: date.challenge_title || 'Mystery Date',
+            points: date.challenge_points || 100
+          },
+          created_at: date.created_at,
+          watcher_votes: date.watcher_votes || 0,
+          comments_count: Math.floor(Math.random() * 20),
+          hasLiked: userLikes.includes(date.id),
+          visibility: date.visibility,
+          group_id: date.group_id,
+          group_name: date.groups?.name
+        }));
+
+        setDatePosts(formattedPosts);
+      } catch (error) {
+        console.error('Error fetching date posts:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchProfiles();
-  }, []);
+    fetchDatePosts();
+  }, [currentUser, selectedTab]);
 
-  const handleDateRequest = async (requestId: string, status: 'accepted' | 'declined') => {
-    try {
-      const { error: updateError } = await supabase
-        .from('date_requests')
-        .update({ status })
-        .eq('id', requestId);
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-      if (updateError) throw updateError;
-
-      // Update local state
-      setDateRequests(prevRequests => 
-        prevRequests.filter(request => request.id !== requestId)
-      );
-    } catch (error) {
-      console.error('Error updating date request:', error);
-      setError('Failed to update date request');
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchStart(e.targetTouches[0].clientY);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchEnd(e.targetTouches[0].clientY);
-  };
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isSwipeDown = distance < -50;
-    const isSwipeUp = distance > 50;
-    
-    if (isSwipeUp && currentIndex < profiles.length - 1) {
-      navigateToDate(currentIndex + 1);
-    } else if (isSwipeDown && currentIndex > 0) {
-      navigateToDate(currentIndex - 1);
-    }
-    
-    setTouchStart(null);
-    setTouchEnd(null);
-  };
-
-  const navigateToDate = (index: number) => {
-    if (index >= 0 && index < profiles.length) {
-      setCurrentIndex(index);
-    }
-  };
-
-  const handleAccept = async () => {
-    const currentProfile = profiles[currentIndex];
-    if (!currentProfile) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No user found');
-        return;
-      }
-
-      // Create a date request
-      const { data: dateRequest, error: dateRequestError } = await supabase
-        .from('date_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: currentProfile.id,
-          venue: currentProfile.venue.name,
-          proposed_time: currentProfile.proposed_time,
-          status: 'pending',
-          split_payment: 0
-        })
-        .select()
-        .single();
-
-      if (dateRequestError) {
-        console.error('Error creating date request:', dateRequestError);
-        return;
-      }
-
-      // Navigate to the dashboard after sending the request
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Error in handleAccept:', error);
-    }
+    if (diffInMinutes < 1) return 'just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Loading profile...</p>
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000] mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center text-red-600">
-          <p>{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-[#cc0000] text-white rounded-full"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="flex justify-center items-center min-h-screen bg-[#cc0000]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white pb-24">
-      <div className="max-w-6xl mx-auto p-5">
+    <div className="min-h-screen bg-[#cc0000] text-white pb-20">
+      <div className="max-w-2xl mx-auto p-4">
         <Header variant="default" />
-        
-        {/* Dater Status Section */}
-        {userId && (
-          <div className="mt-8 mb-4">
-            <DaterStatus userId={userId} />
-          </div>
-        )}
-        
-        {/* Valentine's Day Section */}
-        <div className="bg-[#BA2525] rounded-lg p-12 min-h-[200px] flex flex-col items-center justify-center space-y-6">
-          <h2 className="text-xl text-white font-medium">Ditch love at first swipe, for love at first sight.</h2>
-          <Link
-            href="/send-valentine"
-            className="bg-white text-[#BA2525] px-5 py-1.5 rounded-full font-medium hover:bg-gray-100 transition-colors text-sm"
-          >
-            Send Valentine
-          </Link>
-        </div>
 
-        {/* Card Swipe Interface */}
-        <div 
-          className="max-w-md mx-auto relative mt-12"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Previous Arrow */}
-          <button
-            onClick={() => navigateToDate(currentIndex - 1)}
-            className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-8 p-3 ${
-              currentIndex > 0 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-            } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
-            disabled={currentIndex === 0}
-            aria-label="Previous date"
-          >
-            ▲
-          </button>
+        <div className="sticky top-0 bg-[#cc0000] pb-4 mb-6 pt-4 z-50">
+          <div className="flex flex-col mt-4">
+            <div className="flex justify-end items-center">
+              <button 
+                onClick={() => setSelectedTab('all')}
+                title="All Posts"
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                  selectedTab === 'all' 
+                    ? 'bg-white text-[#cc0000]' 
+                    : 'bg-[#aa0000] text-white hover:bg-[#990000]'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+              </button>
 
-          {profiles.length > 0 && (
-            <Card className="rounded-lg p-4 pt-12 pb-12 shadow-sm hover:shadow-md transition-shadow bg-white w-full">
-              <div className="flex flex-col items-center">
-                {profiles[currentIndex].isValentineMatch && (
-                  <div className="bg-[#BA2525] text-white px-4 py-1 rounded-full text-sm font-medium mb-8">
-                    Valentine's Day Match 💝
+              <div className="relative ml-2">
+                <button
+                  onClick={() => setShowGroupMenu(!showGroupMenu)}
+                  className="w-8 h-8 rounded-full bg-[#aa0000] hover:bg-[#990000] flex items-center justify-center transition-colors"
+                >
+                  <Users className="w-4 h-4 text-white" />
+                </button>
+
+                {showGroupMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-[20px] shadow-lg border-2 border-[#cc0000] overflow-hidden">
+                    <Link
+                      href="/groups/create"
+                      className="block px-4 py-2 text-[#cc0000] hover:bg-[#cc0000] hover:text-white transition-colors text-sm font-medium border-b border-[#cc0000]/10 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create New Group
+                    </Link>
+                    {userGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        onClick={() => handleGroupSelect(group.id)}
+                        className="w-full px-4 py-2 text-[#cc0000] hover:bg-[#cc0000] hover:text-white transition-colors text-sm text-left flex items-center gap-2"
+                      >
+                        <div className="relative w-6 h-6 rounded-full overflow-hidden">
+                          <Image
+                            src={group.group_photo_url || '/images/default-group-photo.png'}
+                            alt={group.name}
+                            fill
+                            className="object-cover"
+                            sizes="24px"
+                          />
+                        </div>
+                        {group.name}
+                      </button>
+                    ))}
                   </div>
                 )}
-                
-                <div 
-                  className="relative w-full h-72 mb-4 cursor-pointer overflow-hidden rounded-lg"
-                  onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
-                >
-                  {profiles[currentIndex].compatibility !== null && (
-                    <div className="absolute top-2 right-2 z-10 bg-white/90 px-2 py-1 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
-                      <Heart size={12} fill="#BA2525" stroke="#BA2525" />
-                      {profiles[currentIndex].compatibility}%
-                    </div>
-                  )}
-                  <LocalProfileImage
-                    src={profiles[currentIndex].avatar_url}
-                    alt={`${profiles[currentIndex].first_name}'s profile`}
-                    priority={true}
-                    className="object-cover object-[50%_35%]"
+              </div>
+            </div>
+
+            {selectedGroup && (
+              <div className="flex flex-col items-center justify-center mt-8 mb-4">
+                <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-white mb-4">
+                  <Image
+                    src={selectedGroup.group_photo_url || '/images/default-group-photo.png'}
+                    alt={selectedGroup.name}
+                    fill
+                    className="object-cover"
+                    sizes="128px"
                   />
                 </div>
-
-                <h2 className="text-2xl font-semibold mb-4 text-[#BA2525]">
-                  {profiles[currentIndex].first_name}
-                  {typeof profiles[currentIndex].age !== 'undefined' && profiles[currentIndex].age !== null ? `, ${profiles[currentIndex].age}` : ''}
-                </h2>
-
-                {/* Stats Grid */}
-                <div 
-                  className="grid grid-cols-3 gap-4 w-full mb-6 cursor-pointer"
-                  onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
-                >
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>♔</span>
-                      <span className="text-white font-medium capitalize">
-                        {(profiles[currentIndex].dater_status || 'bronze').charAt(0).toUpperCase() + 
-                         (profiles[currentIndex].dater_status || 'bronze').slice(1)}
-                      </span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Dater Status
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>★</span>
-                      <span>{(profiles[currentIndex].average_rating || 0).toFixed(1)}</span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Dater Rating
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center px-6 py-2.5 rounded-[40px] bg-[#BA2525] border-2 border-white hover:bg-[#a02020] transition-colors">
-                    <div className="flex items-center gap-1.5 text-white text-base">
-                      <span>♥</span>
-                      <span>{profiles[currentIndex].follow_through_rate || '0'}%</span>
-                    </div>
-                    <div className="text-white text-xs whitespace-nowrap">
-                      Follow-Through
-                    </div>
-                  </div>
-                </div>
-
-                {/* Venue and Time Info */}
-                <div className="bg-white border-2 border-[#BA2525] rounded-[24px] p-4 w-full mb-6">
-                  <div className="text-[#BA2525] text-sm space-y-2">
-                    <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">📍</span>
-                      <span className="text-[#BA2525] font-medium">{profiles[currentIndex].venue.name || 'Venue TBD'}</span>
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="text-[#BA2525]">🗓</span>
-                      <span className="text-[#BA2525] font-medium">
-                        {profiles[currentIndex].proposed_time ? new Date(profiles[currentIndex].proposed_time).toLocaleString('en-US', {
-                          weekday: 'long',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        }) : 'Time TBD'}
-                      </span>
-                    </p>
-                  </div>
-
-                  {/* Map Component */}
-                  <div className="mt-4 h-[200px] rounded-lg overflow-hidden">
-                    <Map
-                      center={profiles[currentIndex].venue.coordinates}
-                      zoom={14}
-                      markers={[
-                        {
-                          coordinates: profiles[currentIndex].venue.coordinates,
-                          title: profiles[currentIndex].venue.name
-                        }
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-2 w-full mb-8">
-                  <button
-                    onClick={handleAccept}
-                    className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
+                <div className="flex flex-col items-center gap-4">
+                  <h2 className="text-3xl font-bold text-white">{selectedGroup.name}</h2>
+                  <Link 
+                    href={`/groups/${selectedGroup.id}`}
+                    className="px-4 py-1.5 bg-white text-[#cc0000] rounded-full text-xs font-medium hover:bg-white/90 transition-colors"
                   >
-                    Accept Date
-                  </button>
-                  <button
-                    onClick={() => router.push(`/send-date-request/${profiles[currentIndex].id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
-                  >
-                    Send Other Date Request
-                  </button>
-                  <button
-                    onClick={() => router.push(`/profile/${profiles[currentIndex].id}`)}
-                    className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors'
-                  >
-                    View Profile
-                  </button>
-                </div>
-
-                {/* Match Count */}
-                <div className="text-[#BA2525] font-medium text-center">
-                  {currentIndex + 1} / {profiles.length}
+                    View Group
+                  </Link>
                 </div>
               </div>
-            </Card>
-          )}
-
-          {/* Next Arrow */}
-          <button
-            onClick={() => navigateToDate(currentIndex + 1)}
-            className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-8 p-3 ${
-              currentIndex < profiles.length - 1 ? 'text-[#BA2525] hover:opacity-80' : 'text-gray-200'
-            } transition-opacity text-2xl bg-white rounded-full shadow-md border border-gray-100`}
-            disabled={currentIndex === profiles.length - 1}
-            aria-label="Next date"
-          >
-            ▼
-          </button>
+            )}
+          </div>
         </div>
 
-        {/* View More Button */}
-        <div className="flex justify-center mt-12">
-          <Link
-            href="/matching"
-            className="bg-[#BA2525] text-white px-6 py-2 rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm flex items-center gap-2"
-          >
-            View More Matches
-            <span className="text-lg">→</span>
-          </Link>
+        <div className="space-y-6">
+          {datePosts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className={`text-lg ${prompt.className}`}>
+                {selectedTab !== 'all' ? "No posts in this group yet" : "No posts to show"}
+              </p>
+            </div>
+          ) : (
+            datePosts.map((post) => (
+              <div key={post.id} className="bg-[#aa0000] mb-6 overflow-hidden rounded-lg">
+                <div className="p-4 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-white">
+                      <ProfileImage user={post.user} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <div className={`text-white text-lg font-medium ${prompt.className}`}>{post.user.first_name}</div>
+                      <div className={`text-white/80 text-sm ${prompt.className}`}>
+                        {post.venue}
+                        {post.group_name && (
+                          <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
+                            {post.group_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-white/80 text-sm ${prompt.className}`}>
+                    {formatTimeAgo(post.created_at)}
+                  </div>
+                </div>
+
+                <div className="relative aspect-[4/3] bg-gray-900">
+                  {post.proof_media_url ? (
+                    <img 
+                      src={post.proof_media_url}
+                      alt="Date moment" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/20 to-black">
+                      <span className={`text-white/50 ${prompt.className}`}>No photo yet</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-6 text-white/80">
+                    <button
+                      onClick={() => handleLike(post.id)}
+                      className="flex items-center gap-2 hover:text-white transition-colors"
+                    >
+                      <Heart 
+                        className={`w-5 h-5 ${post.hasLiked ? 'fill-white text-white' : ''}`} 
+                      />
+                      <span className={prompt.className}>{post.watcher_votes}</span>
+                    </button>
+                    <button
+                      onClick={() => handleComment(post)}
+                      className="flex items-center gap-2 hover:text-white transition-colors"
+                    >
+                      <MessagesSquare className="w-5 h-5" />
+                      <span className={prompt.className}>{post.comments_count}</span>
+                    </button>
+                    {post.location && (
+                    <button
+                        onClick={() => handleShowMap(post)}
+                        className="flex items-center gap-2 hover:text-white transition-colors"
+                    >
+                        <MapPin className="w-5 h-5" />
+                        <span className={prompt.className}>View Map</span>
+                    </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-white" />
+                    <span className={`text-white ${prompt.className}`}>
+                      {post.challenge.points} pts
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
+
+      {showMap && selectedPost && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl overflow-hidden">
+            <div className="p-4 bg-[#cc0000] text-white flex justify-between items-center">
+              <h3 className={`font-medium ${prompt.className}`}>{selectedPost.venue}</h3>
+              <button 
+                onClick={() => setShowMap(false)}
+                className="text-white/80 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <div className="h-[400px] w-full">
+              {selectedPost.location && (
+                <Map 
+                  center={[selectedPost.location.lng, selectedPost.location.lat]}
+                  zoom={15}
+                  markers={[{
+                    coordinates: [selectedPost.location.lng, selectedPost.location.lat],
+                    title: selectedPost.venue
+                  }]}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <BottomNav />
+
+      {/* Add PenaltyDare component if user has penalties */}
+      {currentUser && showPenaltyDare && (
+        <div className="mb-8">
+          <PenaltyDare
+            userId={currentUser.id}
+            onComplete={() => setShowPenaltyDare(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

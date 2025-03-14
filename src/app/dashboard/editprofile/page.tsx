@@ -1,24 +1,76 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent, useCallback } from 'react';
+import { useEffect, useState, useCallback, Dispatch, SetStateAction } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { supabase } from '../../../supabase/client';
-import BottomNav from '@/components/BottomNav';
-import Link from 'next/link';
+import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
-import EmailUpdateSection from '@/components/EmailUpdateSection';
+import BottomNav from '@/components/BottomNav';
+import WalletComponent from '@/components/WalletComponent';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import type { Stripe, StripeElements } from '@stripe/stripe-js';
+import Image from 'next/image';
+import Link from 'next/link';
 import ImageCropper from '@/components/ImageCropper';
 import ProfileImageGallery from '@/components/ProfileImageGallery';
 import DescriptorBubbles, { Descriptor } from '@/components/DescriptorBubbles';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/card';
+import { toast } from 'react-hot-toast';
+import { Plus, Users } from 'lucide-react';
+
+// Initialize Stripe with proper options and rate limiting
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!, {
+  apiVersion: '2025-02-24.acacia',
+  locale: 'en',
+  betas: ['elements_customers_session_benchmark_beta_1'] // This helps reduce benchmark requests
+});
+
+// Log Stripe initialization
+console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY exists:', !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
 // Types
+interface PaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+interface WalletPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
 interface ProfileImage {
   id: number;
+  profile_id: string;
   image_url: string;
   is_main: boolean;
+  created_at: string;
+}
+
+interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  avatar_url: string;
+  bio: string;
+  age: number;
+  gender: string;
+  preferred_gender: string;
+  dater_archetype: string;
+  school: string;
+  profile_visibility: "public" | "private";
+  couple_status: "single" | "in_relationship" | "married" | null;
+  descriptors: Descriptor[];
 }
 
 // Update ProfileData interface
@@ -26,17 +78,27 @@ interface ProfileData {
   id?: string;
   first_name: string;
   last_name: string;
+  email: string;
+  avatar_url: string | null;
+  bio: string;
   age: number | null;
   gender: string;
   preferred_gender: string;
-  bio: string;
   dater_archetype: string;
   school: string;
-  avatar_url: string | null;
-  email: string;
-  profile_images?: ProfileImage[];
-  referral_code?: string;
+  profile_visibility: "public" | "private";
+  couple_status: "single" | "in_relationship" | "married" | null;
   descriptors: Descriptor[];
+  referral_code?: string;
+}
+
+interface Group {
+  id: string;
+  name: string;
+  description: string;
+  memberCount: number;
+  isAdmin: boolean;
+  group_photo_url: string | null;
 }
 
 // Constants
@@ -57,35 +119,238 @@ const ARCHETYPES = [
   { value: 'friendsWithBenefits', label: 'Friends with Benefits' },
 ] as const;
 
-export default function EditProfilePage() {
-  const router = useRouter();
+interface SetupFormProps {
+  clientSecret: string;
+  onClose: () => void;
+}
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+const SetupForm = ({ clientSecret, onClose }: SetupFormProps) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const [error, setError] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [profileData, setProfileData] = useState<ProfileData>({
-    first_name: '',
-    last_name: '',
-    age: null,
-    gender: '',
-    preferred_gender: '',
-    bio: '',
-    dater_archetype: '',
-    school: 'Boston College',
-    avatar_url: null,
-    email: '',
-    referral_code: '',
-    descriptors: []
-  });
-  const [imageKey, setImageKey] = useState(0);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [imageError, setImageError] = useState(false);
-  const [showCropper, setShowCropper] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [profileImages, setProfileImages] = useState<ProfileImage[]>([]);
+  const [processing, setProcessing] = useState(false);
 
-  // Wrap fetchProfile in useCallback to prevent unnecessary re-renders
+  useEffect(() => {
+    if (!stripe || !elements) {
+      console.log('Stripe or Elements not initialized');
+      return;
+    }
+  }, [stripe, elements]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!stripe || !elements) {
+      console.error('Stripe not initialized');
+      return;
+    }
+
+    setProcessing(true);
+    setError(null);
+
+    try {
+      const { error: submitError } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment-redirect`,
+        }
+      });
+
+      if (submitError) {
+        console.error('Setup confirmation error:', submitError);
+        setError(submitError.message || 'An error occurred while setting up your card.');
+        return;
+      }
+
+      // If we get here, the setup was successful
+      onClose();
+    } catch (e: any) {
+      console.error('Error in handleSubmit:', e);
+      setError(e.message || 'An unexpected error occurred.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+        <h3 className="text-lg font-semibold mb-4">Add Payment Method</h3>
+        
+        <form onSubmit={handleSubmit}>
+          <PaymentElement />
+          
+          {error && (
+            <div className="mt-4 text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+          
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              disabled={processing}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!stripe || processing}
+              className="px-4 py-2 bg-[#cc0000] text-white rounded-md hover:bg-[#aa0000] disabled:opacity-50"
+            >
+              {processing ? 'Processing...' : 'Add Card'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const EditProfileWrapper = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="container mx-auto px-4 py-8 pb-24">
+        {children}
+      </div>
+      <BottomNav />
+    </div>
+  );
+};
+
+interface PaymentSectionProps {
+  profileData: ProfileData;
+  setProfileData: Dispatch<SetStateAction<ProfileData>>;
+  profileImages: ProfileImage[];
+  setProfileImages: Dispatch<SetStateAction<ProfileImage[]>>;
+  selectedFile: File | null;
+  setSelectedFile: Dispatch<SetStateAction<File | null>>;
+  showCropper: boolean;
+  setShowCropper: Dispatch<SetStateAction<boolean>>;
+  isUploading: boolean;
+  setIsUploading: Dispatch<SetStateAction<boolean>>;
+  previewUrl: string | null;
+  avatarFile: File | null;
+  imageError: string | null;
+  setImageError: Dispatch<SetStateAction<string | null>>;
+}
+
+const PaymentSection = ({
+  profileData,
+  setProfileData,
+  profileImages,
+  setProfileImages,
+  selectedFile,
+  setSelectedFile,
+  showCropper,
+  setShowCropper,
+  isUploading,
+  setIsUploading,
+  previewUrl,
+  avatarFile,
+  imageError,
+  setImageError
+}: PaymentSectionProps) => {
+  const router = useRouter();
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [referralCode, setReferralCode] = useState<string>('');
+  const [referralClicks, setReferralClicks] = useState<number>(0);
+
+  useEffect(() => {
+    let mounted = true;
+    
+    // Initialize Stripe with debounce
+    const initStripe = async () => {
+      try {
+        if (!stripeLoaded) {
+          await stripePromise;
+          if (mounted) {
+            setStripeLoaded(true);
+          }
+        }
+      } catch (err) {
+        console.error('Error initializing Stripe:', err);
+        if (mounted) {
+          setError('Failed to initialize payment system');
+        }
+      }
+    };
+
+    // Add delay to prevent rapid re-initialization
+    const timeoutId = setTimeout(initStripe, 1000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [stripeLoaded]);
+
+  const getCleanAvatarUrl = useCallback(async (url: string | null) => {
+    if (!url) return DEFAULT_AVATAR;
+    if (url.startsWith('http') || url.startsWith('/images/')) return url;
+    
+    try {
+      // Extract just the filename without any path or query parameters
+      const filename = url.split('/').pop()?.split('?')[0];
+      if (!filename) return DEFAULT_AVATAR;
+      
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filename);
+        
+      return data?.publicUrl || DEFAULT_AVATAR;
+    } catch (err) {
+      console.error('Error getting avatar URL:', err);
+      return DEFAULT_AVATAR;
+    }
+  }, []);
+
+  const fetchPaymentMethodsData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/payments/list-methods', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch payment methods');
+      }
+
+      const { paymentMethods: methods } = await response.json();
+      setPaymentMethods(methods || []);
+    } catch (err) {
+      console.error('Error fetching payment methods:', err);
+      setImageError('Failed to load payment methods');
+    }
+  };
+
+  useEffect(() => {
+    fetchPaymentMethodsData();
+  }, []);
+
+  const copyReferralLink = async () => {
+    const link = `${window.location.origin}/auth/signup?ref=${referralCode}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success('Referral link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      toast.error('Failed to copy referral link');
+    }
+  };
+
   const fetchProfile = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -102,54 +367,650 @@ export default function EditProfilePage() {
 
       if (profileError) throw profileError;
 
-      // Ensure referral_code exists
-      if (!profileData.referral_code) {
-        // Generate a new referral code if one doesn't exist
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from('profiles')
-          .update({ referral_code: Math.random().toString(36).substring(2, 10).toUpperCase() })
-          .eq('id', session.user.id)
-          .select()
-          .single();
-
-        if (updateError) throw updateError;
-        
-        setProfileData(updatedProfile);
-      } else {
+      if (profileData) {
         setProfileData(profileData);
+        setReferralCode(profileData.referral_code || '');
       }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      setImageError('Failed to load profile');
+    }
+  }, [router, setProfileData]);
 
-      // Clean and process avatar URL
-      let processedAvatarUrl = DEFAULT_AVATAR;
-      if (profileData.avatar_url) {
-        const cleanedAvatarPath = profileData.avatar_url
-          .replace(/^\/+|^dashboard\//, '')
-          .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\/avatars\//, '')
-          .replace(/\?.*$/, ''); // Remove any query parameters
+  const handleError = (message: string) => {
+    setImageError(message);
+    setIsUploading(false);
+  };
 
-        if (cleanedAvatarPath) {
-          const { data: publicUrlData } = supabase.storage
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setIsUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const filename = `${user.id}_${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage
             .from('avatars')
-            .getPublicUrl(cleanedAvatarPath);
-          processedAvatarUrl = publicUrlData?.publicUrl || DEFAULT_AVATAR;
+        .upload(filename, croppedBlob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filename);
+
+      await supabase
+        .from('profile_images')
+        .insert({
+          profile_id: user.id,
+          image_url: publicUrl,
+          is_main: profileImages.length === 0
+        });
+
+      await fetchProfile();
+      setShowCropper(false);
+      setSelectedFile(null);
+    } catch (error) {
+      handleError(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleChange = (field: keyof ProfileData, value: string | number | null) => {
+    console.log('Handling change for field:', field, 'value:', value);
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setImageError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      // Clean up avatar_url - remove any duplicate avatars/ prefix
+      let cleanAvatarUrl = profileData.avatar_url;
+      if (cleanAvatarUrl && !cleanAvatarUrl.startsWith('/images/')) {
+        if (cleanAvatarUrl.startsWith('http')) {
+          // Extract filename from URL
+          const match = cleanAvatarUrl.match(/\/avatars\/([^?]+)/);
+          if (match) {
+            cleanAvatarUrl = match[1];
+          }
+        } else {
+          cleanAvatarUrl = cleanAvatarUrl.replace(/^avatars\//, '');
         }
       }
 
-      // Process the profile data to ensure no null values in select fields
-      const processedData = {
-        ...profileData,
-        gender: profileData.gender || '',
-        preferred_gender: profileData.preferred_gender || '',
-        dater_archetype: profileData.dater_archetype || '',
-        school: profileData.school || 'Boston College',
-        bio: profileData.bio || '',
-        avatar_url: processedAvatarUrl
+      // Map the display value to the database value for dater_archetype
+      const daterArchetype = ARCHETYPES.find(
+        archetype => archetype.label === profileData.dater_archetype
+      )?.value || profileData.dater_archetype;
+
+      // Only include fields that exist in the profiles table
+      const updates = {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        age: profileData.age,
+        gender: profileData.gender,
+        preferred_gender: profileData.preferred_gender,
+        bio: profileData.bio,
+        dater_archetype: daterArchetype,
+        school: profileData.school,
+        avatar_url: cleanAvatarUrl,
+        profile_visibility: profileData.profile_visibility,
+        couple_status: profileData.couple_status
       };
 
-      console.log('Processed profile data:', processedData);
-      setProfileData(processedData);
+      console.log('Updating profile with:', updates);
 
-      // Fetch profile images
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Show success message
+      alert('Profile updated successfully!');
+      
+      // Refresh profile to get updated state with correct URLs
+      await fetchProfile();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setImageError(error instanceof Error ? error.message : 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      setImageError('Failed to log out');
+    }
+  };
+
+  useEffect(() => {
+    const refreshImage = async () => {
+      if (profileData.avatar_url && !profileData.avatar_url.startsWith('/images/')) {
+        try {
+          // If it's already a full URL, keep using it
+          if (profileData.avatar_url.startsWith('http')) {
+            return;
+          }
+
+          // Clean up the path - remove any duplicate avatars/ prefix
+          const cleanPath = profileData.avatar_url.replace(/^avatars\//, '');
+
+          // Get the public URL that doesn't expire
+          const { data } = supabase
+            .storage
+          .from('avatars')
+            .getPublicUrl(cleanPath);
+
+          if (data?.publicUrl) {
+            setProfileData(prev => ({
+              ...prev,
+              avatar_url: data.publicUrl
+            }));
+          } else {
+            setImageError('Failed to load image URL');
+            setProfileData(prev => ({
+              ...prev,
+              avatar_url: DEFAULT_AVATAR
+            }));
+          }
+        } catch (error) {
+          console.error('Error refreshing image:', error);
+          setImageError('Error loading profile image');
+          setProfileData(prev => ({
+            ...prev,
+            avatar_url: DEFAULT_AVATAR
+          }));
+        }
+      }
+    };
+
+    refreshImage();
+  }, [profileData.avatar_url]);
+
+  const handleResetPassword = () => {
+    try {
+      setIsLoading(true);
+      // Just redirect to reset password page
+      window.location.replace('/auth/reset-password');
+    } catch (error) {
+      console.error('Error:', error);
+      setImageError('Failed to initiate password reset');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDescriptorSelect = async (descriptor: Descriptor) => {
+    try {
+      // Update local state first for immediate feedback
+      const newDescriptors = profileData.descriptors.some(d => d.label === descriptor.label)
+        ? profileData.descriptors.filter(d => d.label !== descriptor.label)
+        : [...profileData.descriptors, descriptor];
+
+      setProfileData(prev => ({
+        ...prev,
+        descriptors: newDescriptors
+      }));
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      // Update Supabase immediately
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ descriptors: newDescriptors })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+    } catch (error) {
+      console.error('Error updating descriptors:', error);
+      // Revert local state if there was an error
+      setProfileData(prev => ({
+        ...prev,
+        descriptors: profileData.descriptors
+      }));
+    }
+  };
+
+  const handleAddCard = async () => {
+    try {
+      setIsLoading(true);
+      setImageError(null);
+
+      // Get the user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      // Get setup intent
+      const response = await fetch('/api/payments/setup-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Setup intent error response:', errorData);
+        throw new Error(errorData.error || 'Failed to create setup intent');
+      }
+
+      const { clientSecret } = await response.json();
+      if (!clientSecret) {
+        throw new Error('No client secret received');
+      }
+
+      setClientSecret(clientSecret);
+      setShowAddCard(true);
+    } catch (error: any) {
+      console.error('Error in handleAddCard:', error);
+      setImageError(error.message || 'Failed to set up payment method');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseAddCard = () => {
+    setShowAddCard(false);
+    setClientSecret(null);
+    fetchPaymentMethodsData();
+  };
+
+  const handleRemoveCard = async (paymentMethodId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No session found');
+      }
+
+      const response = await fetch('/api/payments/remove-method', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ paymentMethodId })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove payment method');
+      }
+
+      await fetchPaymentMethodsData();
+    } catch (err) {
+      console.error('Error removing payment method:', err);
+      setImageError('Failed to remove payment method');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {stripeLoaded ? (
+        <>
+          <WalletComponent
+            paymentMethods={paymentMethods}
+            onAddCard={handleAddCard}
+            onRemoveCard={handleRemoveCard}
+          />
+          {showAddCard && clientSecret && (
+            <Elements stripe={stripePromise} options={{ clientSecret }}>
+              <SetupForm clientSecret={clientSecret} onClose={handleCloseAddCard} />
+            </Elements>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-4">
+          <p>Loading payment system...</p>
+        </div>
+      )}
+
+      <div className="mt-8 border-t border-gray-200 pt-6">
+        <h2 className="text-xl font-bold mb-4">Your Referral Link</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={`${window.location.origin}/auth/signup?ref=${referralCode}`}
+              readOnly
+              className="flex-1 p-3 bg-gray-50 border rounded-lg font-mono text-sm"
+            />
+            <button
+              onClick={copyReferralLink}
+              className="p-3 bg-[#BA2525] text-white rounded-lg hover:bg-[#a02020] transition-colors"
+            >
+              Copy
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>Your referral code: <span className="font-mono">{referralCode}</span></span>
+            <span>Total clicks: {referralClicks}</span>
+          </div>
+        </div>
+      </div>
+
+      {showAddCard && clientSecret && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full">
+            <h3 className="text-lg font-semibold mb-4">Add Payment Method</h3>
+            <Elements stripe={stripePromise} options={{
+              clientSecret,
+              appearance: { theme: 'stripe' },
+              loader: 'auto'
+            }}>
+              <SetupForm
+                clientSecret={clientSecret}
+                onClose={handleCloseAddCard}
+              />
+            </Elements>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface ImageCropperProps {
+  imageFile: File;
+  onCropComplete: (croppedBlob: Blob) => void;
+  onCancel: () => void;
+  aspectRatio?: number;
+}
+
+const GroupsSection = () => {
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [invites, setInvites] = useState<any[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  const fetchGroups = async () => {
+    try {
+      // Fetch groups the user is a member of
+      const { data: memberships, error: membershipError } = await supabase
+        .from('group_members')
+        .select(`
+          group_id,
+          role,
+          groups!inner (
+            id,
+            name,
+            description,
+            group_photo_url
+          )
+        `)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+      if (membershipError) throw membershipError;
+
+      // Fetch member counts for each group
+      const groupsWithCounts = await Promise.all(
+        (memberships as any[]).map(async (membership) => {
+          const { count } = await supabase
+            .from('group_members')
+            .select('*', { count: 'exact' })
+            .eq('group_id', membership.group_id);
+
+          return {
+            id: membership.groups.id,
+            name: membership.groups.name,
+            description: membership.groups.description,
+            group_photo_url: membership.groups.group_photo_url,
+            memberCount: count || 0,
+            isAdmin: membership.role === 'admin'
+          };
+        })
+      );
+
+      setGroups(groupsWithCounts);
+
+      // Fetch pending invites
+      const { data: pendingInvites, error: invitesError } = await supabase
+        .from('group_invites')
+        .select(`
+          id,
+          groups!inner (
+            id,
+            name
+          ),
+          profiles!group_invites_inviter_id_fkey!inner (
+            first_name
+          )
+        `)
+        .eq('invitee_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('status', 'pending');
+
+      if (invitesError) throw invitesError;
+      setInvites(pendingInvites || []);
+
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+  };
+
+  const handleInviteResponse = async (inviteId: string, accept: boolean) => {
+    try {
+        const { error: updateError } = await supabase
+        .from('group_invites')
+        .update({ status: accept ? 'accepted' : 'rejected' })
+        .eq('id', inviteId);
+
+      if (updateError) throw updateError;
+
+      if (accept) {
+        const invite = invites.find(i => i.id === inviteId);
+        if (invite) {
+          // Add user to group members
+          await supabase
+            .from('group_members')
+            .insert({
+              group_id: invite.groups.id,
+              user_id: (await supabase.auth.getUser()).data.user?.id,
+              role: 'member'
+            });
+        }
+      }
+
+      // Remove invite from list and refresh groups
+      setInvites(invites.filter(i => i.id !== inviteId));
+      fetchGroups();
+    } catch (error) {
+      console.error('Error handling invite:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Group Invites Section */}
+      {invites.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Pending Invites</h3>
+          {invites.map((invite) => (
+            <div key={invite.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{invite.groups.name}</p>
+                  <p className="text-sm text-gray-500">
+                    Invited by {invite.profiles.first_name}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleInviteResponse(invite.id, true)}
+                    className="px-4 py-2 bg-[#cc0000] text-white rounded-full text-sm hover:bg-[#aa0000] transition-colors"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleInviteResponse(invite.id, false)}
+                    className="px-4 py-2 border border-gray-200 rounded-full text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* My Groups Section */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">My Groups</h3>
+          <button
+            onClick={() => router.push('/groups/create')}
+            className="flex items-center gap-2 text-[#cc0000] hover:text-[#aa0000] transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Create Group</span>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <div
+              key={group.id}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => router.push(`/groups/${group.id}`)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden">
+                  <Image
+                    src={group.group_photo_url || '/images/default-group-photo.png'}
+                    alt={group.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">{group.name}</h4>
+                  <p className="text-sm text-gray-500">{group.memberCount} members</p>
+                  {group.description && (
+                    <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {groups.length === 0 && (
+            <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+              <p className="text-gray-600">You're not a member of any groups yet</p>
+              <button
+                onClick={() => router.push('/groups/create')}
+                className="mt-4 px-6 py-2 bg-[#cc0000] text-white rounded-full text-sm hover:bg-[#aa0000] transition-colors"
+              >
+                Create Your First Group
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const EditProfilePage = () => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData>({
+    first_name: '',
+    last_name: '',
+    age: null,
+    gender: '',
+    preferred_gender: '',
+    bio: '',
+    dater_archetype: '',
+    school: 'Boston College',
+    avatar_url: null,
+    email: '',
+    referral_code: '',
+    descriptors: [],
+    profile_visibility: 'public',
+    couple_status: null
+  });
+  const [imageKey, setImageKey] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [profileImages, setProfileImages] = useState<ProfileImage[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  const handleError = (message: string) => {
+    setError(message);
+    setIsUploading(false);
+  };
+
+  const handleCropperClose = () => {
+      setShowCropper(false);
+      setSelectedFile(null);
+      setError(null);
+  };
+
+  const handleImageError = (message: string) => {
+    setImageError(message);
+  };
+
+  const handlePaymentError = (message: string) => {
+    setError(message);
+  };
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user?.email) {
+        throw new Error('No email found in user account');
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      setProfileData(profileData);
+
       const { data: imagesData, error: imagesError } = await supabase
         .from('profile_images')
         .select('*')
@@ -158,42 +1019,12 @@ export default function EditProfilePage() {
 
       if (imagesError) throw imagesError;
 
-      console.log('Raw images data:', imagesData);
-
-      // Process image URLs
-      const processedImages = await Promise.all(imagesData.map(async (img) => {
-        if (!img.image_url) {
-          return { ...img, image_url: DEFAULT_AVATAR };
-        }
-
-        // Clean the image URL
-        const cleanedPath = img.image_url
-          .replace(/^\/+|^dashboard\//, '')
-          .replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/(public|sign)\/avatars\//, '')
-          .replace(/\?.*$/, ''); // Remove any query parameters
-
-        if (!cleanedPath) {
-          return { ...img, image_url: DEFAULT_AVATAR };
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(cleanedPath);
-
-        return { 
-          ...img, 
-          image_url: publicUrlData?.publicUrl || DEFAULT_AVATAR 
-        };
-      }));
-
-      setProfileImages(processedImages);
+      setProfileImages(imagesData);
     } catch (error) {
-      console.error('Error fetching profile:', error);
-      setError('Failed to load profile');
+      handleError(error instanceof Error ? error.message : 'Failed to load profile');
     }
   }, [router]);
 
-  // Only fetch profile data once when component mounts
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
@@ -218,152 +1049,32 @@ export default function EditProfilePage() {
     return match ? match[1] : null;
   };
 
-  const handleCropComplete = async (croppedBlob: Blob) => {
-    setIsUploading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-
-      // Convert blob to File
-      const croppedFile = new File([croppedBlob], selectedFile?.name || 'profile.jpg', {
-        type: 'image/jpeg'
-      });
-
-      const fileExt = 'jpg';
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-      console.log('Starting image upload process');
-      console.log('Generated filename:', fileName);
-
-      // Upload image to storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, croppedFile, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: 'image/jpeg'
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
-
-      console.log('Upload successful:', uploadData);
-
-      // Get the signed URL for the uploaded file
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from('avatars')
-        .createSignedUrl(fileName, 365 * 24 * 60 * 60); // 1 year expiry
-
-      if (signedUrlError || !signedUrlData?.signedUrl) {
-        console.error('Error getting signed URL:', signedUrlError);
-        throw new Error('Failed to generate signed URL');
-      }
-
-      console.log('Generated signed URL:', signedUrlData.signedUrl);
-
-      // Store the signed URL in the database
-      const { data: imageData, error: imageError } = await supabase
-        .from('profile_images')
-        .insert([{
-          profile_id: user.id,
-          image_url: signedUrlData.signedUrl,
-          is_main: profileImages.length === 0
-        }])
-        .select()
-        .single();
-
-      if (imageError) {
-        console.error('Error creating profile image entry:', imageError);
-        throw imageError;
-      }
-
-      // Only update the profile's avatar_url if this is the first image
-      if (profileImages.length === 0) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            avatar_url: signedUrlData.signedUrl
-          })
-          .eq('id', user.id);
-
-        if (updateError) {
-          console.error('Error updating profile:', updateError);
-          throw updateError;
-        }
-      }
-
-      // Add the new image to state with the signed URL
-      const newImage = {
-        ...imageData,
-        image_url: signedUrlData.signedUrl
-      };
-
-      setProfileImages(prev => [...prev, newImage]);
-
-      // Reset states
-      setShowCropper(false);
-      setSelectedFile(null);
-      setError(null);
-
-      // Refresh the profile to ensure everything is in sync
-      await fetchProfile();
-    } catch (error) {
-      console.error('Error in handleCropComplete:', error);
-      setError(error instanceof Error ? error.message : 'Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const handleSetMainImage = async (imageId: number) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // Find the image we want to set as main
       const targetImage = profileImages.find(img => img.id === imageId);
       if (!targetImage) throw new Error('Image not found');
 
-      // Get the public URL for the image
-      let publicUrl = targetImage.image_url;
-      if (!publicUrl.startsWith('http')) {
-        const { data } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(publicUrl.replace(/^avatars\//, ''));
-        
-        if (!data?.publicUrl) {
-          throw new Error('Failed to generate public URL');
-        }
-        publicUrl = data.publicUrl;
-      }
-
-      // Update all images to not be main
       await supabase
         .from('profile_images')
         .update({ is_main: false })
         .eq('profile_id', user.id);
 
-      // Set the selected image as main
-      const { error } = await supabase
+      await supabase
         .from('profile_images')
         .update({ is_main: true })
         .eq('id', imageId);
 
-      if (error) throw error;
-
-      // Update avatar_url in profiles table with the public URL
       await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: targetImage.image_url })
         .eq('id', user.id);
 
-      // Refresh profile to get updated URLs
       await fetchProfile();
     } catch (error) {
-      console.error('Error setting main image:', error);
-      setError('Failed to set main image');
+      handleError(error instanceof Error ? error.message : 'An error occurred');
     }
   };
 
@@ -375,48 +1086,62 @@ export default function EditProfilePage() {
       const image = profileImages.find(img => img.id === imageId);
       if (!image) return;
 
-      // Delete from storage if it's not the default avatar
-      if (!image.image_url.includes('default-avatar')) {
-        let storagePath = image.image_url;
-        if (storagePath.startsWith('http')) {
-          // Extract the path from the URL
-          const urlParts = storagePath.split('/avatars/');
-          if (urlParts.length > 1) {
-            storagePath = `avatars/${urlParts[1].split('?')[0]}`;
-          }
-        }
-
-        await supabase.storage
-          .from('avatars')
-          .remove([storagePath]);
-      }
-
-      // Delete from profile_images table
-      const { error } = await supabase
+      await supabase
         .from('profile_images')
         .delete()
         .eq('id', imageId);
 
-      if (error) throw error;
-
-      // If we deleted the main image, update the avatar_url to null or the next available image
       if (image.is_main) {
         const remainingImages = profileImages.filter(img => img.id !== imageId);
         const newMainImage = remainingImages[0];
         
         await supabase
           .from('profiles')
-          .update({ 
-            avatar_url: newMainImage ? newMainImage.image_url : null 
-          })
+          .update({ avatar_url: newMainImage?.image_url || null })
           .eq('id', user.id);
       }
 
-      // Refresh the profile to get updated state
       await fetchProfile();
     } catch (error) {
-      console.error('Error deleting image:', error);
-      setError('Failed to delete image');
+      handleError(error instanceof Error ? error.message : 'An error occurred');
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setIsUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const filename = `${user.id}_${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filename, croppedBlob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filename);
+
+      await supabase
+        .from('profile_images')
+        .insert({
+          profile_id: user.id,
+          image_url: publicUrl,
+          is_main: profileImages.length === 0
+        });
+
+      await fetchProfile();
+      setShowCropper(false);
+      setSelectedFile(null);
+    } catch (error) {
+      handleError(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -502,7 +1227,9 @@ export default function EditProfilePage() {
         bio: profileData.bio,
         dater_archetype: daterArchetype,
         school: profileData.school,
-        avatar_url: cleanAvatarUrl
+        avatar_url: cleanAvatarUrl,
+        profile_visibility: profileData.profile_visibility,
+        couple_status: profileData.couple_status
       };
 
       console.log('Updating profile with:', updates);
@@ -529,16 +1256,11 @@ export default function EditProfilePage() {
 
   const handleLogout = async () => {
     try {
-      setIsLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      router.replace('/auth/login');
+      await supabase.auth.signOut();
+      router.push('/auth/login');
     } catch (error) {
       console.error('Error logging out:', error);
-      setError('Failed to log out. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setError('Failed to log out');
     }
   };
 
@@ -566,7 +1288,7 @@ export default function EditProfilePage() {
               avatar_url: data.publicUrl
             }));
           } else {
-            setImageError(true);
+            setImageError('Failed to load image URL');
             setProfileData(prev => ({
               ...prev,
               avatar_url: DEFAULT_AVATAR
@@ -574,7 +1296,7 @@ export default function EditProfilePage() {
           }
         } catch (error) {
           console.error('Error refreshing image:', error);
-          setImageError(true);
+          setImageError('Error loading profile image');
           setProfileData(prev => ({
             ...prev,
             avatar_url: DEFAULT_AVATAR
@@ -634,255 +1356,327 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-5xl mx-auto p-5 pb-24">
-        <Header variant="matching" />
-        
-        <div className="max-w-md mx-auto">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
-              {error}
-            </div>
-          )}
+    <EditProfileWrapper>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-8">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="privacy">Privacy</TabsTrigger>
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="payment">Payment</TabsTrigger>
+            </TabsList>
 
-          <form onSubmit={handleSave} className="space-y-4">
-            {/* Profile Image Section */}
-            <div className="flex flex-col items-center gap-4 mb-6">
-              {/* Main Profile Image */}
-              <div className="relative w-32 h-32">
-                <Image
-                  src={profileData.avatar_url || DEFAULT_AVATAR}
-                  alt="Profile"
-                  fill
-                  className="rounded-full object-cover"
-                  unoptimized={true}
-                  priority={true}
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    console.error('Error loading profile image:', profileData.avatar_url);
-                    setImageError(true);
-                    const target = e.target as HTMLImageElement;
-                    target.src = DEFAULT_AVATAR;
-                  }}
-                />
-                <label className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-md cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                  />
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 4.5v15m7.5-7.5h-15"
+              <TabsContent value="profile">
+              <form onSubmit={handleSave} className="space-y-6">
+                  {/* Profile Photos Section */}
+                  <div className="mb-8">
+                    <h2 className="text-2xl font-semibold text-gray-800 mb-6">Profile Photos</h2>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative w-32 h-32">
+                        <Image
+                          src={profileData.avatar_url || DEFAULT_AVATAR}
+                          alt="Profile"
+                          fill
+                          className="rounded-full object-cover"
+                          unoptimized={true}
+                          priority={true}
+                          crossOrigin="anonymous"
+                          onError={(e) => {
+                            console.error('Error loading profile image:', profileData.avatar_url);
+                            setImageError('Failed to load profile image');
+                            const target = e.target as HTMLImageElement;
+                            target.src = DEFAULT_AVATAR;
+                          }}
+                        />
+                        <label className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-md cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={isUploading}
+                          />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-5 h-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 4.5v15m7.5-7.5h-15"
+                            />
+                          </svg>
+                        </label>
+                      </div>
+
+                      {/* Profile Image Gallery */}
+                      <div className="w-full">
+                        <ProfileImageGallery
+                          images={profileImages}
+                          onSetMain={handleSetMainImage}
+                          onDelete={handleDeleteImage}
+                          className="mt-2"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 my-8"></div>
+
+                  <h2 className="text-2xl font-semibold text-gray-800 mb-6">Basic Information</h2>
+                  
+                  {/* Name Fields */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <input
+                      type="text"
+                      placeholder="First Name"
+                      value={profileData.first_name}
+                      onChange={(e) => handleChange('first_name', e.target.value)}
+                      className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                      required
                     />
-                  </svg>
-                </label>
+                    <input
+                      type="text"
+                      placeholder="Last Name"
+                      value={profileData.last_name}
+                      onChange={(e) => handleChange('last_name', e.target.value)}
+                      className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                      required
+                    />
+                  </div>
+
+                  {/* Age Field */}
+                  <input
+                    type="number"
+                    placeholder="Age"
+                    value={profileData.age === null ? '' : profileData.age}
+                    onChange={(e) => handleChange('age', e.target.value === '' ? null : parseInt(e.target.value))}
+                    className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors mb-4"
+                    required
+                    min="18"
+                    max="100"
+                  />
+
+                  {/* Bio Field */}
+                  <textarea
+                    placeholder="Bio"
+                    value={profileData.bio}
+                    onChange={(e) => handleChange('bio', e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px] mb-4"
+                    required
+                  />
+
+                  {/* School Selection */}
+                  <select
+                    value={profileData.school}
+                    onChange={(e) => handleChange('school', e.target.value)}
+                    className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors mb-4"
+                    required
+                  >
+                    <option value="">Select School</option>
+                    {SCHOOLS.map((school) => (
+                      <option key={school} value={school}>
+                        {school}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Dating Preferences */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Dating Preferences</h3>
+                    <div className="space-y-4">
+                      <select
+                        value={profileData.gender}
+                        onChange={(e) => handleChange('gender', e.target.value)}
+                        className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                        required
+                      >
+                        <option value="">Your Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+
+                      <select
+                        value={profileData.preferred_gender}
+                        onChange={(e) => handleChange('preferred_gender', e.target.value)}
+                        className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                        required
+                      >
+                        <option value="">Interested In</option>
+                        <option value="male">Men</option>
+                        <option value="female">Women</option>
+                        <option value="both">Both</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Dating Style */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Dating Style</h3>
+                  <div className="space-y-4">
+                    <select
+                      value={profileData.dater_archetype}
+                      onChange={(e) => handleChange('dater_archetype', e.target.value)}
+                      className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                      required
+                    >
+                      <option value="">Select Dating Style</option>
+                      {ARCHETYPES.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={profileData.couple_status || ''}
+                      onChange={(e) => handleChange('couple_status', e.target.value || null)}
+                      className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                    >
+                      <option value="">Relationship Status</option>
+                      <option value="single">Single</option>
+                      <option value="in_relationship">In a Relationship</option>
+                    </select>
+                  </div>
+                  </div>
+
+                  {/* Descriptors */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Descriptors</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Select words that best describe your personality, interests, and lifestyle.
+                    </p>
+                    <DescriptorBubbles
+                      selectedDescriptors={profileData.descriptors}
+                      onSelectDescriptor={handleDescriptorSelect}
+                      maxSelections={10}
+                    />
+                  </div>
+
+                {/* Remove the old save button location */}
+                {/* Email Settings */}
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-medium text-gray-900">Email Settings</h3>
+                    <p className="text-sm text-gray-500">Manage your email preferences</p>
+                  </div>
+                  <div className="mt-4">
+                      <input
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Add fixed position save button */}
+                <div className="fixed bottom-20 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-lg z-40">
+                  <div className="max-w-4xl mx-auto">
+                      <button
+                        type="button"
+                      onClick={handleSave}
+                      className="w-full bg-[#BA2525] text-white px-6 py-2.5 rounded-full hover:bg-[#a02020] transition-colors"
+                      >
+                      Save Changes
+                      </button>
+                    </div>
+                  </div>
+
+                {/* Password Settings */}
+                <div className="border-t border-gray-200 pt-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Password Settings</h3>
+                    <p className="text-sm text-gray-500">Update your account password</p>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      className="w-full p-2.5 bg-white border border-[#BA2525] text-[#BA2525] rounded-full hover:bg-[#BA2525] hover:text-white transition-colors"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <div className="border-t border-gray-200 mt-8 pt-6 pb-24">
+                    <button
+                      type="button"
+                    onClick={handleLogout}
+                    className="text-red-600 hover:text-red-700 font-medium"
+                  >
+                    Log Out
+                    </button>
+                  </div>
+              </form>
+              </TabsContent>
+
+              <TabsContent value="privacy">
+              <div className="space-y-8">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">Profile Visibility</h3>
+                      <p className="text-sm text-gray-500">Control who can see your profile</p>
+                    </div>
+                    <select
+                      value={profileData.profile_visibility}
+                      onChange={(e) => handleChange('profile_visibility', e.target.value)}
+                      className="p-2 border border-gray-200 rounded-lg"
+                    >
+                      <option value="public">Public</option>
+                      <option value="private">Private</option>
+                    </select>
+                  </div>
+                  </div>
+
+                <div className="border-t border-gray-200 pt-8">
+                  <h3 className="text-lg font-medium text-gray-900 mb-6">Groups Management</h3>
+                  <GroupsSection />
+                  </div>
               </div>
+              </TabsContent>
 
-              {/* Profile Image Gallery */}
-              <div className="w-full max-w-sm mt-4">
-                <ProfileImageGallery
-                  images={profileImages}
-                  onSetMain={handleSetMainImage}
-                  onDelete={handleDeleteImage}
-                  className="mt-2"
-                />
+            <TabsContent value="posts">
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-6">Your Posts</h2>
+                <p className="text-gray-600">
+                  View and manage your posts and interactions
+                </p>
+                {/* Add posts content here */}
               </div>
-            </div>
+            </TabsContent>
 
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="First Name"
-                value={profileData.first_name}
-                onChange={(e) => handleChange('first_name', e.target.value)}
-                className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-                required
+            <TabsContent value="payment">
+              <PaymentSection
+                profileData={profileData}
+                setProfileData={setProfileData}
+                profileImages={profileImages}
+                setProfileImages={setProfileImages}
+                selectedFile={selectedFile}
+                setSelectedFile={setSelectedFile}
+                showCropper={showCropper}
+                setShowCropper={setShowCropper}
+                isUploading={isUploading}
+                setIsUploading={setIsUploading}
+                previewUrl={previewUrl}
+                avatarFile={avatarFile}
+                imageError={imageError}
+                setImageError={setImageError}
               />
-              <input
-                type="text"
-                placeholder="Last Name"
-                value={profileData.last_name}
-                onChange={(e) => handleChange('last_name', e.target.value)}
-                className="p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-                required
-              />
-            </div>
-
-            {/* Age Field */}
-            <input
-              type="number"
-              placeholder="Age"
-              value={profileData.age === null ? '' : profileData.age}
-              onChange={(e) => handleChange('age', e.target.value === '' ? null : parseInt(e.target.value))}
-              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-              required
-              min="18"
-              max="100"
-            />
-
-            {/* Gender Fields */}
-            <select
-              value={profileData.gender}
-              onChange={(e) => handleChange('gender', e.target.value)}
-              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-              required
-            >
-              <option value="">Select Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-
-            <select
-              value={profileData.preferred_gender}
-              onChange={(e) => handleChange('preferred_gender', e.target.value)}
-              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-              required
-            >
-              <option value="">Preferred Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="both">Both</option>
-            </select>
-
-            {/* Bio Field */}
-            <textarea
-              placeholder="Bio"
-              value={profileData.bio}
-              onChange={(e) => handleChange('bio', e.target.value)}
-              className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#cc0000] transition-colors min-h-[100px]"
-              required
-            />
-
-            {/* Descriptor Section - Moved here */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Descriptors</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Select words that best describe your personality, interests, and lifestyle.
-              </p>
-              <DescriptorBubbles
-                selectedDescriptors={profileData.descriptors}
-                onSelectDescriptor={handleDescriptorSelect}
-                maxSelections={10}
-              />
-            </div>
-
-            {/* Dater Archetype */}
-            <select
-              value={profileData.dater_archetype}
-              onChange={(e) => handleChange('dater_archetype', e.target.value)}
-              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-              required
-            >
-              <option value="">Select Dater Archetype</option>
-              {ARCHETYPES.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-
-            {/* School Selection */}
-            <select
-              value={profileData.school}
-              onChange={(e) => handleChange('school', e.target.value)}
-              className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-              required
-            >
-              <option value="">Select School</option>
-              {SCHOOLS.map((school) => (
-                <option key={school} value={school}>
-                  {school}
-                </option>
-              ))}
-            </select>
-
-            <EmailUpdateSection 
-              onEmailChange={(email) => handleChange('email', email)} 
-            />
-
-            {/* Move referral section here, before the buttons */}
-            <div className="mb-8 p-6 bg-white rounded-lg shadow border border-gray-200">
-              <h2 className="text-xl font-semibold text-[#BA2525] mb-4">
-                Your Referral Link
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Tell your friends with your matchmaking referral link! When 10 people join and follow through with dates, earn exclusive perks like complimentary dates, discounts at your favorite spots, access to free merch, and more! ❤️
-              </p>
-              <p className="text-sm text-gray-500 mb-2">
-                Your referral code:
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={profileData.referral_code ? 
-                    `${window.location.origin}/auth/signup?ref=${profileData.referral_code}` :
-                    'Loading...'
-                  }
-                  readOnly
-                  className="flex-1 p-3 bg-gray-50 border rounded-lg font-mono text-sm"
-                />
-                <button
-                  onClick={() => {
-                    if (profileData.referral_code) {
-                      navigator.clipboard.writeText(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`);
-                      alert('Referral link copied to clipboard!');
-                    }
-                  }}
-                  disabled={!profileData.referral_code}
-                  className="p-3 bg-[#BA2525] text-white rounded-lg hover:bg-[#a02020] transition-colors disabled:opacity-50"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              <button
-                type="submit"
-                className="w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Saving...' : 'Save Profile'}
-              </button>
-
-              <button
-                onClick={handleResetPassword}
-                type="button"
-                className="w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                Reset Password
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isLoading}
-                className="w-full p-2.5 bg-white text-[#cc0000] border border-[#cc0000] rounded-full font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? 'Logging out...' : 'Logout'}
-              </button>
-            </div>
-          </form>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
-      <BottomNav />
-      
+
       {showCropper && selectedFile && (
         <ImageCropper
           imageFile={selectedFile}
@@ -891,6 +1685,14 @@ export default function EditProfilePage() {
           aspectRatio={1}
         />
       )}
-    </div>
+    </EditProfileWrapper>
+  );
+}
+
+export default function Page() {
+  return (
+    <Elements stripe={stripePromise}>
+      <EditProfilePage />
+    </Elements>
   );
 }

@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../supabase/client';
 import Link from 'next/link';
+import Image from 'next/image';
+import Header from '@/components/Header';
+import { Prompt } from 'next/font/google';
+
+const prompt = Prompt({
+  weight: ['400', '700'],
+  subsets: ['latin']
+});
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,77 +19,24 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Clear any existing sessions on component mount
-  useEffect(() => {
-    const clearSession = async () => {
-      try {
-        await supabase.auth.signOut();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          // Clear any stored tokens
-          localStorage.removeItem('supabase.auth.token');
-        }
-      } catch (err) {
-        console.error('Error clearing session:', err);
-      }
-    };
-    clearSession();
-  }, []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
-    // Validate email and password
-    if (!email.trim()) {
-      setError('Please enter your email address first');
-      setIsLoading(false);
-      return;
-    }
-
-    // Validate BC email domain
-    if (!email.toLowerCase().endsWith('.edu')) {
-      setError('Please use your .edu email address');
-      setIsLoading(false);
-      return;
-    }
-
-    if (!password.trim()) {
-      setError('Password is required');
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // First sign out to clear any existing sessions
-      await supabase.auth.signOut();
-
-      // Then attempt to sign in
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
         password: password.trim()
       });
 
-      if (signInError) {
-        if (signInError.message.includes('Invalid login')) {
-          setError('Invalid email or password');
-        } else {
-          setError(signInError.message);
-        }
-        return;
+      if (error) {
+        setError(error.message);
+      } else if (data?.user) {
+        router.push('/highlight-reel');
       }
-
-      if (data?.session) {
-        // Set the new session
-        await supabase.auth.setSession(data.session);
-        router.push('/dashboard');
-      } else {
-        setError('Failed to create session. Please try again.');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError('An unexpected error occurred. Please try again.');
+    } catch (error: any) {
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -92,14 +47,10 @@ export default function LoginPage() {
     const value = e.target.value.trim().toLowerCase();
     setEmail(value);
     if (value && !value.endsWith('.edu')) {
-      setError('Please use your .edu email address');
+      setError('Please enter a valid email address');
     } else {
       setError(null);
     }
-  };
-
-  const handleSignup = () => {
-    router.push('/auth/signup');
   };
 
   const handleForgotPassword = () => {
@@ -109,81 +60,136 @@ export default function LoginPage() {
     }
 
     if (!email.toLowerCase().endsWith('.edu')) {
-      setError('Please use your .edu email address');
+      setError('Please enter a valid email address');
       return;
     }
 
     window.location.replace(`/auth/reset-password?email=${encodeURIComponent(email)}`);
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          }
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to sign in with Google');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-white px-5 pt-12">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-[#cc0000] font-bold text-[2.75rem] leading-none mb-1">Ophelia</h1>
-          <p className="text-[0.85rem] text-gray-600 italic">Oh I Feel Ya™</p>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background image */}
+      <div className="absolute inset-0">
+        <Image
+          src="/images/background.jpg"
+          alt="Background"
+          fill
+          className="object-cover"
+          priority
+          quality={100}
+        />
+        {/* Red-tinted overlay for better theme matching */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#cc0000]/30 to-black/50 mix-blend-multiply" />
+      </div>
+
+      <div className="relative z-10">
+        <div className="pt-6 pb-2">
+          <Header variant="logo-only" />
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg">
-            {error}
+        <div className="container mx-auto px-4 flex items-start min-h-[calc(100vh-140px)] pt-8">
+          <div className="w-full max-w-[380px] mx-auto">
+            <div className="bg-black/30 backdrop-blur-md rounded-3xl p-6 shadow-2xl">
+              <div className="relative">
+                <h2 className="text-2xl font-bold text-center mb-6 text-white tracking-tight">Welcome Back</h2>
+                
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="Email"
+                      className="w-full p-3.5 bg-white/10 border border-white/20 rounded-full outline-none focus:border-[#cc0000] text-white placeholder-white/60 transition-all text-sm"
+                      required
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Password"
+                      className="w-full p-3.5 bg-white/10 border border-white/20 rounded-full outline-none focus:border-[#cc0000] text-white placeholder-white/60 transition-all text-sm"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full p-3.5 bg-[#cc0000] text-white rounded-full font-bold hover:bg-[#aa0000] transition-all transform hover:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 text-sm"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Processing...' : 'Log In'}
+                  </button>
+                </form>
+
+                <div className="text-center mt-4 space-y-2">
+                  <button
+                    onClick={handleForgotPassword}
+                    className="text-white/60 hover:text-white text-sm transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                  <p className="text-white/60 text-sm">
+                    Don't have an account?{' '}
+                    <Link href="/auth/signup" className="text-white hover:text-white/80 transition-colors">
+                      Sign Up
+                    </Link>
+                  </p>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/20"></div>
+                    </div>
+                    <div className="relative flex justify-center">
+                      <span className="px-4 text-white text-sm bg-transparent">OR CONTINUE WITH</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors"
+                  >
+                    <Image src="/google.svg" alt="Google" width={20} height={20} />
+                    <span>Sign in with Google</span>
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="mt-4 p-2.5 bg-red-500/10 text-red-400 text-xs text-center rounded-full border border-red-500/20">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <input
-            name="email"
-            autoComplete="email"
-            className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-            type='email'
-            placeholder='Email'
-            value={email}
-            onChange={handleEmailChange}
-            disabled={isLoading}
-          />
-
-          <input
-            name="password"
-            autoComplete="current-password"
-            className='w-full p-2.5 mb-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors'
-            type='password'
-            placeholder='Password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isLoading}
-          />
-
-          <button
-            type="submit"
-            className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-            disabled={isLoading || !email || !password}
-          >
-            {isLoading ? 'Loading...' : 'Log In'}
-          </button>
-
-          <button
-            className='w-full p-2.5 mt-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
-            onClick={handleSignup}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Sign Up with Email'}
-          </button>
-
-          <button
-            onClick={handleForgotPassword}
-            type="button"
-            className="w-full mt-4 text-[#cc0000] text-sm hover:underline"
-          >
-            Forgot Password?
-          </button>
-        </form>
-
-        <p className="mt-4 text-center">
-          Don't have an account?{' '}
-          <Link href="/auth/signup" className="text-[#cc0000] hover:underline">
-            Join us
-          </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

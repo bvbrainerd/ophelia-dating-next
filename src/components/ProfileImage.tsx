@@ -6,15 +6,19 @@ interface ProfileImageProps {
   user: {
     avatar_url: string | null;
     first_name?: string;
-  };
+  } | null;
   className?: string;
   priority?: boolean;
+  quality?: number;
+  sizes?: string;
 }
+
+const DEFAULT_AVATAR = '/images/default-avatar.png';
 
 const getAvatarUrl = async (avatarPath: string | null) => {
   if (!avatarPath) {
     console.log('No avatar path provided');
-    return '/images/default-avatar.png';
+    return DEFAULT_AVATAR;
   }
 
   try {
@@ -27,7 +31,7 @@ const getAvatarUrl = async (avatarPath: string | null) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
       console.error('Supabase URL not found in environment');
-      return '/images/default-avatar.png';
+      return DEFAULT_AVATAR;
     }
 
     // If it's already a Supabase URL, return it as is
@@ -46,7 +50,7 @@ const getAvatarUrl = async (avatarPath: string | null) => {
         .from('avatars')
         .getPublicUrl(filename);
 
-      return data?.publicUrl || '/images/default-avatar.png';
+      return data?.publicUrl || DEFAULT_AVATAR;
     }
 
     // For relative paths, clean up the filename and get a fresh URL
@@ -58,30 +62,34 @@ const getAvatarUrl = async (avatarPath: string | null) => {
       .from('avatars')
       .getPublicUrl(filename);
 
-    return data?.publicUrl || '/images/default-avatar.png';
+    return data?.publicUrl || DEFAULT_AVATAR;
   } catch (error) {
     console.error('Error getting avatar URL:', error);
-    return '/images/default-avatar.png';
+    return DEFAULT_AVATAR;
   }
 };
 
-export default function ProfileImage({ user, className = '', priority = true }: ProfileImageProps) {
+export default function ProfileImage({ 
+  user, 
+  className = '', 
+  priority = true,
+  quality = 95,
+  sizes = "(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+}: ProfileImageProps) {
   const [error, setError] = useState(false);
   const [processedUrl, setProcessedUrl] = useState<string>('/images/default-avatar.png');
+  const [hasLoadError, setHasLoadError] = useState(false);
   const DEFAULT_AVATAR = '/images/default-avatar.png';
 
   useEffect(() => {
     const processUrl = async () => {
-      if (!user.avatar_url || user.avatar_url.includes('default-avatar')) {
+      if (!user?.avatar_url || user.avatar_url.includes('default-avatar')) {
         setProcessedUrl(DEFAULT_AVATAR);
         return;
       }
 
       try {
         const url = await getAvatarUrl(user.avatar_url);
-        console.log('Processing avatar for user:', user.first_name);
-        console.log('Original URL:', user.avatar_url);
-        console.log('Generated URL:', url);
         setProcessedUrl(url);
       } catch (e) {
         console.error('Error processing avatar URL:', e);
@@ -92,30 +100,35 @@ export default function ProfileImage({ user, className = '', priority = true }: 
     if (!error) {
       processUrl();
     }
-  }, [user.avatar_url, error]);
+  }, [user?.avatar_url, error]);
 
-  const handleImageError = () => {
-    console.error('Image failed to load:', {
-      originalUrl: user.avatar_url,
-      processedUrl,
-      userName: user.first_name
-    });
-    setError(true);
-    setProcessedUrl(DEFAULT_AVATAR);
-  };
+  useEffect(() => {
+    if (hasLoadError) {
+      console.error('Image failed to load:', {
+        originalUrl: user?.avatar_url,
+        processedUrl,
+        userName: user?.first_name
+      });
+      setError(true);
+      setProcessedUrl(DEFAULT_AVATAR);
+      setHasLoadError(false);
+    }
+  }, [hasLoadError, user, processedUrl]);
 
   return (
     <div className={`relative w-full h-full ${className}`}>
       <Image
         src={processedUrl}
-        alt={`${user.first_name || 'Profile'}'s photo`}
+        alt={`${user?.first_name || 'Profile'}'s photo`}
         fill
         priority={priority}
         className="object-cover object-center"
-        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-        quality={95}
-        onError={handleImageError}
-        unoptimized={false}
+        sizes={sizes}
+        quality={quality}
+        onError={() => setHasLoadError(true)}
+        unoptimized={true}
+        loading={priority ? 'eager' : 'lazy'}
+        crossOrigin="anonymous"
       />
     </div>
   );

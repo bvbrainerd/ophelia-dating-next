@@ -22,6 +22,7 @@ const categories = [
   { id: 'sports', label: 'Sports' },
   { id: 'restaurants', label: 'Restaurants' },
   { id: 'bars', label: 'Bars' },
+  { id: 'cafes', label: 'Cafes' },
   { id: 'activities', label: 'Activities' },
   { id: 'events', label: 'Events' }
 ];
@@ -46,55 +47,61 @@ export default function VenueSelector({ venues, onVenueSelect, selectedVenue, er
       return [];
     }
 
-    if (selectedCategory === 'recommended') {
-      return venueList.filter(venue => 
-        venue.type.toLowerCase().includes('sports') || 
-        venue.type.toLowerCase().includes('restaurant') ||
-        venue.type.toLowerCase().includes('bar')
-      );
-    }
-
-    if (selectedCategory === 'sports') {
-      return category === 'sports' ? venueList : [];
-    }
-
-    if (selectedCategory === 'restaurants') {
-      return category === 'restaurants' ? venueList : [];
-    }
-
-    if (selectedCategory === 'bars') {
-      const barAndRestaurantVenues = [
-        'Capo',
-        'Barcelona Wine Bar',
-        'Bartaco',
-        'Lolita Back Bay',
-        'Cityside Tavern',
-        "Loretta's Last Call",
-        'Parla'
-      ];
-
-      if (category === 'bars') {
-        return venueList;
-      }
-      
-      if (category === 'restaurants') {
-        return venueList.filter(venue => barAndRestaurantVenues.includes(venue.name));
-      }
-
-      return [];
-    }
-
-    if (selectedCategory === 'activities') {
-      return category === 'activities' ? venueList : [];
-    }
-
-    if (selectedCategory !== 'all' && selectedCategory !== category) return [];
-
-    return venueList.filter(venue => 
+    // Filter by search query first
+    const searchFiltered = venueList.filter(venue => 
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       venue.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
       venue.location.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    if (selectedCategory === 'all') {
+      return searchFiltered;
+    }
+
+    if (selectedCategory === 'recommended') {
+      return searchFiltered.filter(venue => (venue.rating ?? 0) >= 4.6);
+    }
+
+    if (selectedCategory === 'cafes') {
+      return category === 'cafes' ? searchFiltered : [];
+    }
+
+    if (selectedCategory === 'sports') {
+      return category === 'sports' ? searchFiltered : [];
+    }
+
+    if (selectedCategory === 'restaurants') {
+      if (category === 'restaurants') {
+        return searchFiltered;
+      }
+      // Only include venues that explicitly have 'restaurant' in their type
+      return searchFiltered.filter(venue => {
+        const venueType = venue.type.toLowerCase();
+        return venueType.includes('restaurant') || 
+               venueType === 'restaurant/bar' || 
+               venueType === 'bar/restaurant';
+      });
+    }
+
+    if (selectedCategory === 'bars') {
+      if (category === 'bars') {
+        return searchFiltered;
+      }
+      // Include venues that are bars or restaurant/bars
+      return searchFiltered.filter(venue => {
+        const venueType = venue.type.toLowerCase();
+        return venueType === 'bar' || 
+               venueType.includes('bar') || 
+               venueType === 'restaurant/bar' || 
+               venueType === 'bar/restaurant';
+      });
+    }
+
+    if (selectedCategory === 'activities') {
+      return category === 'activities' ? searchFiltered : [];
+    }
+
+    return [];
   });
 
   const fetchEventsForVenue = async (venueId: string, requiresWebsiteRegistration?: boolean) => {

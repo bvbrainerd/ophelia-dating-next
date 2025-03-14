@@ -30,6 +30,29 @@ export default function LoginSignup() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      setError(err.message || 'Failed to log in with Google');
+      setIsLoading(false);
+    }
+  };
+
   const handleForgotPassword = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     
@@ -60,6 +83,24 @@ export default function LoginSignup() {
 
   return (
     <div className="max-w-md mx-auto p-5">
+      <button
+        onClick={handleGoogleLogin}
+        disabled={isLoading}
+        className="w-full p-2.5 mb-4 bg-white text-gray-700 rounded-full font-medium border border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+      >
+        <img src="/images/google.svg" alt="Google" className="w-5 h-5" />
+        {isLoading ? 'Processing...' : 'Continue with Google'}
+      </button>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+        </div>
+      </div>
+
       <form onSubmit={handleLogin} className="space-y-4">
         {error && (
           <div className="p-3 text-red-500 text-sm text-center">
@@ -71,7 +112,7 @@ export default function LoginSignup() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="BC Email"
+          placeholder="Email"
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
           required
         />
