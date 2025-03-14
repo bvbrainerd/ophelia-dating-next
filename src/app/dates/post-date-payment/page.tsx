@@ -94,7 +94,7 @@ export default function ReceiptCapture() {
 
         try {
             //Call actual API route to process image
-            const response = await fetch('/api/ocr', {
+            const response = await fetch('/api/process-receipt', {
                 method: "POST", //Indicate the type of HTTP request (We're sending the image file to the server). 
                 body: formData,
             });
