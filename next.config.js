@@ -9,9 +9,16 @@ const nextConfig = {
     config.resolve.fallback = { fs: false, path: false };
     return config;
   },
-  // Disable static exports
+  // Server configuration
+  experimental: {
+    serverActions: true,
+  },
+  // Build configuration
+  distDir: '.next',
+  // Disable static exports since we're using dynamic features
   trailingSlash: false,
-  distDir: '.next'
+  // Enable strict mode for better error catching
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;

@@ -8,4 +8,5 @@ README.md
 public/videos/Video.mov
 *.log
 coverage
-.DS_Store 
+.DS_Store
+export-detail.json 

@@ -8,6 +8,8 @@
         "build": "next build",
         "start": "next start",
         "lint": "next lint",
+        "clean": "rm -rf .next",
+        "prebuild": "npm run clean",
         "upload-venues": "ts-node scripts/upload-venues.ts"
     },
     "dependencies": {
