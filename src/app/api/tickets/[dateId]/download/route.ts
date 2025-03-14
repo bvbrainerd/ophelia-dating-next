@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { AppleWalletService } from '@/services/AppleWalletService';
 import { TicketVendorService } from '@/services/TicketVendorService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: { dateId: string } }
@@ -50,11 +52,10 @@ export async function GET(
       }
     });
 
-    // Return the pass file
     return new NextResponse(pass, {
       headers: {
         'Content-Type': 'application/vnd.apple.pkpass',
-        'Content-Disposition': `attachment; filename="ophelia-date-${date.id}.pkpass"`
+        'Content-Disposition': `attachment; filename="ophelia-date-${params.dateId}.pkpass"`
       }
     });
   } catch (error) {
