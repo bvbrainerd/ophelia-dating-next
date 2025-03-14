@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Space_Mono } from 'next/font/google'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import '@/styles/animations.css'
 
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
@@ -24,7 +25,7 @@ export default function RoleSelectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-5 relative overflow-hidden">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center relative">
       {/* CRT Screen Effect */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:100%_2px]" />
@@ -101,13 +102,6 @@ export default function RoleSelectPage() {
           </div>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes flicker {
-          0% { opacity: 0.85; }
-          100% { opacity: 0.95; }
-        }
-      `}</style>
     </div>
   )
 } 

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Prompt } from 'next/font/google';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import '@/styles/animations.css';
 
 const prompt = Prompt({
   weight: ['400', '700'],
@@ -237,49 +238,6 @@ export default function HighlightReelPage() {
           SKIP INTRO
         </motion.button>
       )}
-
-      <style jsx global>{`
-        @keyframes flicker {
-          0% { opacity: 0.85; }
-          100% { opacity: 0.95; }
-        }
-        
-        @keyframes noise1 {
-          0%, 100% { transform: translate(0, 0); opacity: 0.9; }
-          10% { transform: translate(-1%, -1%); opacity: 0.8; }
-          20% { transform: translate(1%, 1%); opacity: 0.9; }
-          30% { transform: translate(-1%, 1%); opacity: 0.7; }
-          40% { transform: translate(1%, -1%); opacity: 0.9; }
-          50% { transform: translate(-1%, -0.5%); opacity: 0.8; }
-          60% { transform: translate(1%, 0.5%); opacity: 0.9; }
-          70% { transform: translate(-0.5%, 1%); opacity: 0.7; }
-          80% { transform: translate(0.5%, -1%); opacity: 0.9; }
-          90% { transform: translate(-1%, 0.5%); opacity: 0.8; }
-        }
-
-        @keyframes noise2 {
-          0%, 100% { transform: translate(0, 0); opacity: 0.9; }
-          10% { transform: translate(1%, 1%); opacity: 0.8; }
-          20% { transform: translate(-1%, -1%); opacity: 0.9; }
-          30% { transform: translate(1%, -1%); opacity: 0.7; }
-          40% { transform: translate(-1%, 1%); opacity: 0.9; }
-          50% { transform: translate(1%, 0.5%); opacity: 0.8; }
-          60% { transform: translate(-1%, -0.5%); opacity: 0.9; }
-          70% { transform: translate(0.5%, -1%); opacity: 0.7; }
-          80% { transform: translate(-0.5%, 1%); opacity: 0.9; }
-          90% { transform: translate(1%, -0.5%); opacity: 0.8; }
-        }
-
-        .noise-animated {
-          position: absolute;
-          inset: -200%;
-          width: 400%;
-          height: 400%;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-          animation: noise 0.5s infinite;
-          pointer-events: none;
-        }
-      `}</style>
     </div>
   );
 } 
