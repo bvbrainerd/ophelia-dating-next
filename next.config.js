@@ -12,6 +12,11 @@ const nextConfig = {
   // Build configuration
   distDir: '.next',
   reactStrictMode: true,
+  // Disable static exports
+  trailingSlash: false,
+  // Ensure proper handling of dynamic routes
+  skipTrailingSlashRedirect: true,
+  skipMiddlewareUrlNormalize: true
 };
 
 module.exports = nextConfig;
