@@ -1,5 +1,43 @@
 import { Venue } from '@/types/venue';
 
+const defaultPaymentSystem = {
+  provider: 'stripe' as const,
+  merchantId: 'default',
+  apiEndpoint: 'https://api.stripe.com/v1',
+  publicKey: process.env.NEXT_PUBLIC_STRIPE_KEY
+};
+
+const defaultReservationSystem = {
+  provider: 'direct' as const,
+  apiEndpoint: 'https://api.ophelia.dating/reservations',
+  merchantId: 'default',
+  availabilityEndpoint: 'https://api.ophelia.dating/availability'
+};
+
+const defaultPricingModel = {
+  type: 'fixed' as const,
+  basePrice: 0,
+  percentageRate: 0,
+  minimumCharge: 0
+};
+
+const defaultRealTimeFeatures = {
+  supportsLiveBill: false,
+  supportsSplitPayments: false,
+  supportsTableStatus: false,
+  supportsOrderTracking: false
+};
+
+type BaseVenue = Omit<Venue, 'paymentSystem' | 'reservationSystem' | 'pricingModel' | 'realTimeFeatures'>;
+
+const createVenue = (venue: BaseVenue): Venue => ({
+  ...venue,
+  paymentSystem: defaultPaymentSystem,
+  reservationSystem: defaultReservationSystem,
+  pricingModel: defaultPricingModel,
+  realTimeFeatures: defaultRealTimeFeatures
+});
+
 export const VENUES: Record<string, Venue[]> = {
   sports: [
     { 
@@ -11,7 +49,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bclacrosse.jpg",
       stripeLink: "https://buy.stripe.com/fZeg1nbP2gwtaGI14l",
-      coordinates: [-71.1677, 42.3357],
+      coordinates: [-71.1677, 42.3357] as [number, number],
       distance: "4.2 mi"
     },
     { 
@@ -23,7 +61,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bruins.jpg",
       stripeLink: "https://buy.stripe.com/00gg1ng5i1BzeWY6os",
-      coordinates: [-71.0622, 42.3663],
+      coordinates: [-71.0622, 42.3663] as [number, number],
       distance: "5.8 mi"
     },
     {
@@ -35,7 +73,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bcbasketball.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1677, 42.3357],
+      coordinates: [-71.1677, 42.3357] as [number, number],
       distance: "4.2 mi"
     },
     {
@@ -47,10 +85,10 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/celtics.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0622, 42.3663],
+      coordinates: [-71.0622, 42.3663] as [number, number],
       distance: "5.8 mi"
     }
-  ],
+  ].map(createVenue),
   cafes: [
     {
       id: "south-end-buttery",
@@ -60,7 +98,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/southendbuttery (1).jpg",
-      coordinates: [-71.0724, 42.3434],
+      coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi",
       payAtVenue: true
     },
@@ -72,7 +110,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/blankstreetcoffee.jpg",
-      coordinates: [-71.0705, 42.3564],
+      coordinates: [-71.0705, 42.3564] as [number, number],
       distance: "0.8 mi",
       payAtVenue: true
     },
@@ -84,7 +122,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/phincoffeehouse.jpg",
-      coordinates: [-71.0534, 42.3557],
+      coordinates: [-71.0534, 42.3557] as [number, number],
       distance: "1.2 mi",
       payAtVenue: true
     },
@@ -96,7 +134,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/georgehowellcoffee.jpg",
-      coordinates: [-71.0589, 42.3575],
+      coordinates: [-71.0589, 42.3575] as [number, number],
       distance: "1.0 mi",
       payAtVenue: true
     },
@@ -108,7 +146,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/brickstreetbagels.jpg",
-      coordinates: [-71.0724, 42.3434],
+      coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi",
       payAtVenue: true
     },
@@ -120,7 +158,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/farmershorsecoffee.jpg",
-      coordinates: [-71.0849, 42.3419],
+      coordinates: [-71.0849, 42.3419] as [number, number],
       distance: "0.9 mi",
       payAtVenue: true
     },
@@ -132,7 +170,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.5,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/greystonecafe.jpg",
-      coordinates: [-71.0724, 42.3467],
+      coordinates: [-71.0724, 42.3467] as [number, number],
       distance: "1.1 mi",
       payAtVenue: true
     },
@@ -144,13 +182,13 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/mikeandpattys.jpg",
-      coordinates: [-71.0669, 42.3489],
+      coordinates: [-71.0669, 42.3489] as [number, number],
       distance: "1.3 mi",
       payAtVenue: true
     }
-  ],
+  ].map(createVenue),
   restaurants: [
-    {
+    createVenue({
       id: "buttermilk-and-bourbon",
       name: "Buttermilk & Bourbon",
       location: "160 Commonwealth Ave, Boston, MA 02116",
@@ -158,10 +196,10 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/buttermilkandbourbon.jpg",
-      coordinates: [-71.0754, 42.3520],
+      coordinates: [-71.0754, 42.3520] as [number, number],
       distance: "1.2 mi",
       payAtVenue: true
-    },
+    }),
     {
       id: "barcelona-wine-bar",
       name: "Barcelona Wine Bar",
@@ -171,7 +209,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/barcelona.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0761, 42.3457],
+      coordinates: [-71.0761, 42.3457] as [number, number],
       distance: "1.8 mi"
     },
     {
@@ -183,7 +221,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/capo.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3359],
+      coordinates: [-71.0472, 42.3359] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -195,7 +233,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/blueribbon.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0594, 42.3551],
+      coordinates: [-71.0594, 42.3551] as [number, number],
       distance: "1.9 mi"
     },
     {
@@ -207,7 +245,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lolitabackbay.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0816, 42.3486],
+      coordinates: [-71.0816, 42.3486] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -219,7 +257,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/joes.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0793, 42.3491],
+      coordinates: [-71.0793, 42.3491] as [number, number],
       distance: "1.2 mi"
     },
     {
@@ -231,7 +269,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lucca.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0567, 42.3647],
+      coordinates: [-71.0567, 42.3647] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -242,7 +280,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/kava.jpg",
-      coordinates: [-71.0724, 42.3434],
+      coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi",
       payAtVenue: true
     },
@@ -254,7 +292,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.8,
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/moo.jpg",
-      coordinates: [-71.0519, 42.3512],
+      coordinates: [-71.0519, 42.3512] as [number, number],
       distance: "2.0 mi",
       payAtVenue: true
     },
@@ -266,7 +304,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/carmelinas.jpg",
-      coordinates: [-71.0534, 42.3637],
+      coordinates: [-71.0534, 42.3637] as [number, number],
       distance: "1.8 mi",
       payAtVenue: true
     },
@@ -278,7 +316,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.6,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/trattoriailpanino.jpg",
-      coordinates: [-71.0534, 42.3637],
+      coordinates: [-71.0534, 42.3637] as [number, number],
       distance: "1.8 mi",
       payAtVenue: true
     },
@@ -290,7 +328,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/krasi.jpg",
-      coordinates: [-71.0824, 42.3489],
+      coordinates: [-71.0824, 42.3489] as [number, number],
       distance: "1.4 mi",
       payAtVenue: true
     },
@@ -302,7 +340,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/mida.jpg",
-      coordinates: [-71.0994, 42.3434],
+      coordinates: [-71.0994, 42.3434] as [number, number],
       distance: "2.2 mi",
       payAtVenue: true
     },
@@ -314,7 +352,7 @@ export const VENUES: Record<string, Venue[]> = {
       rating: 4.7,
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/coquette.jpg",
-      coordinates: [-71.0434, 42.3489],
+      coordinates: [-71.0434, 42.3489] as [number, number],
       distance: "2.5 mi",
       payAtVenue: true
     },
@@ -327,7 +365,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bostonburger.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0947, 42.3474],
+      coordinates: [-71.0947, 42.3474] as [number, number],
       distance: "1.9 mi"
     },
     {
@@ -339,7 +377,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/branchline.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1639, 42.3643],
+      coordinates: [-71.1639, 42.3643] as [number, number],
       distance: "4.5 mi"
     },
     {
@@ -351,7 +389,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/capitalgrille.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0827, 42.3482],
+      coordinates: [-71.0827, 42.3482] as [number, number],
       distance: "1.6 mi"
     },
     {
@@ -363,7 +401,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/grill23.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0734, 42.3489],
+      coordinates: [-71.0734, 42.3489] as [number, number],
       distance: "1.2 mi"
     },
     {
@@ -375,7 +413,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/serafina.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0824, 42.3489],
+      coordinates: [-71.0824, 42.3489] as [number, number],
       distance: "1.4 mi"
     },
     {
@@ -387,7 +425,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/fujiatinkblock.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0724, 42.3434],
+      coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -399,7 +437,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/loco.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3359],
+      coordinates: [-71.0472, 42.3359] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -411,7 +449,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lola42.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3512],
+      coordinates: [-71.0472, 42.3512] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -423,7 +461,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/parla.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0534, 42.3637],
+      coordinates: [-71.0534, 42.3637] as [number, number],
       distance: "1.8 mi"
     },
     {
@@ -435,7 +473,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/levain.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0793, 42.3491],
+      coordinates: [-71.0793, 42.3491] as [number, number],
       distance: "1.2 mi"
     },
     {
@@ -447,7 +485,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lincoln.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3359],
+      coordinates: [-71.0472, 42.3359] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -459,7 +497,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/whitemountain.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1677, 42.3357],
+      coordinates: [-71.1677, 42.3357] as [number, number],
       distance: "4.2 mi"
     },
     {
@@ -471,7 +509,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/tatte.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1923, 42.3278],
+      coordinates: [-71.1923, 42.3278] as [number, number],
       distance: "5.2 mi"
     },
     {
@@ -483,7 +521,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/sweetgreen.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0827, 42.3482],
+      coordinates: [-71.0827, 42.3482] as [number, number],
       distance: "1.6 mi"
     },
     {
@@ -495,7 +533,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/jplicks.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0705, 42.3564],
+      coordinates: [-71.0705, 42.3564] as [number, number],
       distance: "0.8 mi"
     },
     {
@@ -507,12 +545,12 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/kured.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0712, 42.3589],
+      coordinates: [-71.0712, 42.3589] as [number, number],
       distance: "0.8 mi"
     }
-  ],
+  ].map(createVenue),
   bars: [
-    {
+    createVenue({
       id: "cityside-tavern",
       name: "Cityside Tavern",
       location: "1960 Beacon St, Brighton, MA 02135",
@@ -521,9 +559,9 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/cityside.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1502, 42.3359],
+      coordinates: [-71.1502, 42.3359] as [number, number],
       distance: "4.2 mi"
-    },
+    }),
     {
       id: "lorettas-last-call",
       name: "Loretta's Last Call",
@@ -533,7 +571,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lorettas.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0950, 42.3467],
+      coordinates: [-71.0950, 42.3467] as [number, number],
       distance: "2.8 mi"
     },
     {
@@ -545,7 +583,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bellinhand.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0576, 42.3614],
+      coordinates: [-71.0576, 42.3614] as [number, number],
       distance: "1.8 mi"
     },
     {
@@ -557,7 +595,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/bartaco.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3512],
+      coordinates: [-71.0472, 42.3512] as [number, number],
       distance: "2.2 mi"
     },
     {
@@ -569,7 +607,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/citytap.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3512],
+      coordinates: [-71.0472, 42.3512] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -581,7 +619,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/clerys.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0752, 42.3467],
+      coordinates: [-71.0752, 42.3467] as [number, number],
       distance: "1.2 mi"
     },
     {
@@ -593,7 +631,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/caskflagon.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0950, 42.3467],
+      coordinates: [-71.0950, 42.3467] as [number, number],
       distance: "2.8 mi"
     },
     {
@@ -605,7 +643,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/theharp.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0614, 42.3651],
+      coordinates: [-71.0614, 42.3651] as [number, number],
       distance: "1.9 mi"
     },
     {
@@ -617,7 +655,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/westendjohnnies.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0614, 42.3651],
+      coordinates: [-71.0614, 42.3651] as [number, number],
       distance: "1.9 mi"
     },
     {
@@ -629,7 +667,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/scholars.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0589, 42.3574],
+      coordinates: [-71.0589, 42.3574] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -641,7 +679,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/theburren.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1223, 42.3947],
+      coordinates: [-71.1223, 42.3947] as [number, number],
       distance: "3.5 mi"
     },
     {
@@ -653,7 +691,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/stats.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3359],
+      coordinates: [-71.0472, 42.3359] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -665,7 +703,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/luckyslounge.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0497, 42.3512],
+      coordinates: [-71.0497, 42.3512] as [number, number],
       distance: "2.2 mi"
     },
     {
@@ -677,7 +715,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/lansdowne.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0947, 42.3474],
+      coordinates: [-71.0947, 42.3474] as [number, number],
       distance: "2.8 mi"
     },
     {
@@ -689,7 +727,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/hunters.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3359],
+      coordinates: [-71.0472, 42.3359] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -701,12 +739,12 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/greateastbar.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0519, 42.3512],
+      coordinates: [-71.0519, 42.3512] as [number, number],
       distance: "2.0 mi"
     }
-  ],
+  ].map(createVenue),
   activities: [
-    { 
+    createVenue({ 
       id: "museum-of-fine-arts",
       name: "Museum of Fine Arts",
       location: "Boston, MA",
@@ -715,9 +753,9 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/museum.jpg",
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
-      coordinates: [-71.0942, 42.3394],
+      coordinates: [-71.0942, 42.3394] as [number, number],
       distance: "3.6 mi"
-    },
+    }),
     {
       id: "museum-of-ice-cream",
       name: "Museum of Ice Cream",
@@ -727,7 +765,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/museumoficecream.jpg",
       stripeLink: "https://buy.stripe.com/dR602pg5idkhaGI4gG",
-      coordinates: [-71.0436, 42.3512],
+      coordinates: [-71.0436, 42.3512] as [number, number],
       distance: "2.8 mi",
       restrictions: "Only available Friday-Sunday 10-11:30 AM, must book a week in advance"
     },
@@ -740,7 +778,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/wndrmuseum.jpg",
       stripeLink: "https://buy.stripe.com/5kA02p2es9419CEeVl",
-      coordinates: [-71.0589, 42.3574],
+      coordinates: [-71.0589, 42.3574] as [number, number],
       distance: "1.9 mi",
       restrictions: "Only available Friday-Sunday 10-11:30 AM, must book a week in advance"
     },
@@ -753,7 +791,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/madelines.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0734, 42.3476],
+      coordinates: [-71.0734, 42.3476] as [number, number],
       distance: "1.2 mi",
       restrictions: "Closed on Mondays"
     },
@@ -766,7 +804,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/helicopter.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0217, 42.3656],
+      coordinates: [-71.0217, 42.3656] as [number, number],
       distance: "2.8 mi"
     },
     {
@@ -778,7 +816,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/ducktour.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0737, 42.3587],
+      coordinates: [-71.0737, 42.3587] as [number, number],
       distance: "1.0 mi"
     },
     {
@@ -790,7 +828,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/f1arcade.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0595, 42.3501],
+      coordinates: [-71.0595, 42.3501] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -802,7 +840,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/solidcore.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0497, 42.3512],
+      coordinates: [-71.0497, 42.3512] as [number, number],
       distance: "2.2 mi"
     },
     {
@@ -814,7 +852,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/corepower.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0704, 42.3521],
+      coordinates: [-71.0704, 42.3521] as [number, number],
       distance: "1.1 mi"
     },
     {
@@ -826,7 +864,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/puttshack.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0472, 42.3512],
+      coordinates: [-71.0472, 42.3512] as [number, number],
       distance: "2.5 mi"
     },
     {
@@ -838,7 +876,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/escaperoom.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0612, 42.3548],
+      coordinates: [-71.0612, 42.3548] as [number, number],
       distance: "1.3 mi"
     },
     {
@@ -850,7 +888,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/viewboston.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0817, 42.3486],
+      coordinates: [-71.0817, 42.3486] as [number, number],
       distance: "1.5 mi"
     },
     {
@@ -862,7 +900,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/clayroom.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.1317, 42.3396],
+      coordinates: [-71.1317, 42.3396] as [number, number],
       distance: "3.5 mi"
     },
     {
@@ -874,7 +912,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/barrys.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0824, 42.3489],
+      coordinates: [-71.0824, 42.3489] as [number, number],
       distance: "1.4 mi"
     },
     {
@@ -886,7 +924,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/houseofblues.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0947, 42.3474],
+      coordinates: [-71.0947, 42.3474] as [number, number],
       distance: "2.8 mi"
     },
     {
@@ -898,7 +936,7 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/faneuilhall.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0556, 42.3601],
+      coordinates: [-71.0556, 42.3601] as [number, number],
       distance: "1.7 mi"
     },
     {
@@ -910,10 +948,10 @@ export const VENUES: Record<string, Venue[]> = {
       price: "$",
       imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/commons.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
-      coordinates: [-71.0670, 42.3554],
+      coordinates: [-71.0670, 42.3554] as [number, number],
       distance: "1.0 mi"
     }
-  ]
+  ].map(createVenue)
 };
 
 interface VenueMap {
