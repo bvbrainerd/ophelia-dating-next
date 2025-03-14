@@ -12,9 +12,18 @@ const nextConfig = {
   // Build configuration
   distDir: '.next',
   reactStrictMode: true,
-  // Explicitly disable static exports
+  // Server configuration
   experimental: {
-    serverActions: true
+    serverComponentsExternalPackages: ['@supabase/supabase-js']
+  },
+  // Disable static generation
+  generateStaticParams: false,
+  // API configuration
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb',
+    },
+    externalResolver: true
   },
   // Disable static exports
   trailingSlash: false,
