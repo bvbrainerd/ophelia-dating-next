@@ -9,27 +9,9 @@ const nextConfig = {
     config.resolve.fallback = { fs: false, path: false };
     return config;
   },
-  // Build configuration
-  distDir: '.next',
-  reactStrictMode: true,
-  // Server configuration
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js']
-  },
-  // Disable static generation
-  generateStaticParams: false,
-  // API configuration
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-    externalResolver: true
-  },
-  // Disable static exports
-  trailingSlash: false,
-  // Ensure proper handling of dynamic routes
-  skipTrailingSlashRedirect: true,
-  skipMiddlewareUrlNormalize: true
+  }
 };
 
 module.exports = nextConfig;
