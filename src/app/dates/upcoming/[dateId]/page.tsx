@@ -13,7 +13,7 @@ export default function DateRequestDetails() {
     useEffect(() => {
         const fetchDateRequestDetails = async () => {
             try {
-                const response = await fetch(`/api/date-requests/${params.id}`);
+                const response = await fetch(`/api/date-requests/${params.dateId}`);
                 if (!response.ok) throw new Error('Failed to fetch date request');
 
                 const { data } = await response.json();
@@ -25,7 +25,7 @@ export default function DateRequestDetails() {
             }
         };
         fetchDateRequestDetails();
-    }, [params.id]);
+    }, [params.dateId]);
 
     if (isLoading) {
         return (
@@ -44,7 +44,7 @@ export default function DateRequestDetails() {
                 <button onClick={() => router.push(`/dates/upcoming/${params.dateId}/messaging`)}>
                     Go to Messaging
                 </button>
-                <button onClick={() => router.push(`/upcoming-dates/${params.id}/status`)}>
+                <button onClick={() => router.push(`/dates/upcoming/${params.dateId}/status`)}>
                     Date Status
                 </button>
             </div>

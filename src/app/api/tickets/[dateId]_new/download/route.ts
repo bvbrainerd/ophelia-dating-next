@@ -6,7 +6,7 @@ import { TicketVendorService } from '@/services/TicketVendorService';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { dateId: string } }
 ) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
@@ -27,7 +27,7 @@ export async function GET(
           avatar_url
         )
       `)
-      .eq('id', params.id)
+      .eq('id', params.dateId)
       .single();
 
     if (!date) {
@@ -36,12 +36,12 @@ export async function GET(
 
     // Get ticket details from vendor if available
     const ticketService = TicketVendorService.getInstance();
-    const ticketDetails = await ticketService.getTicketDetailsForDate(params.id);
+    const ticketDetails = await ticketService.getTicketDetailsForDate(params.dateId);
 
     // Generate Apple Wallet pass
     const walletService = AppleWalletService.getInstance();
     const pass = await walletService.generatePass({
-      id: params.id,
+      id: params.dateId,
       venue: ticketDetails?.venueName || date.venues.name,
       proposedTime: ticketDetails?.eventDate || date.proposed_time,
       otherPerson: {
