@@ -1,21 +1,4 @@
 {
     "version": 2,
-    "buildCommand": "npm run build",
-    "framework": "nextjs",
-    "regions": ["iad1"],
-    "builds": [
-        {
-            "src": "next.config.js",
-            "use": "@vercel/next"
-        }
-    ],
-    "functions": {
-        "app/api/**/*": {
-            "memory": 1024,
-            "maxDuration": 10
-        }
-    },
-    "env": {
-        "NEXT_RUNTIME": "nodejs"
-    }
+    "framework": "nextjs"
 }
