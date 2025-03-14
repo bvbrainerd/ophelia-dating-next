@@ -12,6 +12,10 @@ const nextConfig = {
   // Build configuration
   distDir: '.next',
   reactStrictMode: true,
+  // Explicitly disable static exports
+  experimental: {
+    serverActions: true
+  },
   // Disable static exports
   trailingSlash: false,
   // Ensure proper handling of dynamic routes
