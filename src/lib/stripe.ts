@@ -1,31 +1,28 @@
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 
-if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-  throw new Error('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
-}
+let stripePromise: Promise<Stripe | null>;
 
-// Initialize Stripe with better error handling
-export const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  .then(stripe => {
-    if (!stripe) {
-      console.error('Failed to initialize Stripe - stripe object is null');
-      throw new Error('Failed to initialize Stripe');
+const getStripe = () => {
+  if (!stripePromise) {
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!key) {
+      console.error('Stripe publishable key is missing');
+      return Promise.resolve(null);
     }
-    console.log('Stripe initialized successfully');
-    return stripe;
-  })
-  .catch(error => {
-    console.error('Stripe initialization error:', error);
-    throw error;
-  });
+    stripePromise = loadStripe(key);
+  }
+  return stripePromise;
+};
 
 // Export a function to check if Stripe is ready
 export const isStripeReady = async () => {
   try {
-    const stripe = await stripePromise;
+    const stripe = await getStripe();
     return !!stripe;
   } catch (error) {
     console.error('Stripe ready check failed:', error);
     return false;
   }
-}; 
+};
+
+export { getStripe as stripePromise }; 

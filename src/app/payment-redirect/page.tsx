@@ -2,15 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadStripe } from '@stripe/stripe-js';
-import {
-  Elements,
-  useStripe,
-} from '@stripe/react-stripe-js';
-import { isStripeReady } from '@/lib/stripe';
-
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+import { Elements, useStripe } from '@stripe/react-stripe-js';
+import { Stripe } from '@stripe/stripe-js';
+import { stripePromise } from '@/lib/stripe';
 
 function SetupConfirmation() {
   const stripe = useStripe();
@@ -21,20 +15,14 @@ function SetupConfirmation() {
   useEffect(() => {
     const handleRedirect = async () => {
       try {
-        // Check if Stripe is properly initialized
         if (!stripe) {
           console.log('Waiting for Stripe to initialize...');
-          const ready = await isStripeReady();
-          if (!ready) {
-            throw new Error('Failed to initialize Stripe');
-          }
-          return;
+          return; // Will retry on next effect run when stripe is available
         }
 
         setIsProcessing(true);
         setError(null);
 
-        // Get the setup intent client secret from the URL
         const clientSecret = new URLSearchParams(window.location.search).get(
           'setup_intent_client_secret'
         );
@@ -43,21 +31,13 @@ function SetupConfirmation() {
           throw new Error('No setup intent client secret found');
         }
 
-        // Retrieve the setup intent status
         const { setupIntent, error: setupError } = await stripe.retrieveSetupIntent(clientSecret);
         
-        console.log('Setup intent status:', setupIntent?.status);
-
         if (setupError) {
-          if (setupError.type === 'validation_error') {
-            throw new Error('Please select a valid payment method and try again.');
-          } else {
-            throw new Error(setupError.message || 'Failed to confirm setup');
-          }
+          throw new Error(setupError.message || 'Failed to confirm setup');
         }
 
         if (setupIntent?.status === 'succeeded') {
-          console.log('Payment method setup successful');
           router.push('/dashboard/editprofile');
         } else {
           throw new Error(`Unexpected setup intent status: ${setupIntent?.status}`);
@@ -99,8 +79,50 @@ function SetupConfirmation() {
 }
 
 export default function PaymentRedirect() {
+  const [isStripeLoading, setIsStripeLoading] = useState(true);
+  const [stripeLoadError, setStripeLoadError] = useState<string | null>(null);
+  const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
+
+  useEffect(() => {
+    const initStripe = async () => {
+      try {
+        const stripe = await stripePromise();
+        if (!stripe) {
+          setStripeLoadError('Failed to initialize payment system');
+        }
+        setStripeInstance(stripe);
+      } catch (error) {
+        console.error('Stripe initialization error:', error);
+        setStripeLoadError('Failed to initialize payment system');
+      } finally {
+        setIsStripeLoading(false);
+      }
+    };
+
+    initStripe();
+  }, []);
+
+  if (stripeLoadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-50 p-6 rounded-lg text-red-700 max-w-md text-center">
+          <p className="font-medium mb-2">Payment System Error</p>
+          <p className="text-sm">{stripeLoadError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isStripeLoading || !stripeInstance) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
+      </div>
+    );
+  }
+
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise()}>
       <SetupConfirmation />
     </Elements>
   );
