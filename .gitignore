@@ -27,3 +27,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Large files
+public/videos/Video.mov
