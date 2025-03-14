@@ -1,6 +1,13 @@
 {
     "version": 2,
     "framework": "nextjs",
-    "buildCommand": "next build",
-    "outputDirectory": ".next"
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next",
+    "regions": ["iad1"],
+    "builds": [
+        {
+            "src": "next.config.js",
+            "use": "@vercel/next"
+        }
+    ]
 }
