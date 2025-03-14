@@ -10,15 +10,7 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js']
-  },
-  // Configure for standalone server
-  output: 'standalone',
-  // Enable server components
-  serverComponents: true,
-  // Disable static optimization
-  staticOptimization: false,
-  // Configure trailing slash
-  trailingSlash: false
+  }
 };
 
 module.exports = nextConfig;
