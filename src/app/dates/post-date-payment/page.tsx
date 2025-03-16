@@ -76,6 +76,13 @@ export default function ReceiptCapture() {
     // Detects if a change has been made to the file input (which is of type HTMLInputElement). Triggered when the user selects a file from their device.
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
+        // Make sure the file is an image
+        if (!file || !file.type.startsWith('image/')) {
+            setError('Invalid file type. Please upload an image file.');
+            return;
+        }
+
         if (file) {
             setImage(file);
             setPreview(URL.createObjectURL(file));
@@ -94,7 +101,7 @@ export default function ReceiptCapture() {
 
         try {
             //Call actual API route to process image
-            const response = await fetch('/api/process-receipt', {
+            const response = await fetch('/api/process-receipt/test', {
                 method: "POST", //Indicate the type of HTTP request (We're sending the image file to the server). 
                 body: formData,
             });
@@ -106,9 +113,9 @@ export default function ReceiptCapture() {
             console.log("OCR Response:", data);
 
             // Redirect to confirm page with extracted total
-            router.push(`/dates/post-payment/confirm?total=${data.total}`);
+            router.push(`/dates/post-date-payment/confirm?total=${data.receipt.total}`);
         } catch (err) {
-            console.error('OCR Processing Error:', error);
+            console.error('OCR Processing Error:', err);
             setError('Failed to process receipt. Please try again.');
         } finally {
             setIsProcessing(false);
