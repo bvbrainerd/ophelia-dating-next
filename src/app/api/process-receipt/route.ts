@@ -18,8 +18,6 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64image = buffer.toString("base64");
 
-    console.log('base64image:', base64image);
-
     // create client instance and run analysis
     const client = DocumentIntelligence(endpoint, {key:key});
     const initialResponse = await client
