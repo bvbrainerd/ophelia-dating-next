@@ -5,6 +5,7 @@ export interface Receipt {
   total: number;
   tax: number;
   tip?: number;
+  opheliaFee: number;
   currency: string;
   items: ReceiptItem[];
 }

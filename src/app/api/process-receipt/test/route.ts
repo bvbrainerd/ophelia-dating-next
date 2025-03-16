@@ -15,6 +15,7 @@ export async function GET(request: Request) {
       date: "2025-03-10",
       subtotal: 102.73,
       total: 109.15,
+      opheliaFee: 15.41,
       tax: 6.42,
       currency: "USD",
       items: [
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
       date: "2025-03-10",
       subtotal: 102.73,
       total: 109.15,
+      opheliaFee: 15.41,
       tax: 6.42,
       currency: "USD",
       items: [

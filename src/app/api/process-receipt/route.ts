@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         total: result.fields.Total?.valueCurrency?.amount || 0,
         tax: result.fields.Tax?.valueCurrency?.amount || 0,
         tip: result.fields.Tip?.valueCurrency?.amount,
+        opheliaFee: result.fields.Subtotal?.valueCurrency?.amount * 0.15 || 0,
         currency: result.fields.Total?.valueCurrency?.currencyCode || "USD",
         items: (result.fields.Items?.valueArray || []).map(( item: any ) => {
 
