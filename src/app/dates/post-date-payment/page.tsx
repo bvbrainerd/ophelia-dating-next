@@ -9,6 +9,8 @@ export default function ReceiptCapture() {
     const [preview, setPreview] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [manual, setManual] = useState<boolean>(false);
+    const [manualAmount, setManualAmount] = useState<number | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement | null>(null); //stores a reference to the file input field (starts out as null)
     const videoRef = useRef<HTMLVideoElement | null>(null); //stores a reference to the video element, for the camera stream.
@@ -125,59 +127,104 @@ export default function ReceiptCapture() {
         }
     };
 
+    const handleSetManual = () => {
+        setManual(true);
+    };
+        
+    const submitManualTotal = () => {
+        if (!manualAmount) return;
+
+        setIsProcessing(true);
+        setError(null);
+
+        router.push(`/dates/post-date-payment/confirm?amount=${manualAmount}`);
+        setIsProcessing(false);
+    };
+
     return (
         <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-lg">
-            <h2 className="text-center text-[#cc0000] font-bold text-2xl mb-4">Upload or Scan Your Receipt</h2>
+            {!manual ? (
+                <>
+                <h2 className="text-center text-[#cc0000] font-bold text-2xl mb-4">Upload or Scan Your Receipt</h2>
 
-            {/* Video Stream for Camera Capture */}
-            <video ref={videoRef} autoPlay playsInline className="w-full mb-4 rounded-md shadow-sm" />
-            <canvas ref={canvasRef} className="hidden" />
+                <video ref={videoRef} autoPlay playsInline className="w-full mb-4 rounded-md shadow-sm" />
+                <canvas ref={canvasRef} className="hidden" />
 
-            {/* Start Camera & Capture Image */}
-            <div className="flex gap-2 mb-4">
+                {/* Camera start and capture */}
+                <div className="flex gap-2 mb-4">
+                    <button
+                        onClick={startCamera}
+                        className="w-1/2 py-3 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition"
+                    >
+                        Start Camera
+                    </button>
+                    <button
+                        onClick={captureImage}
+                        className="w-1/2 py-3 bg-green-500 text-white rounded-md font-medium hover:bg-green-600 transition"
+                    >
+                        Capture Image
+                    </button>
+                </div>
+
+                {/* File input */}
+                <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="mb-4" />
+
+                {/* Image preview */}
+                {preview && 
+                    <Image 
+                        src={preview} 
+                        alt="Receipt Preview" 
+                        width={300} 
+                        height={400} 
+                        layout="intrinsic" // allows automatic resizing
+                        objectFit="contain" // Prevents image distortion
+                        className="w-full h-auto rounded-md shadow-md mb-4" 
+                    />
+                }
+
+
+                {/* Error message */}
+                {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+
+                {/* Submit */}
                 <button
-                    onClick={startCamera}
-                    className="w-1/2 py-3 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition"
+                onClick={submitImage}
+                disabled={isProcessing}
+                className={`w-full py-3 bg-[#cc0000] text-white rounded-md font-medium transition
+                    ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#aa0000]'}`}
                 >
-                    Start Camera
+                {isProcessing ? 'Processing...' : 'Submit Receipt'}
                 </button>
-                <button
-                    onClick={captureImage}
-                    className="w-1/2 py-3 bg-green-500 text-white rounded-md font-medium hover:bg-green-600 transition"
-                >
-                    Capture Image
-                </button>
-            </div>
-
-            {/* File Upload Option */}
-            <input type="file" ref={fileInputRef} accept="image/*" onChange={handleFileChange} className="mb-4" />
-
-            {/* Preview Image */}
-            {preview && 
-                <Image 
-                    src={preview} 
-                    alt="Receipt Preview" 
-                    width={300} 
-                    height={400} 
-                    layout="intrinsic" // allows automatic resizing
-                    objectFit="contain" // Prevents image distortion
-                    className="w-full h-auto rounded-md shadow-md mb-4" 
-                />
-            }
-
-
-            {/* Error Message */}
-            {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-
-            {/* Submit for OCR */}
+                </>
+            ) : (
+                <>
+                    <h2 className="text-center text-[#cc0000] font-bold text-2xl mb-4">Enter Total Amount</h2>
+                    <label className="block mb-2 font-semibold">Enter the total amount from your receipt:</label>
+                    <input
+                        type="number"
+                        placeholder="Total Amount"
+                        className="w-full py-3 px-4 border border-gray-300 rounded-md mb-4"
+                        value={manualAmount ?? ''}
+                        onChange={(e) => setManualAmount(parseFloat(e.target.value))}
+                    />
+                    <button
+                        onClick={submitManualTotal}
+                        disabled={isProcessing || !manualAmount}
+                        className={`w-full py-3 bg-[#cc0000] text-white rounded-md font-medium transition
+                            ${isProcessing || !manualAmount ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#aa0000]'}`}
+                    >
+                        {isProcessing ? 'Processing...' : 'Submit Total'}
+                    </button>
+                </>
+            )}
+            { !manual && (
             <button
-            onClick={submitImage}
-            disabled={isProcessing}
-            className={`w-full py-3 bg-[#cc0000] text-white rounded-md font-medium transition
-                ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#aa0000]'}`}
+            onClick={handleSetManual}
+            className={`w-full py-3 bg-[#cc0000] text-white mt-8 rounded-md font-medium transition`}
             >
-            {isProcessing ? 'Processing...' : 'Submit Receipt'}
+            No Receipt? Enter Manually
             </button>
+            )}
 
         </div>
     );
