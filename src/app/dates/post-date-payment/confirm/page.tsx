@@ -4,18 +4,18 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
+import Stripe from "stripe";
+import { Receipt, ReceiptItem } from '@/types/receipt';
 
 
 // Load Stripe with your public key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function ConfirmBill() {
-    const searchParams = useSearchParams();
     const router = useRouter();
 
-    const initialTotal = parseFloat(searchParams.get('total') || '0');
     const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const [total, setTotal] = useState(initialTotal);
+    const [receipt, setReceipt] = useState<Receipt | null>(JSON.parse(localStorage.getItem('receipt') || 'null'));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export default function ConfirmBill() {
                 const response = await fetch('/api/create-payment-intent', {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json'},
-                    body: JSON.stringify({ amount: initialTotal}),
+                    body: JSON.stringify({ amount: receipt?.opheliaFee}),
                 });
 
                 if (!response.ok) {
@@ -42,18 +42,38 @@ export default function ConfirmBill() {
         };
 
         fetchClientSecret();
-    }, [initialTotal]); // useEffect runs anytime initialTotal changes
+
+    }, [receipt]); // useEffect runs anytime initialTotal changes
         
     return (
         <div className="p-4">
             <h2 className="text-xl font-bold mb-4">Confirm Your Bill</h2>
-            <label className="block mb-2">Total Amount:</label>
-            <input
-                type="number"
-                value={initialTotal}
-                disabled
-                className="p-2 border rounded-md w-full mb-4"
-            />
+            <label className="block mb-2">{receipt?.merchant}</label>
+            {receipt?.items.map((item: ReceiptItem, index) => (
+                <div key={index} className="flex justify-between px-2">
+                    <p>{item.quantity} {item.description}</p>
+                    <p>${item.totalPrice}</p>
+                </div>
+            ))}
+            <div className='flex justify-between px-2'>
+                <p>Subtotal:</p>
+                <p>${receipt?.subtotal}</p>
+            </div>
+            <div className='flex justify-between px-2'>
+                <p>Tax:</p>
+                <p >${receipt?.tax}</p>
+            </div>
+            <div className='flex justify-between px-2 mb-6'>
+                <p>Total:</p>
+                <p>${receipt?.total}</p>
+            </div>
+
+            <label className="block mb-2 font-semibold">Total due:</label>
+
+            <div className='flex justify-between p-2 mb-4 font-semibold'>
+                <p>Ophelia Date Fee:</p>
+                <p>${receipt?.opheliaFee}</p>
+            </div>
 
             {error && <p className="text-red-500 mb-4">{error}</p>}
 
@@ -70,6 +90,8 @@ export default function ConfirmBill() {
 // StripePaymentForm component
 function StripePaymentForm() {
     const stripe = useStripe();
+
+
     const elements = useElements();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -94,10 +116,11 @@ function StripePaymentForm() {
                 setError(error.message || "Payment failed");
             } else if (paymentIntent?.status === "succeeded") {
                 // Extract the PaymentIntent ID (sessionId)
-                const sessionId = paymentIntent.id;
+                const paymentId = paymentIntent.id;
+                
 
                 // Redirect to the success page with the sessionId
-                router.push(`/dates/post-date-payment/success?sessionId=${sessionId}`);
+                router.push(`/dates/post-date-payment/success?paymentId=${paymentId}&amountPaid=${paymentIntent.amount}`);
             }
         } catch (err) {
             setError(`Error processing payment, please try again`);
@@ -114,7 +137,7 @@ function StripePaymentForm() {
             <button
                 onClick={handlePayment}
                 disabled={loading}
-                className="p-2 bg-green-500 text-white rounded-md mt-4"
+                className="p-2 bg-[#cc0000] text-white rounded-md mt-4"
             >
                 {loading ? "Processing..." : "Pay Now"}
             </button>
