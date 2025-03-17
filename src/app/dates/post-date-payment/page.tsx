@@ -112,8 +112,11 @@ export default function ReceiptCapture() {
             const data = await response.json();
             console.log("OCR Response:", data);
 
-            // Redirect to confirm page with extracted total
-            router.push(`/dates/post-date-payment/confirm?total=${data.receipt.total}`);
+            // store receipt in localStorage
+            localStorage.setItem('receipt', JSON.stringify(data.receipt));
+
+            // Redirect to confirm page
+            router.push(`/dates/post-date-payment/confirm`);
         } catch (err) {
             console.error('OCR Processing Error:', err);
             setError('Failed to process receipt. Please try again.');
