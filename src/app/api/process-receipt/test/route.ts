@@ -56,22 +56,22 @@ export async function POST(request: Request) {
       currency: "USD",
       items: [
         {
-          name: "Big Mac Meal",
+          description: "Big Mac Meal",
           quantity: 2,
           totalPrice: 31.78
         },
         {
-          name: "40 piece McNuggets",
+          description: "40 piece McNuggets",
           quantity: 1,
           totalPrice: 15.99
         },
         {
-          name: "Apple Pie",
+          description: "Apple Pie",
           quantity: 2,
           totalPrice: 4.98
         },
         {
-          name: "McFlurry",
+          description: "McFlurry",
           quantity: 10,
           totalPrice: 49.98
         },

@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         items: (result.fields.Items?.valueArray || []).map(( item: any ) => {
 
           return {
-            name: item.valueObject?.Description?.valueString ?? "Unknown Item",
+            description: item.valueObject?.Description?.valueString ?? "Unknown Item",
             quantity: item.valueObject?.Quantity?.valueNumber ?? 1,
             totalPrice: item.valueObject?.TotalPrice?.valueCurrency?.amount ?? 0,
           };
