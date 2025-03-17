@@ -11,36 +11,19 @@ export default function PaymentSuccess() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchPaymentDetails = async () => {
-            const sessionId = searchParams.get('sessionId');
-            if (!sessionId) {
-                setLoading(false);
-                return;
-            }
+        setPaymentId(searchParams.get('paymentId'));
+        const amount = searchParams.get('amountPaid');
+        setAmountPaid(amount ? parseFloat(amount) / 100 : null);
 
-            try {
-                const response = await fetch(`/api/payment-details?sessionId=${sessionId}`);
-                const data = await response.json();
-                
-                if (response.ok) {
-                    setPaymentId(data.paymentId);
-                    setAmountPaid(data.amountPaid);
-                } else {
-                    console.error('Error fetching payment details:', data.error);
-                }
-            } catch (error) {
-                console.error('Error fetching payment details:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPaymentDetails();
+        setLoading(false);
+        
+        // clean up localStorage
+        return () => localStorage.removeItem('receipt');
     }, [searchParams]);
 
     return (
-        <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-lg text-center">
-            {loading ? (
+        <div className="p-6 max-w-md mx-auto h-screen bg-white text-center flex flex-col justify-center">
+        {loading ? (
                 <p className="mt-4 text-gray-600">Fetching payment details...</p>
             ) : paymentId ? (
                 <>
