@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { NextResponse } from 'next/server';
 const DocumentIntelligence = require("@azure-rest/ai-document-intelligence").default,
 { getLongRunningPoller, isUnexpected } = require("@azure-rest/ai-document-intelligence");
@@ -16,7 +17,13 @@ export async function POST(request: Request) {
 
     // Convert the file to a base64 string
     const buffer = Buffer.from(await file.arrayBuffer());
-    const base64image = buffer.toString("base64");
+
+    const optimizedBuffer = await sharp(buffer)
+    .resize({ width: 1000 }) // Resize width to 1000px
+    .jpeg({ quality: 85 }) // WebP compression
+    .toBuffer();
+
+    const base64image = optimizedBuffer.toString("base64");
 
     // create client instance and run analysis
     const client = DocumentIntelligence(endpoint, {key:key});
