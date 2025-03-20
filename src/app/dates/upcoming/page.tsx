@@ -57,6 +57,16 @@ interface DateRequestUpdateData {
   payment_status?: 'pending' | 'paid' | 'refunded';
 }
 
+const warningMessages = [
+  "Oh you're backing out? You sure about that?",
+  "Ophelia doesn't like quitters. Good luck getting your next date",
+  "You backed out. Now you owe us one",
+  "Be honest. Was it really about them or are you afraid of something deeper?",
+  "Tell me. Do you even want to date? Or do you just like the idea of it?",
+  "You keep running, but you're only running farther from yourself.",
+  "I see what's happening. You want to connect, but every time it gets real, you pull away."
+];
+
 const UpcomingDatesPage: FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -182,18 +192,23 @@ const UpcomingDatesPage: FC = () => {
 
   const handleRescheduleOrCancel = async (dateId: string) => {
     const action = window.confirm(
-      'Would you like to reschedule or cancel this date?\nOK = Reschedule\nCancel = Cancel Date',
+      'Would you like to reschedule or cancel this date?\nOK = Reschedule\nCancel = Cancel Date'
     );
 
     if (action) {
+      // Handle reschedule
       alert('Reschedule feature coming soon!');
     } else {
-      if (window.confirm('Are you sure you want to cancel this date? For challenge dates, this will require admin approval for refund processing.')) {
+      // Show random warning message
+      const warningMessage = warningMessages[Math.floor(Math.random() * warningMessages.length)];
+      const confirmCancel = window.confirm(warningMessage + '\n\nAre you sure you want to cancel? This will affect your dating status and rating.');
+
+      if (confirmCancel) {
         try {
           // First get the date request to check if it's a challenge
           const { data: dateRequest, error: fetchError } = await supabase
             .from('date_requests')
-            .select('is_challenge, payment_status')
+            .select('is_challenge, payment_status, sender_id')
             .eq('id', dateId)
             .single();
 
@@ -217,12 +232,33 @@ const UpcomingDatesPage: FC = () => {
 
           if (error) throw error;
 
+          // Get user's current status and penalties
+          const { data: userProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('dating_status, rating, cancellation_count')
+            .eq('id', dateRequest.sender_id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          // Show penalty message
+          let penaltyMessage = 'Date cancelled. ';
+          if (userProfile.dating_status === 'gold') {
+            penaltyMessage += 'Your rating has decreased. Three cancellations will drop your status to Silver.';
+          } else if (userProfile.dating_status === 'silver') {
+            penaltyMessage += 'Warning: Your status will drop to Bronze after 5 cancellations.';
+          } else if (userProfile.dating_status === 'bronze') {
+            penaltyMessage += 'Final warning: Your status will drop to Penalty after 7 cancellations.';
+          } else {
+            penaltyMessage += 'You are now in Penalty status. Your next date will include a surprise challenge.';
+          }
+
           setUpcomingDates((prev) => prev.filter((date) => date.id !== dateId));
           
           if (dateRequest?.is_challenge) {
-            alert('Date cancelled successfully. Admin will process your refund within 24-48 hours.');
+            alert(penaltyMessage + '\n\nAdmin will process your refund within 24-48 hours.');
           } else {
-            alert('Date cancelled successfully');
+            alert(penaltyMessage);
           }
         } catch (error) {
           console.error('Error cancelling date:', error);

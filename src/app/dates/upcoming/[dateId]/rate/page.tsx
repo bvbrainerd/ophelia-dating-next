@@ -28,23 +28,6 @@ export default function RatePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  const getCleanAvatarUrl = (url: string | null) => {
-    if (!url) return '/images/default-avatar.png';
-    
-    // If it's a full Supabase URL, clean it
-    if (url.includes('supabase.co')) {
-      // Extract the path after 'avatars/'
-      const match = url.match(/avatars\/(.+?)(?:\?|$)/);
-      if (match) {
-        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${match[1]}`;
-      }
-    }
-    
-    // If it's a relative path, clean and construct URL
-    const cleanPath = url.replace(/^avatars\/+/, '');
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${cleanPath}`;
-  };
-
   useEffect(() => {
     const fetchDateDetails = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -108,40 +91,6 @@ export default function RatePage() {
       const isUserSender = dateRequest.sender_id === session.user.id;
       const ratedUserId = isUserSender ? dateRequest.receiver_id : dateRequest.sender_id;
 
-      // Start a transaction by getting the current profile data
-      const { data: currentProfile, error: profileFetchError } = await supabase
-        .from('profiles')
-        .select('average_rating, total_rating')
-        .eq('id', ratedUserId)
-        .single();
-
-      if (profileFetchError) {
-        console.error('Error fetching profile:', profileFetchError);
-        throw profileFetchError;
-      }
-
-      if (!currentProfile) throw new Error('Profile not found');
-
-      // Calculate new average rating
-      const currentTotal = currentProfile.total_rating || 0;
-      const currentAverage = currentProfile.average_rating || 0;
-      const newTotal = currentTotal + 1;
-      const newAverage = ((currentAverage * currentTotal) + personRating) / newTotal;
-
-      // Update the profile with new rating data
-      const { error: profileUpdateError } = await supabase
-        .from('profiles')
-        .update({
-          average_rating: newAverage,
-          total_rating: newTotal
-        })
-        .eq('id', ratedUserId);
-
-      if (profileUpdateError) {
-        console.error('Error updating profile:', profileUpdateError);
-        throw profileUpdateError;
-      }
-
       // Insert the rating record
       const { error: ratingError } = await supabase
         .from('date_ratings')
@@ -176,37 +125,6 @@ export default function RatePage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const StarRating = ({ 
-    rating, 
-    hover, 
-    setRating, 
-    setHover 
-  }: { 
-    rating: number; 
-    hover: number; 
-    setRating: (rating: number) => void; 
-    setHover: (hover: number) => void; 
-  }) => {
-    return (
-      <div className="flex justify-center space-x-2">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            className={`text-4xl focus:outline-none ${
-              star <= (hover || rating) ? 'text-yellow-400' : 'text-gray-300'
-            }`}
-            onClick={() => setRating(star)}
-            onMouseEnter={() => setHover(star)}
-            onMouseLeave={() => setHover(rating)}
-            type="button"
-          >
-            ★
-          </button>
-        ))}
-      </div>
-    );
   };
 
   return (

@@ -116,7 +116,7 @@ const DatingTypeQuiz: React.FC<DatingTypeQuizProps> = ({ onComplete }) => {
       hopeless: 'hopelessRomantic',
       commitment: 'commitmentSeeker',
       serial: 'serialDater',
-      fwb: 'friendWithBenefits'
+      fwb: 'friendsWithBenefits'
     };
 
     return styleDatabaseNames[primaryStyle as keyof typeof styleDatabaseNames];

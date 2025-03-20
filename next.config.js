@@ -8,6 +8,9 @@ const nextConfig = {
     config.resolve.fallback = { fs: false, path: false };
     return config;
   },
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js']
+  }
 };
 
 module.exports = nextConfig;

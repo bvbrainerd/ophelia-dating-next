@@ -1,8 +1,6 @@
 import { Prompt } from 'next/font/google';
 import './globals.css';
-import { createServerClient } from '@supabase/ssr' 
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'; // expects Supabase credentials to be defined in process.env
-                                                                             // Next.js makes the Supabase keys automatically available in the environment
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -28,12 +26,18 @@ export default async function RootLayout({
 
   console.log('Auth Token:', authToken);
 
-  // replace createServerClient (deprecated) with createServerComponentClient
-  // createServerComponentClient internally calls createClient() from @supabase/supabase-js with 
-    // the detected Supabase URL and anon key
-    // The Next.js cookies for authentication
-  // This means the credentials don't need to be manually passed 
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => {
+          const cookie = cookieStore.get(name);
+          return cookie ? cookie.value : null;
+        },
+      },
+    }
+  )
 
   const {
     data: { session },

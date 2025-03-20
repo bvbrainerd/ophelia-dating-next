@@ -5,8 +5,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing STRIPE_SECRET_KEY environment variable');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia'
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-02-24.acacia' as const
 });
 
 export async function POST(request: Request) {
@@ -22,7 +22,9 @@ export async function POST(request: Request) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'usd',
-      automatic_payment_methods: { enabled: true },
+      automatic_payment_methods: {
+        enabled: true,
+      },
     });
 
     return NextResponse.json({ clientSecret: paymentIntent.client_secret });

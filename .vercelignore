@@ -1,0 +1,11 @@
+.git
+node_modules
+.env*.local
+README.md
+*.log
+.DS_Store
+.gitignore
+.vercelignore
+public/videos/Video.mov
+coverage
+export-detail.json 

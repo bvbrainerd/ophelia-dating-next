@@ -11,6 +11,7 @@ import ProfileImage from '@/components/ProfileImage';
 import { Card } from '@/components/ui/card';
 import Map from '@/components/Map';
 import { Heart } from 'lucide-react';
+import { Home, Search, PlusCircle, Bell, User } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -28,6 +29,31 @@ interface Profile {
   follow_through_rate?: number;
 }
 
+interface Group {
+  id: string;
+  name: string;
+  memberCount: number;
+}
+
+interface DatabaseMembership {
+  groups: {
+    id: string;
+    name: string;
+  }[];
+}
+
+interface SupabaseMembership {
+  groups: {
+    id: string;
+    name: string;
+  };
+}
+
+interface SupabaseResponse<T> {
+  data: T | null;
+  error: Error | null;
+}
+
 interface SuggestedDate {
   id: string;
   venue: string;
@@ -35,7 +61,6 @@ interface SuggestedDate {
   matchedUser: Profile;
   compatibility: number;
   description: string;
-  isValentineMatch: boolean;
 }
 
 interface DailyMatch {
@@ -65,6 +90,16 @@ interface DatabaseMatch {
     average_rating?: number;
     follow_through_rate?: number;
   };
+}
+
+interface CuratedDate {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  description: string;
+  price_range: string;
+  date_type: string;
+  availability: boolean;
 }
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
@@ -130,28 +165,38 @@ const getTimeForPreference = (preferredTime: string, date: Date, venue: string):
   const activityVenues = ['The Clay Room', 'Museum of Fine Arts', 'Boston Commons', 'Boston Duck Tour', 'F1 Arcade', 'Core Power', '[solidcore]'];
   const restaurantVenues = ['Blue Ribbon Sushi', 'Barcelona Wine Bar', 'Kured', 'Joes on Newbury', 'Lolita Back Bay', 'Lucca North End', 'Capo', "Loretta's Last Call", 'Cityside Tavern'];
   const sportsVenues = ['Boston Bruins', 'BC Basketball', 'BC Hockey', 'Celtics'];
+  const barVenues = ['Lolita Back Bay', 'Capo', "Loretta's Last Call", 'Cityside Tavern', 'Bell in Hand', 'Cask n Flagon'];
   
   let timeRange: number[];
+  let minuteOptions: number[] = [0, 30]; // Default to on the hour or half hour
   
-  if (activityVenues.includes(venue)) {
+  if (barVenues.includes(venue)) {
+    // Bars: 5-10 PM
+    timeRange = [17, 18, 19, 20, 21, 22];
+    minuteOptions = [0, 30]; // Only on the hour or half hour for bars
+  } else if (activityVenues.includes(venue)) {
     // Activities: 1-3 PM
     timeRange = [13, 14, 15];
+    minuteOptions = [0, 15, 30, 45];
   } else if (restaurantVenues.includes(venue)) {
     // Restaurants: 6-8 PM
     timeRange = [18, 19, 20];
+    minuteOptions = [0, 15, 30, 45];
   } else if (sportsVenues.includes(venue)) {
     // Sports: 7-9 PM
     timeRange = [19, 20, 21];
+    minuteOptions = [0, 30];
   } else {
     // Default to afternoon
     timeRange = [13, 14, 15];
+    minuteOptions = [0, 15, 30, 45];
   }
   
   // Get random hour from the appropriate range
   const randomHour = timeRange[Math.floor(Math.random() * timeRange.length)];
   
-  // Get random minutes (0, 15, 30, 45)
-  const minutes = [0, 15, 30, 45][Math.floor(Math.random() * 4)];
+  // Get random minutes from the appropriate options
+  const minutes = minuteOptions[Math.floor(Math.random() * minuteOptions.length)];
   
   newDate.setHours(randomHour, minutes, 0, 0);
   return newDate;
@@ -255,8 +300,16 @@ export default function MatchingPage() {
     archetype: '',
     school: '',
     minAge: '',
-    maxAge: ''
+    maxAge: '',
+    searchQuery: '',
+    selectedGroup: ''
   });
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [curatedDates, setCuratedDates] = useState<CuratedDate[]>([]);
+  const [error, setError] = useState('');
+  const [userStatus, setUserStatus] = useState<'single' | 'in_relationship' | null>(null);
   
   const PROFILES_PER_PAGE = 10;
   const archetypeOptions = [
@@ -276,11 +329,19 @@ export default function MatchingPage() {
   ];
 
   const filteredProfiles = suggestedDates.filter(profile => {
+    // Filter by search query first
+    if (filters.searchQuery && !profile.matchedUser.first_name.toLowerCase().includes(filters.searchQuery.toLowerCase())) return false;
+    // Then apply other filters
     if (filters.archetype && profile.matchedUser.dater_archetype !== filters.archetype) return false;
     if (filters.school && profile.matchedUser.school !== filters.school) return false;
     if (filters.minAge && profile.matchedUser.age < parseInt(filters.minAge)) return false;
     if (filters.maxAge && profile.matchedUser.age > parseInt(filters.maxAge)) return false;
     return true;
+  }).sort((a, b) => {
+    // Sort profiles with avatar_url first
+    if (a.matchedUser.avatar_url && !b.matchedUser.avatar_url) return -1;
+    if (!a.matchedUser.avatar_url && b.matchedUser.avatar_url) return 1;
+    return 0;
   });
 
   const paginatedProfiles = filteredProfiles.slice(
@@ -299,238 +360,375 @@ export default function MatchingPage() {
   };
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const checkUserStatus = async () => {
       try {
-        // First check if we have a valid session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          // Clear any stale session data
-          await supabase.auth.signOut();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
           router.push('/auth/login');
           return;
         }
 
-        if (!session?.user) {
-          console.log('No active session found');
-          router.push('/auth/login');
-          return;
-        }
-
-        // Verify the session is still valid with a token refresh attempt
-        const { error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) {
-          console.error('Error refreshing session:', refreshError);
-          await supabase.auth.signOut();
-          router.push('/auth/login');
-          return;
-        }
-
-        // Now proceed with fetching valentine matches
-        const { data: valentineMatches, error: valentineError } = await supabase
-          .from('valentine_requests')
-          .select(`
-            *,
-            sender:profiles!valentine_requests_sender_id_fkey (
-              id,
-              first_name,
-              last_name,
-              age,
-              avatar_url,
-              bio,
-              gender,
-              preferred_gender,
-              dater_archetype,
-              dater_status,
-              average_rating,
-              follow_through_rate
-            )
-          `)
-          .or(`recipient_id.eq.${session.user.id},sender_id.eq.${session.user.id}`)
-          .eq('status', 'accepted');
-
-        if (valentineError) {
-          console.error('Error fetching valentine matches:', valentineError);
-          if (valentineError.message?.includes('JWT')) {
-            // If it's a JWT/auth error, redirect to login
-            await supabase.auth.signOut();
-            router.push('/auth/login');
-            return;
-          }
-        }
-
-        // Process valentine matches into the same format as regular matches
-        const processedValentineMatches = (valentineMatches || []).map((match) => {
-          const isRecipient = match.recipient_id === session.user.id;
-          const matchedUser = isRecipient ? match.sender : match.matched_user;
-          
-          // Generate a date between Feb 7-14 for Valentine's week
-          const valentineDate = new Date('2024-02-14T00:00:00');
-          const daysBeforeValentine = Math.floor(Math.random() * 7); // 0-6 days before Valentine's
-          valentineDate.setDate(valentineDate.getDate() - daysBeforeValentine);
-          
-          // Set time between 6-9 PM
-          const hour = 18 + Math.floor(Math.random() * 3); // 18, 19, or 20 (6-8 PM)
-          const minutes = [0, 30][Math.floor(Math.random() * 2)]; // Either on the hour or half hour
-          valentineDate.setHours(hour, minutes, 0, 0);
-
-          // Romantic venues perfect for Valentine's dates
-          const valentineVenues = [
-            'Barcelona Wine Bar',
-            'Blue Ribbon Sushi',
-            'Lucca North End',
-            'Lolita Back Bay'
-          ];
-          const venue = valentineVenues[Math.floor(Math.random() * valentineVenues.length)];
-          
-          return {
-            id: `valentine-${match.id}`,
-            venue: match.curated_venue || venue,
-            proposedTime: match.curated_time || valentineDate.toISOString(),
-            matchedUser: {
-              ...matchedUser,
-              dater_status: matchedUser.dater_status || 'bronze',
-              average_rating: matchedUser.average_rating || 0,
-              follow_through_rate: matchedUser.follow_through_rate || 0
-            },
-            compatibility: 100, // Valentine matches are special!
-            description: "Your Valentine's Day Match! 💝",
-            isValentineMatch: true
-          };
-        });
-
-        // Then fetch regular matches as before
-        const { data: userProfile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
-          .select('*')
+          .select('couple_status')
           .eq('id', session.user.id)
           .single();
-        
-        if (profileError) throw profileError;
 
-        // Fetch all potential matches from profiles table
-        console.log('Fetching potential matches for user:', session.user.id);
-        let query = supabase
-          .from('profiles')
-          .select('*')
-          .neq('id', session.user.id);
-
-        // Only add gender filters if both values are set
-        if (userProfile.preferred_gender && userProfile.gender) {
-          query = query
-            .eq('gender', userProfile.preferred_gender)
-            .eq('preferred_gender', userProfile.gender);
+        if (profile) {
+          setUserStatus(profile.couple_status);
         }
-
-        // Only filter by school if it's set
-        if (userProfile.school) {
-          query = query.eq('school', userProfile.school);
-        }
-
-        const { data: potentialMatches, error: matchError } = await query;
-
-        if (matchError) {
-          console.error('Error in matches query:', matchError);
-          throw matchError;
-        }
-
-        console.log('Raw potential matches:', potentialMatches);
-
-        if (potentialMatches && potentialMatches.length > 0) {
-          const processedRegularMatches = potentialMatches.map((match: Profile) => {
-            const venue = getRandomVenueForArchetype(match.dater_archetype);
-            return {
-              id: crypto.randomUUID(),
-              venue,
-              proposedTime: getTimeForPreference('afternoon', new Date(), venue).toISOString(),
-              matchedUser: {
-                ...match,
-                dater_status: match.dater_status || 'bronze',
-                average_rating: match.average_rating || 0,
-                follow_through_rate: match.follow_through_rate || 0
-              },
-              compatibility: calculateArchetypeCompatibility(userProfile.dater_archetype, match.dater_archetype),
-              description: `Based on your compatibility and shared interests`,
-              isValentineMatch: false
-            };
-          });
-
-          // Combine valentine matches with regular matches
-          const allMatches = [...processedValentineMatches, ...processedRegularMatches];
-          setSuggestedDates(allMatches);
-        } else {
-          setSuggestedDates(processedValentineMatches);
-        }
-
-        setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching matches:', error);
-        setIsLoading(false);
+        console.error('Error checking user status:', error);
       }
     };
 
-    fetchMatches();
-  }, [router]);
+    checkUserStatus();
+  }, []);
 
-  const handleAccept = async (profile: SuggestedDate) => {
+  useEffect(() => {
+    if (userStatus === 'in_relationship') {
+      fetchCuratedDates();
+    } else if (userStatus === 'single') {
+      fetchMatches();
+    }
+    else {
+      console.log('User status not set');
+    }
+  }, [userStatus]);
+
+  const fetchCuratedDates = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const { data: dates, error: datesError } = await supabase
+        .from('curated_dates')
+        .select(`
+          id,
+          venue,
+          proposed_time,
+          description,
+          price_range,
+          date_type,
+          availability
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (datesError) throw datesError;
+
+      setCuratedDates(dates || []);
+    } catch (error) {
+      console.error('Error fetching curated dates:', error);
+      setError('Failed to load curated dates');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMatches = async () => {
+    try {
+      // First check if we have a valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        // Clear any stale session data
+        await supabase.auth.signOut();
+        router.push('/auth/login');
+        return;
+      }
+
+      if (!session?.user) {
+        console.log('No active session found');
+        router.push('/auth/login');
+        return;
+      }
+
+      // Verify the session is still valid with a token refresh attempt
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        await supabase.auth.signOut();
+        router.push('/auth/login');
+        return;
+      }
+
+      // Fetch user profile
+      const { data: userProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (profileError) throw profileError;
+
+      // Fetch all potential matches from profiles table
+      console.log('Fetching potential matches for user:', session.user.id);
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', session.user.id);
+
+      // Only add gender filters if both values are set
+      if (userProfile.preferred_gender && userProfile.gender) {
+        query = query
+          .eq('gender', userProfile.preferred_gender)
+          .eq('preferred_gender', userProfile.gender);
+      }
+
+      // Only filter by school if it's set
+      if (userProfile.school) {
+        query = query.eq('school', userProfile.school);
+      }
+
+      const { data: potentialMatches, error: matchError } = await query;
+
+      if (matchError) {
+        console.error('Error in matches query:', matchError);
+        throw matchError;
+      }
+
+      console.log('Raw potential matches:', potentialMatches);
+
+      if (potentialMatches && potentialMatches.length > 0) {
+        const processedMatches = potentialMatches.map((match: Profile) => {
+          const venue = getRandomVenueForArchetype(match.dater_archetype);
+          return {
+            id: crypto.randomUUID(),
+            venue,
+            proposedTime: getTimeForPreference('afternoon', new Date(), venue).toISOString(),
+            matchedUser: {
+              ...match,
+              dater_status: match.dater_status || 'bronze',
+              average_rating: match.average_rating || 0,
+              follow_through_rate: match.follow_through_rate || 0
+            },
+            compatibility: calculateArchetypeCompatibility(userProfile.dater_archetype, match.dater_archetype),
+            description: `Based on your compatibility and shared interests`
+          };
+        });
+
+        setSuggestedDates(processedMatches);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserGroups = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: memberships, error: membershipError } = await supabase
+          .from('group_members')
+          .select(`
+            groups!inner (
+              id,
+              name
+            )
+          `)
+          .eq('user_id', user.id) as SupabaseResponse<SupabaseMembership[]>;
+
+        if (membershipError) throw membershipError;
+
+        if (memberships) {
+          const groups = memberships.map(m => ({
+            id: m.groups.id,
+            name: m.groups.name,
+            memberCount: 0
+          }));
+          setUserGroups(groups);
+        }
+      } catch (error) {
+        console.error('Error fetching user groups:', error);
+      }
+    };
+
+    fetchUserGroups();
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    setFilters(prev => ({ ...prev, searchQuery: query }));
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.error('No user found');
-        return;
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+        .neq('id', user.id)
+        .limit(8);
+
+      if (error) throw error;
+      
+      // Update search results for dropdown
+      setSearchResults(data || []);
+      
+      // Update suggestedDates for the main grid
+      if (data && data.length > 0) {
+        const processedMatches = data.map((match: Profile) => {
+          const venue = getRandomVenueForArchetype(match.dater_archetype);
+          return {
+            id: crypto.randomUUID(),
+            venue,
+            proposedTime: getTimeForPreference('afternoon', new Date(), venue).toISOString(),
+            matchedUser: {
+              ...match,
+              dater_status: match.dater_status || 'bronze',
+              average_rating: match.average_rating || 0,
+              follow_through_rate: match.follow_through_rate || 0
+            },
+            compatibility: calculateArchetypeCompatibility(currentUser?.dater_archetype || 'commitmentSeeker', match.dater_archetype),
+            description: `Based on your compatibility and shared interests`
+          };
+        });
+        setSuggestedDates(processedMatches);
       }
-
-      // Create a date request
-      const { data: dateRequest, error: dateRequestError } = await supabase
-        .from('date_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: profile.matchedUser.id,
-          venue: profile.venue,
-          proposed_time: profile.proposedTime,
-          status: 'pending',
-          split_payment: 0
-        })
-        .select()
-        .single();
-
-      if (dateRequestError) {
-        console.error('Error creating date request:', dateRequestError);
-        return;
-      }
-
-      // Navigate to the dashboard after sending the request
-      router.push('/dashboard');
     } catch (error) {
-      console.error('Error in handleAccept:', error);
+      console.error('Error searching users:', error);
+    }
+  };
+
+  const handleSendDateRequest = async (userId: string, groupId?: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      router.push(`/send-date-request/${userId}${groupId ? `?groupId=${groupId}` : ''}`);
+    } catch (error) {
+      console.error('Error sending date request:', error);
     }
   };
 
   if (isLoading) {
     return (
-      <div className='flex justify-center items-center min-h-screen'>
-        <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]'></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-4 text-red-500">
+        {error}
+      </div>
+    );
+  }
+
+  if (userStatus === 'in_relationship') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-center mb-8">Curated Date Experiences</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {curatedDates.map((date) => (
+            <div key={date.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold mb-2">{date.venue}</h2>
+                <p className="text-gray-600 mb-4">{date.description}</p>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[#BA2525]">{date.price_range}</span>
+                  <span className="text-gray-500">{new Date(date.proposed_time).toLocaleDateString()}</span>
+                </div>
+                <button
+                  onClick={() => router.push(`/dates/book/${date.id}`)}
+                  className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
+                >
+                  Book This Date
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white pb-24">
-      <div className="max-w-6xl mx-auto p-5">
-        <Header variant="matching" />
-        
-        <h1 className="text-3xl font-bold text-[#BA2525] mt-8 mb-8 text-center">Your Matches</h1>
+    <div className="min-h-screen bg-[#cc0000] text-white pb-24">
+      <div className="max-w-4xl mx-auto p-4 mb-16">
+        {/* Header */}
+        <div className="mb-8">
+          <Header variant="default" />
+        </div>
 
         {/* Filters Section */}
-        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6 mb-4 sm:mb-8">
-          <h2 className="text-lg sm:text-xl font-semibold text-[#BA2525] mb-2 sm:mb-4">Filters</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-            {/* Archetype Filter */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Dater Archetype</label>
+        <div className="bg-[#aa0000] rounded-lg p-3 mb-8">
+          <div className="flex flex-wrap gap-2">
+            {/* User Search */}
+            <div className="flex-1 min-w-[300px] relative">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={filters.searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="Search users by name..."
+                  className="w-full p-2 pl-4 pr-10 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
+                />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50" size={16} />
+              </div>
+              {searchResults.length > 0 && (
+                <div className="absolute mt-1 w-full bg-white rounded-lg shadow-lg z-50 max-h-[300px] overflow-y-auto">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => {
+                        handleSendDateRequest(user.id);
+                        setSearchResults([]); // Clear dropdown after selection
+                      }}
+                      className="w-full px-4 py-3 text-left text-gray-900 hover:bg-gray-50 flex items-center gap-3 border-b border-gray-100 last:border-0"
+                    >
+                      <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                        <ProfileImage user={user} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-[#BA2525]">{user.first_name}</div>
+                        <div className="text-sm text-gray-500 truncate">
+                          {user.age && `${user.age} • `}
+                          {user.school}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Group Filter */}
+            <div className="flex-1 min-w-[140px]">
               <select
-                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                className="w-full p-2 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
+                value={filters.selectedGroup}
+                onChange={(e) => setFilters(prev => ({ ...prev, selectedGroup: e.target.value }))}
+              >
+                <option value="">All Groups</option>
+                {userGroups.map(group => (
+                  <option key={group.id} value={group.id}>{group.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Existing Filters */}
+            <div className="flex-1 min-w-[140px]">
+              <select
+                className="w-full p-2 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
                 value={filters.archetype}
                 onChange={(e) => handleFilterChange('archetype', e.target.value)}
               >
@@ -542,10 +740,9 @@ export default function MatchingPage() {
             </div>
 
             {/* School Filter */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">School</label>
+            <div className="flex-1 min-w-[140px]">
               <select
-                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                className="w-full p-2 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
                 value={filters.school}
                 onChange={(e) => handleFilterChange('school', e.target.value)}
               >
@@ -557,99 +754,100 @@ export default function MatchingPage() {
             </div>
 
             {/* Age Range Filters */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Min Age</label>
+            <div className="flex gap-2 flex-1 min-w-[140px]">
               <input
                 type="number"
-                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                className="w-full p-2 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
                 value={filters.minAge}
                 onChange={(e) => handleFilterChange('minAge', e.target.value)}
                 min="18"
                 max="100"
-                placeholder="18"
+                placeholder="Min Age"
               />
-            </div>
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Max Age</label>
               <input
                 type="number"
-                className="w-full p-1.5 sm:p-2 text-sm border border-gray-300 rounded-md"
+                className="w-full p-2 bg-[#cc0000] text-white border border-white/20 rounded-full text-sm"
                 value={filters.maxAge}
                 onChange={(e) => handleFilterChange('maxAge', e.target.value)}
                 min="18"
                 max="100"
-                placeholder="100"
+                placeholder="Max Age"
               />
             </div>
           </div>
         </div>
 
         {/* Profile Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-2 sm:px-4 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {paginatedProfiles.map((profile, index) => (
-            <Card key={profile.id} className="rounded-lg p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow bg-white">
+            <Card key={profile.id} className="bg-white rounded-lg overflow-hidden p-4 shadow-md border border-gray-100">
               <div className="flex flex-col">
-                {profile.isValentineMatch && (
-                  <div className="bg-[#BA2525] text-white px-3 py-1 rounded-full text-sm font-medium mb-3 self-center">
-                    Valentine's Day Match 💝
-                  </div>
-                )}
-                
                 <div 
-                  className="relative w-full h-[300px] sm:h-[350px] mb-4 sm:mb-6 cursor-pointer overflow-hidden rounded-lg"
+                  className="relative w-full aspect-[4/3] mb-4 cursor-pointer overflow-hidden rounded-lg bg-gray-100"
                   onClick={() => router.push(`/profile/${profile.matchedUser.id}`)}
                 >
-                  {profile.compatibility !== null && (
-                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-white/90 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-sm text-[#BA2525] flex items-center gap-1">
-                      <Heart size={12} fill="#BA2525" stroke="#BA2525" />
-                      {profile.compatibility}%
+                  {profile.compatibility && (
+                    <div className="absolute top-3 right-3 z-20 bg-white/90 px-3 py-1.5 rounded-full text-sm text-[#BA2525] flex items-center gap-1.5 shadow-md">
+                      <Heart size={14} fill="#BA2525" stroke="#BA2525" />
+                      <span className="font-medium">{profile.compatibility}%</span>
                     </div>
                   )}
-                  <ProfileImage
-                    user={{
-                      avatar_url: profile.matchedUser.avatar_url || DEFAULT_AVATAR,
-                      first_name: profile.matchedUser.first_name
-                    }}
-                    priority={index < 4}
-                    className="object-cover"
-                  />
+                  <div className="absolute inset-0">
+                    <ProfileImage
+                      user={{
+                        avatar_url: profile.matchedUser.avatar_url || DEFAULT_AVATAR,
+                        first_name: profile.matchedUser.first_name
+                      }}
+                      priority={index < 4}
+                      className="!absolute inset-0"
+                    />
+                  </div>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4 text-[#BA2525] text-center">
+                <h2 className="text-xl font-semibold mb-3 text-[#BA2525] text-center">
                   {profile.matchedUser.first_name}
                   {profile.matchedUser.age ? `, ${profile.matchedUser.age}` : ''}
                 </h2>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
-                    <div className="text-[#BA2525] text-sm sm:text-base">♔ {profile.matchedUser.dater_status ? profile.matchedUser.dater_status.charAt(0).toUpperCase() + profile.matchedUser.dater_status.slice(1) : 'Bronze'}</div>
-                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Status</div>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="flex flex-col items-center p-2 rounded-[40px] bg-[#BA2525] text-white">
+                    <div className="text-white text-sm">♔ {profile.matchedUser.dater_status ? profile.matchedUser.dater_status.charAt(0).toUpperCase() + profile.matchedUser.dater_status.slice(1) : 'Bronze'}</div>
+                    <div className="text-white text-[10px]">Status</div>
                   </div>
-                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
-                    <div className="text-[#BA2525] text-sm sm:text-base">★ {(profile.matchedUser.average_rating || 0).toFixed(1)}</div>
-                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Rating</div>
+                  <div className="flex flex-col items-center p-2 rounded-[40px] bg-[#BA2525] text-white">
+                    <div className="text-white text-sm">★ {(profile.matchedUser.average_rating || 0).toFixed(1)}</div>
+                    <div className="text-white text-[10px]">Rating</div>
                   </div>
-                  <div className="flex flex-col items-center p-2 sm:p-3 rounded-[40px] bg-white border-2 border-[#BA2525]">
-                    <div className="text-[#BA2525] text-sm sm:text-base">♥ {profile.matchedUser.follow_through_rate}%</div>
-                    <div className="text-[#BA2525] text-[10px] sm:text-xs">Follow-Through</div>
+                  <div className="flex flex-col items-center p-2 rounded-[40px] bg-[#BA2525] text-white">
+                    <div className="text-white text-sm">♥ {profile.matchedUser.follow_through_rate}%</div>
+                    <div className="text-white text-[10px]">Follow-Through</div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2">
                   <button
                     onClick={() => router.push(`/profile/${profile.matchedUser.id}`)}
-                    className='w-full p-3 sm:p-4 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors text-sm sm:text-base'
+                    className='w-full p-2.5 bg-white text-[#BA2525] rounded-full font-medium hover:bg-[#BA2525] hover:text-white transition-colors text-sm border-2 border-[#BA2525] mb-2'
                   >
                     View Profile
                   </button>
-                  <button
-                    onClick={() => router.push(`/send-date-request/${profile.matchedUser.id}`)}
-                    className='w-full p-3 sm:p-4 bg-[#BA2525] text-white border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm sm:text-base'
-                  >
-                    Send Date Request
-                  </button>
+                  {filters.selectedGroup ? (
+                    <button
+                      onClick={() => handleSendDateRequest(profile.matchedUser.id, filters.selectedGroup)}
+                      className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm'
+                    >
+                      Send Group Date Request
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleSendDateRequest(profile.matchedUser.id)}
+                      className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors text-sm'
+                    >
+                      Send Date Request
+                    </button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -664,13 +862,13 @@ export default function MatchingPage() {
               disabled={currentPage === 1}
               className={`px-4 py-2 rounded-full ${
                 currentPage === 1 
-                  ? 'bg-gray-200 text-gray-500' 
-                  : 'bg-[#BA2525] text-white hover:bg-[#a02020]'
+                  ? 'bg-[#aa0000] text-white/50' 
+                  : 'bg-[#aa0000] text-white hover:bg-[#990000]'
               } transition-colors`}
             >
               Previous
             </button>
-            <span className="px-4 py-2 text-[#BA2525] font-medium">
+            <span className="px-4 py-2 text-white font-medium">
               Page {currentPage} of {totalPages}
             </span>
             <button
@@ -678,8 +876,8 @@ export default function MatchingPage() {
               disabled={currentPage === totalPages}
               className={`px-4 py-2 rounded-full ${
                 currentPage === totalPages 
-                  ? 'bg-gray-200 text-gray-500' 
-                  : 'bg-[#BA2525] text-white hover:bg-[#a02020]'
+                  ? 'bg-[#aa0000] text-white/50' 
+                  : 'bg-[#aa0000] text-white hover:bg-[#990000]'
               } transition-colors`}
             >
               Next
@@ -687,6 +885,8 @@ export default function MatchingPage() {
           </div>
         )}
       </div>
+
+      {/* Replace the inline navigation with the BottomNav component */}
       <BottomNav />
     </div>
   );

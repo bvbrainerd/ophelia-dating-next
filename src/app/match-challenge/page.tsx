@@ -26,20 +26,36 @@ interface ChallengeQuestions {
   activityPreference: string;
   budget: string;
   spontaneityLevel: string;
+  challengeLevel: 'beginner' | 'adventurous' | 'daredevil';
+  allowWatchers: boolean;
+  allowStreaming: boolean;
+}
+
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  level: 'beginner' | 'adventurous' | 'daredevil';
+  points: number;
 }
 
 export default function MatchChallengePage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<'intro' | 'questions' | 'match' | 'confirmation'>('intro');
+  const [currentStep, setCurrentStep] = useState<'intro' | 'questions' | 'challenges' | 'match' | 'confirmation'>('intro');
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
+  const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [answers, setAnswers] = useState<ChallengeQuestions>({
     availability: [],
     preferredTime: '',
     activityPreference: '',
     budget: '',
     spontaneityLevel: '',
+    challengeLevel: 'beginner',
+    allowWatchers: true,
+    allowStreaming: false
   });
   const [suggestedDate, setSuggestedDate] = useState<{
     venue: string;
@@ -165,16 +181,79 @@ export default function MatchChallengePage() {
     return venues[Math.floor(Math.random() * venues.length)];
   };
 
+  const fetchChallenges = async () => {
+    try {
+      const { data: challenges, error } = await supabase
+        .from('date_challenges')
+        .select('*')
+        .eq('level', answers.challengeLevel);
+
+      if (error) throw error;
+      setAvailableChallenges(challenges);
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+    }
+  };
+
   const handleQuestionSubmit = async () => {
+    await fetchChallenges();
+    setCurrentStep('challenges');
+  };
+
+  const handleChallengeSelect = async (challenge: Challenge) => {
+    setSelectedChallenge(challenge);
     await findCompatibleMatch();
     setCurrentStep('match');
   };
 
-  const handleAcceptChallenge = () => {
-    if (!matchedProfile || !suggestedDate) return;
+  const handleAcceptChallenge = async () => {
+    if (!matchedProfile || !selectedChallenge) return;
     
-    // Redirect to payment page with match and date details
-    router.push(`/match-challenge/payment?matchId=${matchedProfile.id}&venue=${suggestedDate.venue}&date=${suggestedDate.date}&time=${suggestedDate.time}`);
+    try {
+      // Create user challenge
+      const { data: userChallenge, error: challengeError } = await supabase
+        .from('user_challenges')
+        .insert({
+          user_id: currentUser?.id,
+          challenge_id: selectedChallenge.id,
+          status: 'committed',
+          points_earned: 0
+        })
+        .select()
+        .single();
+
+      if (challengeError) throw challengeError;
+
+      // Create date request with challenge
+      const { data: dateRequest, error: dateError } = await supabase
+        .from('date_requests')
+        .insert({
+          sender_id: currentUser?.id,
+          receiver_id: matchedProfile.id,
+          venue: suggestedDate?.venue,
+          proposed_time: suggestedDate?.time,
+          is_challenge: true,
+          challenge_id: selectedChallenge.id,
+          challenge_status: 'committed'
+        })
+        .select()
+        .single();
+
+      if (dateError) throw dateError;
+
+      // Update user challenge with date request
+      const { error: updateError } = await supabase
+        .from('user_challenges')
+        .update({ date_request_id: dateRequest.id })
+        .eq('id', userChallenge.id);
+
+      if (updateError) throw updateError;
+
+      // Redirect to payment
+      router.push(`/match-challenge/payment?matchId=${matchedProfile.id}&venue=${suggestedDate?.venue}&date=${suggestedDate?.date}&time=${suggestedDate?.time}&challengeId=${selectedChallenge.id}`);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+    }
   };
 
   if (isLoading) {
@@ -206,7 +285,9 @@ export default function MatchChallengePage() {
               </p>
             </div>
             <p className="text-gray-600">
-              Ready to level up your dating game? Ophelia's got you. Answer 5 quick questions, and we'll not only match you with your most compatible partner, but also curate a first date that's completely tailored to the both of you. The catch? You've got to show up. Let's redefine how you meet. Are you in?
+              Ready to level up your dating game? Choose your challenge level, complete daring dates,
+              earn points, and climb the leaderboard. Let your friends watch and vote on your progress.
+              Are you ready to become a dating legend?
             </p>
             <button
               onClick={() => setCurrentStep('questions')}
@@ -323,19 +404,99 @@ export default function MatchChallengePage() {
               </select>
             </div>
 
+            {/* Challenge Level */}
+            <div className="space-y-3">
+              <label className="block text-lg font-semibold text-gray-700">
+                Choose your challenge level
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {['beginner', 'adventurous', 'daredevil'].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setAnswers(prev => ({ ...prev, challengeLevel: level as any }))}
+                    className={`p-4 rounded-lg border-2 text-left ${
+                      answers.challengeLevel === level
+                        ? 'border-[#BA2525] bg-[#ffeeee]'
+                        : 'border-gray-200 hover:border-[#BA2525]'
+                    }`}
+                  >
+                    <div className="font-medium text-[#BA2525] capitalize">{level}</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {level === 'beginner' 
+                        ? 'Perfect for first-time challengers. Fun and easy dares.'
+                        : level === 'adventurous'
+                        ? 'For those seeking excitement. More challenging dares.'
+                        : 'For the fearless. Extreme and unforgettable dares.'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Social Features */}
+            <div className="space-y-3">
+              <label className="block text-lg font-semibold text-gray-700">
+                Social Features
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={answers.allowWatchers}
+                    onChange={(e) => setAnswers(prev => ({ ...prev, allowWatchers: e.target.checked }))}
+                    className="rounded border-gray-300 text-[#BA2525] focus:ring-[#BA2525]"
+                  />
+                  <span className="text-gray-700">Allow friends to watch and vote on my challenge</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={answers.allowStreaming}
+                    onChange={(e) => setAnswers(prev => ({ ...prev, allowStreaming: e.target.checked }))}
+                    className="rounded border-gray-300 text-[#BA2525] focus:ring-[#BA2525]"
+                  />
+                  <span className="text-gray-700">Allow live date streaming and reactions</span>
+                </label>
+              </div>
+            </div>
+
             <button
               onClick={handleQuestionSubmit}
               disabled={!answers.availability.length || !answers.preferredTime || !answers.activityPreference || !answers.budget || !answers.spontaneityLevel}
               className="w-full p-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Lock In My Answers
+              View Available Challenges
             </button>
           </div>
         )}
 
-        {currentStep === 'match' && matchedProfile && suggestedDate && (
+        {currentStep === 'challenges' && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">Your Match is Locked In!</h2>
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">Choose Your Challenge</h2>
+            
+            <div className="space-y-4">
+              {availableChallenges.map((challenge) => (
+                <button
+                  key={challenge.id}
+                  onClick={() => handleChallengeSelect(challenge)}
+                  className="w-full p-4 rounded-lg border-2 border-gray-200 hover:border-[#BA2525] text-left transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-medium text-[#BA2525]">{challenge.title}</h3>
+                    <span className="bg-[#ffeeee] text-[#BA2525] px-2 py-1 rounded-full text-sm">
+                      {challenge.points} pts
+                    </span>
+                  </div>
+                  <p className="text-gray-600 text-sm">{challenge.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentStep === 'match' && matchedProfile && suggestedDate && selectedChallenge && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-[#BA2525] mb-6">Your Challenge Match!</h2>
             
             <div className="relative aspect-square w-full mb-4 rounded-lg overflow-hidden">
               <ProfileImage 
@@ -351,16 +512,44 @@ export default function MatchChallengePage() {
               <p className="text-gray-600 mt-2">{matchedProfile.bio}</p>
             </div>
 
+            <div className="bg-[#ffeeee] p-4 rounded-lg space-y-2">
+              <h4 className="font-semibold text-[#BA2525]">Your Challenge</h4>
+              <p className="text-gray-700">{selectedChallenge.title}</p>
+              <p className="text-gray-600 text-sm">{selectedChallenge.description}</p>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-[#BA2525] font-medium capitalize">{selectedChallenge.level}</span>
+                <span className="bg-white text-[#BA2525] px-3 py-1 rounded-full text-sm">
+                  {selectedChallenge.points} points
+                </span>
+              </div>
+            </div>
+
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <h4 className="font-semibold text-[#BA2525]">Your Confirmed Date</h4>
+              <h4 className="font-semibold text-[#BA2525]">Date Details</h4>
               <p className="text-gray-700">Venue: {suggestedDate.venue}</p>
               <p className="text-gray-700">Date: {suggestedDate.date}</p>
               <p className="text-gray-700">Time: {suggestedDate.time}</p>
             </div>
 
+            {answers.allowWatchers && (
+              <div className="bg-white border-2 border-[#BA2525] p-4 rounded-lg">
+                <p className="text-[#BA2525] text-sm">
+                  👥 Your friends will be able to watch your progress and vote on this challenge!
+                </p>
+              </div>
+            )}
+
+            {answers.allowStreaming && (
+              <div className="bg-white border-2 border-[#BA2525] p-4 rounded-lg">
+                <p className="text-[#BA2525] text-sm">
+                  📱 Live date streaming enabled - share your experience in real-time!
+                </p>
+              </div>
+            )}
+
             <div className="bg-[#ffeeee] p-4 rounded-lg">
-              <p className="text-[#BA2525] text-sm">
-                Your date is confirmed! Complete the payment to finalize your binding date commitment.
+              <p className="text-[#BA2525] text-sm font-medium">
+                Ready to commit to this challenge? Complete the payment to lock in your date and start earning points!
               </p>
             </div>
 
@@ -368,7 +557,7 @@ export default function MatchChallengePage() {
               onClick={handleAcceptChallenge}
               className="w-full p-3 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors"
             >
-              Proceed to Payment
+              Accept Challenge & Proceed to Payment
             </button>
           </div>
         )}

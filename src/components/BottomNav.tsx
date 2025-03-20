@@ -1,27 +1,57 @@
-import Link from 'next/link';
-import { Home, Users, Heart, Calendar, UserCircle, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Home, Search, PlusCircle, Bell, User } from 'lucide-react';
+import { Prompt } from 'next/font/google';
+
+const prompt = Prompt({
+  weight: ['400', '700'],
+  subsets: ['latin']
+});
 
 export default function BottomNav() {
+  const router = useRouter();
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50">
-      <div className="max-w-2xl mx-auto flex justify-around">
-        {[
-          { icon: <Home size={24} />, label: 'Home', href: '/dashboard' },
-          { icon: <Users size={24} />, label: 'Matches', href: '/matching' },
-          { icon: <Sparkles size={24} />, label: 'Challenge', href: '/match-challenge' },
-          { icon: <Heart size={24} />, label: 'Dates', href: '/daterequests' },
-          { icon: <Calendar size={24} />, label: 'Upcoming', href: '/dates/upcoming' },
-          { icon: <UserCircle size={24} />, label: 'Profile', href: '/dashboard/editprofile' }
-        ].map(({ icon, label, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className="flex flex-col items-center text-[#BA2525] cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            {icon}
-            <span className="text-xs mt-1">{label}</span>
-          </Link>
-        ))}
+    <div className="fixed bottom-0 left-0 right-0 bg-[#aa0000] border-t border-white py-1.5 px-3 z-50">
+      <div className="max-w-2xl mx-auto flex justify-between items-center">
+        <button 
+          onClick={() => router.push('/dashboard')}
+          className="flex flex-col items-center gap-0.5 text-white hover:text-white/80 transition-colors"
+        >
+          <Home className="w-5 h-5" />
+          <span className={`text-[10px] ${prompt.className}`}>HOME</span>
+        </button>
+        
+        <button 
+          onClick={() => router.push('/matching')}
+          className="flex flex-col items-center gap-0.5 text-white hover:text-white/80 transition-colors"
+        >
+          <Search className="w-5 h-5" />
+          <span className={`text-[10px] ${prompt.className}`}>MATCH</span>
+        </button>
+        
+        <button 
+          onClick={() => router.push('/challenges')}
+          className="flex flex-col items-center gap-0.5 text-white hover:text-white/80 transition-colors"
+        >
+          <PlusCircle className="w-7 h-7" />
+          <span className={`text-[10px] ${prompt.className}`}>POST</span>
+        </button>
+        
+        <button 
+          onClick={() => router.push('/daterequests')}
+          className="flex flex-col items-center gap-0.5 text-white hover:text-white/80 transition-colors"
+        >
+          <Bell className="w-5 h-5" />
+          <span className={`text-[10px] ${prompt.className}`}>ALERTS</span>
+        </button>
+        
+        <button 
+          onClick={() => router.push('/dashboard/editprofile')}
+          className="flex flex-col items-center gap-0.5 text-white hover:text-white/80 transition-colors"
+        >
+          <User className="w-5 h-5" />
+          <span className={`text-[10px] ${prompt.className}`}>PROFILE</span>
+        </button>
       </div>
     </div>
   );

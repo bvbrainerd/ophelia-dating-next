@@ -2,12 +2,31 @@ import { NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
 import { createClient } from '@supabase/supabase-js';
 
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+}
+
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+}
+
+// Initialize Supabase admin client
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 );
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+// Initialize SendGrid
+if (!process.env.SENDGRID_API_KEY) {
+  throw new Error('Missing SENDGRID_API_KEY environment variable');
+}
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 export async function POST(request: Request) {
   try {
@@ -38,10 +57,10 @@ export async function POST(request: Request) {
     // Send email
     const msg = {
       to: email,
-      from: 'dates@opheliadating.io',
+      from: process.env.SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
       templateId: templateId,
       dynamicTemplateData: {
-        referral_link: 'https://ophelia.dating',
+        referral_link: process.env.NEXT_PUBLIC_BASE_URL || 'https://ophelia.dating',
         full_name: fullName
       }
     };
