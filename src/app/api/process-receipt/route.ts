@@ -4,8 +4,6 @@ const DocumentIntelligence = require("@azure-rest/ai-document-intelligence").def
 { getLongRunningPoller, isUnexpected } = require("@azure-rest/ai-document-intelligence");
 import { Receipt } from '@/types/receipt';
 
-// const receiptUrl = "https://raw.githubusercontent.com/Azure-Samples/cognitive-services-REST-api-samples/master/curl/form-recognizer/rest-api/receipt.png";
-
 const endpoint = process.env.AZURE_FORM_RECOGNIZER_URL;
 const key = process.env.AZURE_FORM_RECOGNIZER_KEY;
 
