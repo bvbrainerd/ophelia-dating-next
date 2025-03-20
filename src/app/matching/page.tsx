@@ -391,6 +391,9 @@ export default function MatchingPage() {
     } else if (userStatus === 'single') {
       fetchMatches();
     }
+    else {
+      console.log('User status not set');
+    }
   }, [userStatus]);
 
   const fetchCuratedDates = async () => {
@@ -777,7 +780,7 @@ export default function MatchingPage() {
         {/* Profile Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {paginatedProfiles.map((profile, index) => (
-            <div key={profile.id} className="bg-white rounded-lg overflow-hidden p-4 shadow-md border border-gray-100">
+            <Card key={profile.id} className="bg-white rounded-lg overflow-hidden p-4 shadow-md border border-gray-100">
               <div className="flex flex-col">
                 <div 
                   className="relative w-full aspect-[4/3] mb-4 cursor-pointer overflow-hidden rounded-lg bg-gray-100"
@@ -847,7 +850,7 @@ export default function MatchingPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
 
