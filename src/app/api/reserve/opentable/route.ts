@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     const restaurantName = body.restaurantName;
     // const reservationTimes = body.reservationTimes;
     const reservationTime = body.reservationTime;
-    const date = body.date;
+    const date = body.reservationDate;
 
     // select date
     const dateSelector = await page.getByTestId('day-picker-overlay');
