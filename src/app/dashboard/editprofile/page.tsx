@@ -247,8 +247,6 @@ const PaymentSection = ({
   setSelectedFile,
   showCropper,
   setShowCropper,
-  isUploading,
-  setIsUploading,
   previewUrl,
   avatarFile,
   imageError,

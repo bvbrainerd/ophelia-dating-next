@@ -76,6 +76,9 @@ export async function GET(request: Request) {
 
     // TODO: Enter user details and complete reservation
 
+    await reservationPage.getByLabel('Phone number').fill('5554443333');
+    await reservationPage.getByLabel('optInEmailRestaurant').uncheck();
+    await reservationPage.getByLabel('Special Occasion').selectOption('Date night');
     console.log('Reservation attempt completed.');
 
     return NextResponse.json({ success: true, message: 'Reservation attempt completed.', url: reservationPage.url() });

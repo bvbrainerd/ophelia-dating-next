@@ -1,7 +1,7 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { supabase } from '@/supabase/client';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
 
@@ -51,12 +51,15 @@ export async function POST(
     }
 
     // Create a new Supabase client
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = await createClient();
 
     // Get user from the token
     const token = authHeader.replace('Bearer ', '');
+    console.log(token)
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: session } = await supabase.auth.getSession();
+    console.log('Session:', session);
+    console.log('User:', user);
 
     if (authError || !user) {
       return NextResponse.json(

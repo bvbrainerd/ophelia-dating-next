@@ -30,9 +30,11 @@ export default function LoginPage() {
         password: password.trim()
       });
 
+      console.log('data: ', data);
       if (error) {
         setError(error.message);
       } else if (data?.user) {
+        console.log('User:', data.user);
         router.push('/highlight-reel');
       }
     } catch (error: any) {
