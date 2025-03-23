@@ -1,6 +1,6 @@
 import { Prompt } from 'next/font/google';
 import './globals.css';
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers'
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -24,24 +24,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const authToken = cookieStore.get('sb-oyjfhrqfufujmsnqevgr-auth-token')?.value;
 
-  console.log('Auth Token:', authToken);
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => {
-          const cookie = cookieStore.get(name);
-          return cookie ? cookie.value : null;
-        },
-      },
-    }
-  )
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // console.log('Auth Token:', authToken);
 
   return (
     <html lang="en" className={prompt.variable}>

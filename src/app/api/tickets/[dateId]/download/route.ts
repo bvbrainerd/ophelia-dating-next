@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import { AppleWalletService } from '@/services/AppleWalletService';
 import { TicketVendorService } from '@/services/TicketVendorService';
@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { dateId: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
