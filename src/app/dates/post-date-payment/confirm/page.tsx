@@ -42,7 +42,7 @@ export default function ConfirmBill() {
                 if (!response.ok) {
                     throw new Error("Failed to create payment intent");
                 }
-                
+
                 const data = await response.json();
                 setClientSecret(data.clientSecret);
             } catch (error) {
@@ -50,15 +50,15 @@ export default function ConfirmBill() {
                 console.error("Error fetching client secret:", error);
             }
         };
-        
+
         fetchClientSecret();
         setLoading(false);
         
     }, [searchParams]);
         
     return (
-            <div className="p-4">
-                <h2 className="text-xl font-bold mb-4">Confirm Your Bill</h2>
+        <div className="p-4">
+            <h2 className="text-xl font-bold mb-4">Confirm Your Bill</h2>
                 { !manual ? (
                     <>
                         <label className="block mb-2 font-semibold">{receipt?.merchant}</label>
@@ -122,18 +122,18 @@ export default function ConfirmBill() {
                 {/* Ophelia Date Fee */}
                 <div className="flex justify-between items-center p-2 mb-4 font-semibold">
                     <p className="w-4/5 text-right">Ophelia Date Fee:</p>
-                    <p className="w-1/5 text-right font-medium">${manual ? (manualAmount * 0.15).toFixed(2) : receipt?.opheliaFee.toFixed(2)}</p>
+                    <p className="w-1/5 text-right font-medium">${manual ? (manualAmount! * 0.15).toFixed(2) : receipt?.opheliaFee.toFixed(2)}</p>
                 </div>
 
-                {error && <p className="text-red-500 mb-4">{error}</p>}
+            {error && <p className="text-red-500 mb-4">{error}</p>}
 
-                {/* Stripe Elements will be rendered here */}
-                {clientSecret && (
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
-                        <StripePaymentForm />
-                    </Elements>
-                )}
-            </div>
+            {/* Stripe Elements will be rendered here */}
+            {clientSecret && (
+                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <StripePaymentForm />
+                </Elements>
+            )}
+        </div>
     );
 };
 

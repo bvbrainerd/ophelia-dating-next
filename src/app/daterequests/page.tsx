@@ -837,17 +837,53 @@ export default function DateRequestsPage() {
 
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
     try {
-      // Get the date request details first
+      // Step 1: Get the date request details first
       const { data: request, error: requestError } = await supabase
         .from('date_requests')
         .select('*')
         .eq('id', requestId)
         .single();
 
-      if (requestError) throw requestError;
-      if (!request) throw new Error('Date request not found');
+      if (requestError || !request) throw requestError || new Error('Date request not found');
 
-      // Update the date request status
+      if (status === 'accepted') {
+        // Step 2: Trigger reservation API call before updting DB
+        try {
+          const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          });
+
+          const reservationResponse = await fetch("/api/reserve/opentable", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              restaurantName: request.venue,
+              reservationTime: '6:30 PM',
+              reservationDate,
+            }),
+          });
+
+          const reservationData = await reservationResponse.json();
+
+          if (!reservationData.success) {
+            alert("Reservation failed: " + reservationData.error);
+            return; // Stop here if reservation failed
+          }
+
+          // Optional: store reservationData.url in the database if needed
+
+          alert("Reservation confirmed! You can view it here:" + reservationData.url);
+        } catch (error) {
+          console.error("Error during reservation booking:", error);
+          toast.error("Reservation booking failed");
+          return;
+        }
+      }
+      // Step 3. Update the request status in Supabase
       const { error: updateError } = await supabase
         .from('date_requests')
         .update({
@@ -858,24 +894,31 @@ export default function DateRequestsPage() {
 
       if (updateError) throw updateError;
 
-      // If accepted, redirect to payment
+      // Step 4: If accepted, update match status (optional if you're tracking this in another table)
       if (status === 'accepted') {
-        // Check if there's a direct Stripe link for the venue
-        const stripeLink = stripeLinks[request.venue];
-        if (stripeLink) {
-          window.location.href = stripeLink;
-        } else {
-          // Fallback to payment confirmation page
-          router.push(`/dates/payment-confirmation/${requestId}`);
+        const baseId = requestId.split('-1')[0]; // Assumes -1 is added to make ID unique
+        try {
+          await supabase
+          .from('daily_matches') // ✅ Make sure this is the correct table name
+          .update({ status: "accepted"})
+          .eq('id', baseId); 
+        } catch (error) {
+          console.warn("Match status update failed:", error);
         }
       }
 
-      // Update local state
+      // Step 5: Update local state to remove from current list
       setDateRequests(prev => prev.filter(req => req.id !== requestId));
 
+      // Step 6: Redirect to Stripe or payment confirmation  
+      if (status === "accepted") {
+        const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
+        window.open(stripeLink, "_blank", "noopener,noreferrer");
+        router.push("/matching"); // ✅  Can customize this redirect
+      }
     } catch (error) {
-      console.error('Error handling date response:', error);
-      toast.error('Failed to process your response. Please try again.');
+      console.error("Error handling date response:", error);
+      toast.error("Failed to process your response. Please try again.");
     }
   };
 

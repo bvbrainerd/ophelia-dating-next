@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { supabase } from '@/supabase/client';
 
+// Updated code from "2024-12-18.acacia" to match the installed Stripe package (2025-02-24.acacia)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia' as const
 });
