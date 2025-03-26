@@ -847,7 +847,7 @@ export default function DateRequestsPage() {
       if (requestError || !request) throw requestError || new Error('Date request not found');
 
       if (status === 'accepted') {
-        // Step 2: Trigger reservation API call before updting DB
+        // Step 2: Trigger reservation API call before updating DB
         try {
           const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
             weekday: "long",

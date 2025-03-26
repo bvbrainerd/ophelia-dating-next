@@ -5,8 +5,9 @@ import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
 
+
 // Initialize SendGrid with your API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+sgMail.setApiKey(process.env.ADDITIONAL_SENDGRID_API_KEY_!);
 
 export async function GET(
   request: Request
@@ -38,6 +39,9 @@ export async function POST(
   request: Request
 ) {
   try {
+    // Log the SENDGRID_API_KEY
+    console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY);
+
     // Get id from URL instead of params
     const id = request.url.split('/').pop();
     
@@ -55,7 +59,7 @@ export async function POST(
 
     // Get user from the token
     const token = authHeader.replace('Bearer ', '');
-    console.log(token)
+    console.log("auth TOKEN:", token)
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     const { data: session } = await supabase.auth.getSession();
     console.log('Session:', session);
@@ -126,10 +130,10 @@ export async function POST(
     const msg = {
       to: receiverProfile.email,
       from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
+        email:'dates@opheliadating.io',
         name: 'Ophelia Dating'
       },
-      templateId: process.env.SENDGRID_DATE_REQUEST_TEMPLATE_ID!,
+      templateId: process.env.SENDGRID_DATE_NOTIFICATION_TEMPLATE_ID!,
       dynamicTemplateData: {
         recipientName: receiverProfile.first_name,
         senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
