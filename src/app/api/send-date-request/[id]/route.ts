@@ -40,7 +40,7 @@ export async function POST(
 ) {
   try {
     // Log the SENDGRID_API_KEY
-    console.log('SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY);
+    console.log('SENDGRID_API_KEY:', process.env.ADDITIONAL_SENDGRID_API_KEY_);
 
     // Get id from URL instead of params
     const id = request.url.split('/').pop();

@@ -1,6 +1,15 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/supabase/utils/middleware'
+
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // ✅ Skip session check for the Yelp crawler API route
+  if (pathname.startsWith('/api/reserve/crawlers/yelp')) {
+    return NextResponse.next();
+  }
+
+  // Otherwise, run Supabase session logic
   return await updateSession(request)
 }
 
