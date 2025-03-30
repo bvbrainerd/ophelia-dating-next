@@ -44,10 +44,12 @@
         "react-dom": "^18.2.0",
         "react-hot-toast": "^2.5.2",
         "react-image-crop": "^11.0.7",
+        "redis": "^4.7.0",
         "sharp": "^0.33.5",
         "sonner": "^2.0.1",
         "stripe": "^17.7.0",
-        "tailwind-merge": "^2.6.0"
+        "tailwind-merge": "^2.6.0",
+        "uuid": "^11.1.0"
     },
     "devDependencies": {
         "@next/eslint-plugin-next": "^15.0.3",
