@@ -25,7 +25,8 @@ export const config = {
      * - public (public files)
      * - auth/login (login page)
      * - auth/signup (signup page)
+     * - api/webhooks (webhook API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|auth/login|auth/signup|auth(?!/reset-password)).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|auth/login|auth/signup|api/webhooks|auth(?!/reset-password)).*)',
   ],
 };
