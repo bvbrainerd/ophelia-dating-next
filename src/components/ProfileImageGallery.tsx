@@ -122,7 +122,7 @@ export default function ProfileImageGallery({
   if (mode === 'view') {
     const currentImage = images[currentIndex];
     return (
-      <div className={`relative aspect-square w-full ${className}`}>
+      <div className={`relative aspect-[3/4] w-full ${className}`}>
         <Image
           src={currentImage ? processedUrls[currentImage.id] || DEFAULT_AVATAR : DEFAULT_AVATAR}
           alt="Profile image"
@@ -158,11 +158,6 @@ export default function ProfileImageGallery({
               <ChevronRight className="w-6 h-6 text-gray-700" />
             </button>
           </>
-        )}
-        {currentImage?.is_main && (
-          <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1">
-            <Star className="w-4 h-4 text-[#BA2525] fill-[#BA2525]" />
-          </div>
         )}
       </div>
     );

@@ -423,7 +423,7 @@ export const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.6,
       price: "$$$",
-      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/fujiatinkblock.jpg",
+      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/fuji.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi"
@@ -963,24 +963,24 @@ interface VenueMap {
 }
 
 const venues: VenueMap = {
-  hopelessRomantic: ['Barcelona Wine Bar', 'Museum of Fine Arts', 'Blue Ribbon Sushi', 'Boston Commons', 'Madeline\'s Candy Shop'],
-  cautiousDater: ['Cityside Tavern', 'Kured', 'Joes on Newbury', 'The Clay Room', 'Tatte Bakery & Cafe'],
-  serialDater: ['Boston Bruins', 'BC Basketball', 'F1 Arcade', 'Lolita Back Bay', 'Tatte Bakery & Cafe'],
-  commitmentSeeker: ['Celtics', 'Lucca North End', 'Barcelona Wine Bar', 'Madeline\'s Candy Shop'],
-  friendWithBenefits: ['Capo', 'Boston Bruins', 'F1 Arcade', 'Cityside Tavern', 'Tatte Bakery & Cafe']
+  hopelessRomantic: ['Barcelona Wine Bar', 'Museum of Fine Arts', 'Blue Ribbon Sushi', 'Boston Common', "Madeline's Candy Shop"],
+  cautiousDater: ['Cityside', 'Kured', "Joe's On Newbury", 'The Clay Room', 'Tatte'],
+  serialDater: ['TD Garden - Bruins', 'BC Basketball', 'F1 Boston', 'Lolita Back Bay', 'Tatte'],
+  commitmentSeeker: ['TD Garden - Celtics', 'Lucca', 'Barcelona Wine Bar', "Madeline's Candy Shop"],
+  friendWithBenefits: ['Capo', 'TD Garden - Bruins', 'F1 Boston', 'Cityside', 'Tatte']
 };
 
 export const getVenueForArchetype = (archetype: string): string[] => {
   // For sports enthusiasts, mix in sports venues
   if (archetype === 'serialDater' || archetype === 'commitmentSeeker' || archetype === 'friendWithBenefits') {
-    const sportsVenues = ['Celtics'];
+    const sportsVenues = ['TD Garden - Celtics'];
     const baseVenues = venues[archetype as keyof VenueMap] || venues.commitmentSeeker;
     return Array.from(new Set([...baseVenues, ...sportsVenues.slice(0, 2)]));
   }
   
   // For casual daters, mix in casual dining options
   if (archetype === 'cautiousDater' || archetype === 'hopelessRomantic') {
-    const casualVenues = ['Cityside Tavern', 'Barcelona Wine Bar', 'Capo'];
+    const casualVenues = ['Cityside', 'Barcelona Wine Bar', 'Capo'];
     const baseVenues = venues[archetype as keyof VenueMap] || venues.commitmentSeeker;
     return Array.from(new Set([...baseVenues, ...casualVenues.slice(0, 2)]));
   }
@@ -1001,24 +1001,24 @@ export const getVenueImagePath = (venueName: string): string => {
 export const venueCoordinates: Record<string, [number, number]> = {
   'Blue Ribbon Sushi': [-71.0594, 42.3551],
   'Barcelona Wine Bar': [-71.0761, 42.3457],
-  'Cityside Tavern': [-71.1502, 42.3359],
-  'Lorettas Last Call': [-71.0950, 42.3467],
+  'Cityside': [-71.1502, 42.3359],
+  "Loretta's Last Call": [-71.0950, 42.3467],
   'BC Basketball': [-71.1677, 42.3357],
-  'Celtics': [-71.0622, 42.3663],
-  'F1 Arcade': [-71.0595, 42.3501],
+  'TD Garden - Celtics': [-71.0622, 42.3663],
+  'F1 Boston': [-71.0595, 42.3501],
   'Museum of Fine Arts': [-71.0942, 42.3394],
-  'Boston Commons': [-71.0670, 42.3554],
+  'Boston Common': [-71.0670, 42.3554],
   'Kured': [-71.0712, 42.3589],
   'The Clay Room': [-71.1317, 42.3396],
-  'Joes on Newbury': [-71.0793, 42.3491],
-  'Lucca North End': [-71.0567, 42.3647],
+  "Joe's On Newbury": [-71.0793, 42.3491],
+  'Lucca': [-71.0567, 42.3647],
   'Lolita Back Bay': [-71.0816, 42.3486],
   'Capo': [-71.0472, 42.3359],
   'Private Helicopter Ride': [-71.0217, 42.3656],
-  'Boston Duck Tour': [-71.0737, 42.3587],
-  'Madeline\'s Candy Shop': [-71.0734, 42.3476],
-  'Tatte Bakery & Cafe': [-71.1923, 42.3278],
-  'Greatest Bar': [-71.0519, 42.3512]
+  'Boston Duck Tours': [-71.0737, 42.3587],
+  "Madeline's Candy Shop": [-71.0734, 42.3476],
+  'Tatte': [-71.1923, 42.3278],
+  'The Greatest Bar': [-71.0519, 42.3512]
 };
 
 export const getVenueCoordinates = (venueName: string): [number, number] => {

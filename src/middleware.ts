@@ -2,14 +2,30 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res: response });
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-  // Refresh session if expired - required for Server Components
-  await supabase.auth.getSession();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
 
-  return response;
+    // If there's no session and the user is trying to access a protected route
+    if (!session && (
+      req.nextUrl.pathname.startsWith('/dashboard') ||
+      req.nextUrl.pathname.startsWith('/matching') ||
+      req.nextUrl.pathname.startsWith('/profile') ||
+      req.nextUrl.pathname.startsWith('/highlight-reel')
+    )) {
+      const redirectUrl = new URL('/auth/login', req.url);
+      redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    return res;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    return res;
+  }
 }
 
 // Specify which routes should trigger this middleware

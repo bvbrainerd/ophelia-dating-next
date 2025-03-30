@@ -24,109 +24,93 @@ export default function SignUp() {
   const [age, setAge] = useState('')
   const [gender, setGender] = useState('')
   const [preferredGender, setPreferredGender] = useState('')
-  const [relationshipStatus, setRelationshipStatus] = useState<'single' | 'in_relationship'>('single')
+  const [relationshipStatus, setRelationshipStatus] = useState<'single' | 'couple'>('single')
   const [partnerEmail, setPartnerEmail] = useState('')
   const [bio, setBio] = useState('')
   const [descriptors, setDescriptors] = useState<Array<{ category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }>>([])
   const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('public')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showLoginLink, setShowLoginLink] = useState(false)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showCropper, setShowCropper] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [coupleBio, setCoupleBio] = useState('');
+  const [isCoupleProfile, setIsCoupleProfile] = useState(false);
+  const [school, setSchool] = useState('');
 
   const validateBCEmail = (email: string): boolean => {
-    return email.toLowerCase().endsWith('.edu')
+    return true // Allow any email domain
   }
 
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateBCEmail(email)) {
-      setError('Please use a valid .edu email address')
-      return
-    }
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-    if (!avatarFile) {
-      setError('Please upload a profile picture')
-      return
-    }
-
-    setIsLoading(true)
     try {
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email.toLowerCase().trim(),
-        password: password.trim(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            first_name: firstName,
-            last_name: lastName
-          }
+        password: password,
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Upload avatar if selected
+        let avatarUrl = null;
+        if (selectedFile) {
+          avatarUrl = await uploadAvatar(authData.user.id, selectedFile);
         }
-      })
 
-      if (signUpError) {
-        throw signUpError
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: email.toLowerCase(),
+            avatar_url: avatarUrl,
+            school: school || null,
+            age: parseInt(age),
+            gender,
+            preferred_gender: preferredGender,
+            bio: relationshipStatus === 'single' ? bio.trim() : coupleBio.trim(),
+            descriptors,
+            relationship_status: relationshipStatus,
+            partner_email: relationshipStatus === 'couple' ? partnerEmail.toLowerCase().trim() : null,
+            is_couple_profile: relationshipStatus === 'couple',
+            profile_visibility: profileVisibility,
+          });
+
+        if (profileError) throw profileError;
+
+        // Send welcome email
+        await fetch('/api/send-signup-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email,
+            templateId: process.env.NEXT_PUBLIC_SENDGRID_SIGNUP_TEMPLATE_ID,
+            dynamicTemplateData: {
+              first_name: firstName,
+              last_name: lastName
+            }
+          })
+        });
+
+        router.push('/quiz');
       }
-
-      if (!authData?.user?.id) {
-        throw new Error('Failed to create account')
-      }
-
-      // Upload avatar
-      const fileExt = avatarFile.name.split('.').pop()
-      const fileName = `${authData.user.id}-${Date.now()}.${fileExt}`
-      
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, avatarFile)
-
-      if (uploadError) {
-        throw uploadError
-      }
-
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
-
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: email.toLowerCase().trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          age: parseInt(age),
-          gender,
-          preferred_gender: preferredGender,
-          avatar_url: urlData?.publicUrl,
-          relationship_status: relationshipStatus,
-          partner_email: relationshipStatus === 'in_relationship' ? partnerEmail.trim() : null,
-          bio: bio.trim(),
-          descriptors,
-          profile_visibility: profileVisibility,
-          school: 'Boston College',
-          dater_status: 'bronze',
-          average_rating: 5.0,
-          follow_through_rate: 100
-        })
-
-      if (profileError) {
-        throw profileError
-      }
-
-      alert('Account created! Please check your email to verify your account.')
-      router.push('/quiz')
-    } catch (error: any) {
-      console.error('Signup error:', error)
-      setError(error.message || 'An error occurred during signup')
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err.message || 'Failed to sign up');
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -169,6 +153,40 @@ export default function SignUp() {
     )
   }
 
+  const renderCoupleFields = () => {
+    if (relationshipStatus !== 'couple') return null;
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Partner's Email
+          </label>
+          <input
+            type="email"
+            value={partnerEmail}
+            onChange={(e) => setPartnerEmail(e.target.value)}
+            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
+            required
+            placeholder="Enter your partner's email"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Couple Bio
+          </label>
+          <textarea
+            value={coupleBio}
+            onChange={(e) => setCoupleBio(e.target.value)}
+            className="w-full p-2.5 border border-gray-200 rounded-3xl outline-none focus:border-[#BA2525] transition-colors min-h-[120px] resize-none"
+            placeholder="Tell us about you as a couple..."
+            rows={4}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`max-w-md mx-auto p-5 ${prompt.className}`}>
       <h2 className="text-center text-[#BA2525] font-bold text-3xl mb-6">
@@ -178,7 +196,7 @@ export default function SignUp() {
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
           {error}
-          {error.includes('already registered') && (
+          {showLoginLink && (
             <div className="mt-2">
               <Link href="/auth/login" className="text-[#BA2525] hover:underline">
                 Click here to log in
@@ -188,7 +206,7 @@ export default function SignUp() {
         </div>
       )}
 
-      <form onSubmit={handleSignup} className="space-y-4">
+      <form onSubmit={handleSignup} className="space-y-6">
         <div className="flex flex-col items-center justify-center w-full mb-8">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
             {previewUrl ? (
@@ -227,6 +245,7 @@ export default function SignUp() {
             )}
             <input
               type="file"
+              name="avatar"
               className="hidden"
               accept="image/*"
               onChange={handleImageUpload}
@@ -326,37 +345,32 @@ export default function SignUp() {
         <select
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           value={relationshipStatus}
-          onChange={(e) => setRelationshipStatus(e.target.value as 'single' | 'in_relationship')}
+          onChange={(e) => setRelationshipStatus(e.target.value as 'single' | 'couple')}
           disabled={isLoading}
           required
         >
           <option value="">Select Relationship Status</option>
           <option value="single">Single</option>
-          <option value="in_relationship">In a Relationship</option>
+          <option value="couple">In a Relationship</option>
         </select>
 
-        {relationshipStatus === 'in_relationship' && (
-          <input
-            className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
-            type="email"
-            placeholder="Partner's Email"
-            value={partnerEmail}
-            onChange={(e) => setPartnerEmail(e.target.value)}
+        {relationshipStatus === 'single' && (
+          <textarea
+            className="w-full p-2.5 border border-gray-200 rounded-3xl outline-none focus:border-[#BA2525] transition-colors min-h-[120px] resize-none"
+            placeholder="Tell us about yourself..."
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
             disabled={isLoading}
-            required
-            autoComplete="email"
+            rows={4}
           />
         )}
 
-        <textarea
-          className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:border-[#BA2525] transition-colors min-h-[100px]"
-          placeholder="Tell us about yourself..."
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          disabled={isLoading}
-        />
+        {renderCoupleFields()}
 
         <div className="mb-6" onClick={(e) => e.preventDefault()}>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {relationshipStatus === 'couple' ? 'Select Descriptors for Your Couple Profile' : 'Select Your Descriptors'}
+          </label>
           <DescriptorBubbles
             selectedDescriptors={descriptors}
             onSelectDescriptor={handleDescriptorSelect}

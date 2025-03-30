@@ -1,28 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/supabase/client';
+import { getDailyDare } from '@/utils/dailyDares';
 
 interface PenaltyDareProps {
   userId: string;
   onComplete: () => void;
 }
 
-const penaltyDares = [
-  "Post a video confessing your biggest dating fear",
-  "Go live and share your most embarrassing date story",
-  "Post a public apology for being a date bailer",
-  "Share a video explaining why you keep running from real connections",
-  "Record yourself doing a silly dance in a public place",
-  "Post a video singing a love song dedicated to your future date"
-];
-
-const surpriseChallenges = [
-  "Kiss your date by the end of the night",
-  "Ask your date to dance in public",
-  "Share your deepest fear with your date",
-  "Tell your date something you've never told anyone else",
-  "Propose a spontaneous adventure during the date",
-  "Give your date a thoughtful compliment every 30 minutes"
-];
+interface Profile {
+  id: string;
+  dating_status: string;
+  current_penalty_dare: string | null;
+  next_date_challenge: string | null;
+}
 
 export default function PenaltyDare({ userId, onComplete }: PenaltyDareProps) {
   const [dare, setDare] = useState<string | null>(null);
@@ -32,7 +22,7 @@ export default function PenaltyDare({ userId, onComplete }: PenaltyDareProps) {
   useEffect(() => {
     const fetchUserPenalties = async () => {
       try {
-        // Get user's current penalties
+        // Get user's current penalties and status
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('dating_status, current_penalty_dare, next_date_challenge')
@@ -44,26 +34,31 @@ export default function PenaltyDare({ userId, onComplete }: PenaltyDareProps) {
         if (profile.current_penalty_dare) {
           setDare(profile.current_penalty_dare);
         } else if (profile.dating_status === 'penalty') {
-          // Assign a new penalty dare
-          const newDare = penaltyDares[Math.floor(Math.random() * penaltyDares.length)];
+          // Get the daily dare based on user's relationship status
+          const userStatus = profile.dating_status === 'single' ? 'single' : 'couple';
+          const dailyDare = await getDailyDare(userStatus);
+          
+          // Assign the daily dare
           const { error: updateError } = await supabase
             .from('profiles')
-            .update({ current_penalty_dare: newDare })
+            .update({ current_penalty_dare: dailyDare.dare })
             .eq('id', userId);
 
           if (updateError) throw updateError;
-          setDare(newDare);
+          setDare(dailyDare.dare);
         }
 
         // Check if user needs a surprise challenge
         if (profile.next_date_challenge) {
           setHasChallenge(true);
         } else if (profile.dating_status === 'penalty') {
-          // Assign a new surprise challenge
-          const newChallenge = surpriseChallenges[Math.floor(Math.random() * surpriseChallenges.length)];
+          // Get another daily dare for the challenge
+          const userStatus = profile.dating_status === 'single' ? 'single' : 'couple';
+          const dailyChallenge = await getDailyDare(userStatus);
+          
           const { error: updateError } = await supabase
             .from('profiles')
-            .update({ next_date_challenge: newChallenge })
+            .update({ next_date_challenge: dailyChallenge.dare })
             .eq('id', userId);
 
           if (updateError) throw updateError;
@@ -125,7 +120,7 @@ export default function PenaltyDare({ userId, onComplete }: PenaltyDareProps) {
       {dare && (
         <div className="mb-6">
           <h2 className="text-xl font-bold text-[#cc0000] mb-4">
-            Your Penalty Dare 😈
+            Your Daily Dare 😈
           </h2>
           <p className="text-gray-800 text-lg mb-4">
             {dare}

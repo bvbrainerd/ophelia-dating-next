@@ -12,7 +12,7 @@ import BottomNav from '@/components/BottomNav';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import Image from 'next/image';
-import PenaltyDare from '@/components/PenaltyDare';
+import { toast } from 'react-hot-toast';
 
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
 
@@ -29,22 +29,27 @@ interface DatePost {
     avatar_url: string | null;
   };
   venue: string;
-  location?: {
-    lat: number;
-    lng: number;
-  };
-  challenge: {
-    title: string;
-    points: number;
-  };
   created_at: string;
   watcher_votes: number;
   comments_count: number;
-  proof_media_url?: string | null;
-  hasLiked?: boolean;
-  visibility: string;
-  group_id: string;
-  group_name?: string;
+  hasLiked: boolean;
+  proof_media_url: string | null;
+}
+
+interface DatabasePost {
+  id: string;
+  venue: string;
+  created_at: string;
+  watcher_votes: number;
+  proof_media_url: string | null;
+  profiles: {
+    id: string;
+    first_name: string;
+    avatar_url: string | null;
+  };
+  venues: {
+    name: string;
+  } | null;
 }
 
 interface Group {
@@ -94,7 +99,6 @@ export default function DashboardPage() {
   const [selectedTab, setSelectedTab] = useState<string>('all');
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [showPenaltyDare, setShowPenaltyDare] = useState(true);
 
   useEffect(() => {
     // Get current user and their groups
@@ -137,41 +141,58 @@ export default function DashboardPage() {
 
     try {
       // Check if user has already liked
-      const { data: existingLike } = await supabase
+      const { data: existingLikes, error: likeError } = await supabase
         .from('date_likes')
-        .select('id')
-        .eq('date_id', postId)
-        .eq('user_id', currentUser.id)
-        .single();
+        .select('*')
+        .eq('date_request_id', postId)
+        .eq('user_id', currentUser.id);
+
+      if (likeError) throw likeError;
+
+      const existingLike = existingLikes?.[0];
 
       if (existingLike) {
         // Unlike
-        await supabase
+        const { error: deleteError } = await supabase
           .from('date_likes')
           .delete()
-          .eq('id', existingLike.id);
+          .eq('date_request_id', postId)
+          .eq('user_id', currentUser.id);
+
+        if (deleteError) throw deleteError;
 
         // Update local state
         setDatePosts(prev => prev.map(post => 
           post.id === postId 
-            ? { ...post, watcher_votes: post.watcher_votes - 1, hasLiked: false }
+            ? { ...post, watcher_votes: Math.max(0, post.watcher_votes - 1), hasLiked: false }
             : post
         ));
+
+        toast.success('Like removed');
       } else {
         // Like
-        await supabase
+        const { error: insertError } = await supabase
           .from('date_likes')
-          .insert({ date_id: postId, user_id: currentUser.id });
+          .insert({ 
+            date_request_id: postId, 
+            user_id: currentUser.id,
+            created_at: new Date().toISOString()
+          });
 
-      // Update local state
+        if (insertError) throw insertError;
+
+        // Update local state
         setDatePosts(prev => prev.map(post => 
           post.id === postId 
             ? { ...post, watcher_votes: post.watcher_votes + 1, hasLiked: true }
             : post
         ));
+
+        toast.success('Post liked!');
       }
     } catch (error) {
       console.error('Error handling like:', error);
+      toast.error('Failed to update like');
     }
   };
 
@@ -191,97 +212,106 @@ export default function DashboardPage() {
     setSelectedGroup(selectedGroup || null);
   };
 
-  useEffect(() => {
-    const fetchDatePosts = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user found');
+  const handleDelete = async (postId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        // Get user's groups
-        const { data: userGroups } = await supabase
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', user.id);
+      const { error } = await supabase
+        .from('date_requests')
+        .update({ status: 'deleted' })
+        .eq('id', postId)
+        .eq('sender_id', user.id);
 
-        const groupIds = userGroups?.map(g => g.group_id) || [];
+      if (error) throw error;
 
-        // Base query
-        let query = supabase
-          .from('live_dates')
-          .select(`
+      // Update local state
+      setDatePosts(prev => prev.filter(post => post.id !== postId));
+      toast.success('Post deleted successfully');
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error('Failed to delete post');
+    }
+  };
+
+  const fetchDatePosts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: posts, error } = await supabase
+        .from('date_requests')
+        .select(`
+          id,
+          venue,
+          created_at,
+          watcher_votes,
+          proof_media_url,
+          profiles!date_requests_sender_id_fkey (
             id,
-            venue,
-            created_at,
-            watcher_votes,
-            challenge_title,
-            user_id,
             first_name,
-            avatar_url,
-            challenge_points,
-            latitude,
-            longitude,
-            visibility,
-            group_id,
-            groups:groups!inner (
-              name
-            )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(20);
+            avatar_url
+          ),
+          venues (
+            name
+          )
+        `)
+        .in('status', ['completed', 'rated'])
+        .neq('status', 'deleted')
+        .order('created_at', { ascending: false });
 
-        // Apply group filter if selected
-        if (selectedTab !== 'all') {
-          query = query.eq('group_id', selectedTab);
-        } else {
-          // Show all accessible posts
-          query = query.or(`visibility.eq.public,and(visibility.eq.private,group_id.in.(${groupIds.join(',')})),and(visibility.eq.private,user_id.eq.${user.id})`);
+      if (error) throw error;
+
+      // Transform the data to match the DatePost type
+      const transformedPosts = await Promise.all((posts || []).map(async post => {
+        const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+        const venue = Array.isArray(post.venues) ? post.venues[0] : post.venues;
+        
+        // Transform proof_media_url to get the public URL
+        let proofUrl = post.proof_media_url;
+        if (proofUrl && !proofUrl.startsWith('http')) {
+          const cleanPath = proofUrl.replace(/^date-proofs\//, '');
+          const { data } = supabase.storage
+            .from('date-proofs')
+            .getPublicUrl(cleanPath);
+          proofUrl = data?.publicUrl;
         }
 
-        const { data: liveDates, error } = await query;
-
-        if (error) throw error;
-
-        // Get user's likes
+        // Check if the current user has liked this post
         const { data: likes } = await supabase
           .from('date_likes')
-          .select('date_id')
+          .select('*')
+          .eq('date_request_id', post.id)
           .eq('user_id', user.id);
-        
-        const userLikes = likes?.map(like => like.date_id) || [];
 
-        const formattedPosts = (liveDates as unknown as LiveDate[]).map(date => ({
-          id: date.id,
+        const hasLiked = Boolean(likes && likes.length > 0);
+
+        return {
+          id: post.id,
           user: {
-            id: date.user_id,
-            first_name: date.first_name,
-            avatar_url: date.avatar_url
+            id: profile.id,
+            first_name: profile.first_name,
+            avatar_url: profile.avatar_url
           },
-          venue: date.venue,
-          location: date.latitude && date.longitude ? {
-            lat: date.latitude,
-            lng: date.longitude
-          } : undefined,
-          challenge: {
-            title: date.challenge_title || 'Mystery Date',
-            points: date.challenge_points || 100
-          },
-          created_at: date.created_at,
-          watcher_votes: date.watcher_votes || 0,
-          comments_count: Math.floor(Math.random() * 20),
-          hasLiked: userLikes.includes(date.id),
-          visibility: date.visibility,
-          group_id: date.group_id,
-          group_name: date.groups?.name
-        }));
+          venue: venue?.name || post.venue,
+          created_at: post.created_at,
+          watcher_votes: post.watcher_votes || 0,
+          comments_count: 0,
+          proof_media_url: proofUrl,
+          hasLiked
+        };
+      }));
 
-        setDatePosts(formattedPosts);
-      } catch (error) {
-        console.error('Error fetching date posts:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setDatePosts(transformedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      toast.error('Failed to load posts');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDatePosts();
   }, [currentUser, selectedTab]);
 
@@ -307,7 +337,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#cc0000] text-white pb-20">
       <div className="max-w-2xl mx-auto p-4">
-        <Header variant="default" />
+        <Header variant="dashboard" />
 
         <div className="sticky top-0 bg-[#cc0000] pb-4 mb-6 pt-4 z-50">
           <div className="flex flex-col mt-4">
@@ -408,20 +438,25 @@ export default function DashboardPage() {
                       <div className={`text-white text-lg font-medium ${prompt.className}`}>{post.user.first_name}</div>
                       <div className={`text-white/80 text-sm ${prompt.className}`}>
                         {post.venue}
-                        {post.group_name && (
-                          <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                            {post.group_name}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
-                  <div className={`text-white/80 text-sm ${prompt.className}`}>
-                    {formatTimeAgo(post.created_at)}
+                  <div className="flex items-center gap-4">
+                    <div className={`text-white/80 text-sm ${prompt.className}`}>
+                      {formatTimeAgo(post.created_at)}
+                    </div>
+                    {currentUser?.id === post.user.id && (
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        className="text-white/60 hover:text-white transition-colors"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="relative aspect-[4/3] bg-gray-900">
+                <div className="relative aspect-[3/4] bg-gray-900">
                   {post.proof_media_url ? (
                     <img 
                       src={post.proof_media_url}
@@ -453,21 +488,9 @@ export default function DashboardPage() {
                       <MessagesSquare className="w-5 h-5" />
                       <span className={prompt.className}>{post.comments_count}</span>
                     </button>
-                    {post.location && (
-                    <button
-                        onClick={() => handleShowMap(post)}
-                        className="flex items-center gap-2 hover:text-white transition-colors"
-                    >
-                        <MapPin className="w-5 h-5" />
-                        <span className={prompt.className}>View Map</span>
-                    </button>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-white" />
-                    <span className={`text-white ${prompt.className}`}>
-                      {post.challenge.points} pts
-                    </span>
                   </div>
                 </div>
               </div>
@@ -488,33 +511,17 @@ export default function DashboardPage() {
                 Close
               </button>
             </div>
-            <div className="h-[400px] w-full">
-              {selectedPost.location && (
-                <Map 
-                  center={[selectedPost.location.lng, selectedPost.location.lat]}
-                  zoom={15}
-                  markers={[{
-                    coordinates: [selectedPost.location.lng, selectedPost.location.lat],
-                    title: selectedPost.venue
-                  }]}
-                />
-              )}
+            <div className="h-[400px] w-full flex items-center justify-center">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2">{selectedPost.venue}</h3>
+                <p className="text-gray-500">Location details coming soon</p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       <BottomNav />
-
-      {/* Add PenaltyDare component if user has penalties */}
-      {currentUser && showPenaltyDare && (
-        <div className="mb-8">
-          <PenaltyDare
-            userId={currentUser.id}
-            onComplete={() => setShowPenaltyDare(false)}
-          />
-        </div>
-      )}
     </div>
   );
 }

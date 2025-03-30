@@ -116,43 +116,55 @@ export async function PUT(
 export async function GET(
   request: Request
 ) {
-  const id = request.url.split('/').pop();
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  try {
+    const id = request.url.split('/').pop();
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from('date_requests')
+      .select(`
+        *,
+        profiles!date_requests_sender_id_fkey (
+          id,
+          first_name,
+          last_name,
+          age,
+          avatar_url,
+          bio
+        )
+      `)
+      .eq('id', id)
+      .or(`receiver_id.eq.${user.id},sender_id.eq.${user.id}`)
+      .single();
+
+    if (error) {
+      console.error('Error fetching date request:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch date request' },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Date request not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ data });
+  } catch (error) {
+    console.error('Error in GET route:', error);
     return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
-
-  // Add console.log to debug the query
-  console.log('Fetching date request with id:', id);
-  console.log('User id:', user.id);
-
-  const { data, error } = await supabase
-    .from('date_requests')
-    .select(`
-      *,
-      profiles!date_requests_sender_id_fkey (
-        id,
-        first_name,
-        last_name,
-        age,
-        avatar_url,
-        bio
-      )
-    `)
-    .eq('id', id)
-    .or(`receiver_id.eq.${user.id},status.eq.pending`)
-    .single();
-
-  if (error) {
-    console.error('Supabase query error:', error);
-    throw error;
-  }
-
-  console.log('Retrieved date request data:', data);
-
-  return NextResponse.json({ data });
 }

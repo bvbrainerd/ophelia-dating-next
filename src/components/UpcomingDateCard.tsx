@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Coffee, Calendar, ArrowLeft, Ticket, CreditCard } from 'lucide-react';
+import { Coffee, Calendar, ArrowLeft, Ticket, CreditCard, Play, MapPin } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import Map from '@/components/Map';
 import TicketView from '@/components/TicketView';
 import { loadStripe } from '@stripe/stripe-js';
 import { toast } from 'sonner';
+import { createClient } from '@supabase/supabase-js';
+
+// Create Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Profile {
   id: string;
@@ -18,13 +24,25 @@ interface Profile {
 interface DateRequest {
   id: string;
   sender_id: string;
-  venue: string | null;
-  proposed_time: string | null;
+  receiver_id: string;
+  status: string;
   created_at: string;
+  updated_at: string;
+  proposed_time: string | null;
+  venue: string | null;
   sender?: Profile;
+  proposed_payment: number | null;
+  split_payment: boolean;
+  challenge_id: string | null;
+  watcher_votes: number;
+  latitude: number | null;
+  longitude: number | null;
+  venue_id: string | null;
+  date_reservations?: Array<{ date_time: string }>;
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
   payment_amount?: number;
-  coordinates?: [number, number];
+  payment_method_id?: string;
+  stripe_payment_intent_id?: string;
 }
 
 interface UpcomingDateCardProps {
@@ -37,6 +55,7 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
   const router = useRouter();
   const [showTicket, setShowTicket] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStartingDate, setIsStartingDate] = useState(false);
 
   const handleProfileClick = () => {
     if (date.sender?.id) {
@@ -89,6 +108,20 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
     }
   };
 
+  const handleStartDate = async () => {
+    try {
+      setIsStartingDate(true);
+
+      // Navigate to the dates/started page with the date ID
+      router.push(`/dates/started/${date.id}`);
+    } catch (error) {
+      console.error('Error starting date:', error);
+      toast.error('Failed to start date. Please try again.');
+    } finally {
+      setIsStartingDate(false);
+    }
+  };
+
   const formatUpcomingDate = (request: DateRequest) => {
     const dateTime = request.proposed_time || request.created_at;
     if (!dateTime) return 'Date not set';
@@ -111,6 +144,12 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
       return 'Invalid date';
     }
   };
+
+  // Default coordinates for Boston if none provided
+  const defaultCoords: [number, number] = [42.3601, -71.0589];
+  const mapCoords: [number, number] = date.latitude && date.longitude 
+    ? [date.latitude, date.longitude]
+    : defaultCoords;
 
   return (
     <Card className="p-6 mb-4 bg-white shadow-sm">
@@ -171,18 +210,18 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
           </div>
 
           {/* Map Section */}
-          {date.venue && date.coordinates && (
-            <div className="relative h-48 rounded-lg overflow-hidden shadow-lg mb-6">
+          <div className="mb-6">
+            <div className="relative h-48 rounded-lg overflow-hidden shadow-lg">
               <Map 
                 markers={[{
-                  coordinates: date.coordinates,
-                  title: date.venue
+                  coordinates: mapCoords,
+                  title: date.venue || 'Date Location'
                 }]}
-                center={date.coordinates}
+                center={mapCoords}
                 zoom={15}
               />
             </div>
-          )}
+          </div>
 
           {/* Payment Status */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-4">
@@ -197,7 +236,7 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
                 <button
                   onClick={handlePayment}
                   disabled={isProcessing}
-                  className="px-4 py-1 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a01f1f] transition-colors disabled:opacity-50"
+                  className="px-4 py-1 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full text-sm hover:bg-[#ffeeee] transition-colors disabled:opacity-50"
                 >
                   {isProcessing ? 'Processing...' : 'Pay Now'}
                 </button>
@@ -207,15 +246,27 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
             </div>
           </div>
 
-          {/* View Ticket Button */}
-          <button
-            onClick={() => setShowTicket(true)}
-            disabled={date.payment_status !== 'paid'}
-            className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a01f1f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <Ticket className="w-5 h-5" />
-            {date.payment_status === 'paid' ? 'View Ticket' : 'Pay to Access Ticket'}
-          </button>
+          {/* Action Buttons */}
+          <div className="flex gap-4">
+            {/* View Ticket Button */}
+            <button
+              onClick={() => setShowTicket(true)}
+              className="flex-1 p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors flex items-center justify-center gap-2"
+            >
+              <Ticket className="w-5 h-5" />
+              View Ticket
+            </button>
+
+            {/* Start Date Button */}
+            <button
+              onClick={handleStartDate}
+              disabled={isStartingDate}
+              className="flex-1 p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a01f1f] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Play className="w-5 h-5" />
+              {isStartingDate ? 'Starting...' : 'Start Date'}
+            </button>
+          </div>
         </>
       )}
     </Card>

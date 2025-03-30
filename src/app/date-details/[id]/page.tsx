@@ -481,7 +481,6 @@ export default function DateDetailsPage() {
             </div>
 
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4">Date Details</h2>
               <div className="bg-white border-2 border-[#BA2525] rounded-lg p-4">
                 <div className="space-y-2 text-[#BA2525]">
                   <p className="flex items-center gap-2">

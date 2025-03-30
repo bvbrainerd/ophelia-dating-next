@@ -6,8 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
-import Header from '@/components/Header';
-import { Coffee, MapPin, Calendar, User, Utensils, ArrowLeft, Ticket, CreditCard } from 'lucide-react';
+import { Coffee, MapPin, Calendar, User, Utensils, ArrowLeft, Ticket, CreditCard, Heart, Target, Users, Bell } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import Map from '@/components/Map';
 import { getVenueImagePath, getVenueCoordinates } from '@/utils/venues';
@@ -15,6 +14,10 @@ import { toast } from 'sonner';
 import ProfileImage from '@/components/ProfileImage';
 import Link from 'next/link';
 import TicketView from '@/components/TicketView';
+import UpcomingDateCard from '@/components/UpcomingDateCard';
+import Header from '@/components/Header';
+import { Prompt } from 'next/font/google';
+import { prompt } from '@/app/fonts';
 
 interface Profile {
   id: string;
@@ -102,9 +105,8 @@ interface DatabaseChallenge {
   id: string;
   title: string;
   description: string;
-  level: 'beginner' | 'adventurous' | 'daredevil';
+  level: string;
   points: number;
-  type: 'date_invite' | 'date_activity';
 }
 
 interface DatabaseProfile {
@@ -112,6 +114,7 @@ interface DatabaseProfile {
   first_name: string;
   avatar_url: string | null;
   age: number;
+  bio: string | null;
 }
 
 interface DatabaseUserChallenge {
@@ -348,17 +351,17 @@ const DateRequestCard = ({ request, onAccept, onDecline }: {
           />
         </div>
         <div>
-          <span className="text-xl font-medium hover:text-[#BA2525] transition-colors">
+          <span className="text-xl font-bold text-gray-900 hover:text-[#BA2525] transition-colors">
             {request.sender?.first_name}, {request.sender?.age}
           </span>
         </div>
       </div>
       
       {/* Venue Section */}
-      <div className="flex items-center gap-3 text-gray-700 mb-6">
-        <Coffee className="w-6 h-6 text-[#cc0000]" />
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-xl">📍</span>
         <div className="flex flex-col">
-          <span className="text-lg font-medium">
+          <span className="text-lg font-bold text-gray-900">
             {request.venue || 'Venue not specified'}
           </span>
           <span className="text-sm text-gray-500">
@@ -444,165 +447,6 @@ const GroupInviteCard = ({ invite, onAccept, onDecline }: {
   </Card>
 );
 
-const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
-  const router = useRouter();
-  const [showTicket, setShowTicket] = useState(false);
-
-  const handleProfileClick = () => {
-    if (date.sender?.id) {
-      router.push(`/profile/${date.sender.id}`);
-    }
-  };
-
-  const handlePayment = async () => {
-    try {
-      // Here you would typically:
-      // 1. Create a Stripe Payment Intent
-      // 2. Open Stripe Elements or redirect to Stripe Checkout
-      // 3. Handle the result and update the payment status
-      
-      // For now, we'll just show an alert
-      alert('Payment will be implemented with Stripe integration');
-    } catch (error) {
-      console.error('Error processing payment:', error);
-    }
-  };
-
-  const formatUpcomingDate = (request: DateRequest) => {
-    const dateTime = request.proposed_time || 
-                    request.date_reservations?.[0]?.date_time || 
-                    request.created_at;
-    if (!dateTime) return 'Date not set';
-    
-    try {
-      const date = new Date(dateTime);
-      if (isNaN(date.getTime())) return 'Invalid date';
-      
-      return date.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return 'Invalid date';
-    }
-  };
-
-  const coordinates = venueCoordinates[date.venue || ''] || [-71.0589, 42.3601];
-
-  return (
-    <Card className="p-6 mb-4 bg-white shadow-sm">
-      {showTicket ? (
-        <div>
-          <button
-            onClick={() => setShowTicket(false)}
-            className="mb-4 text-[#BA2525] hover:underline flex items-center"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Date Details
-          </button>
-          <TicketView
-            date={{
-              id: date.id,
-              venue: date.venue || 'Venue TBD',
-              proposed_time: date.proposed_time || date.created_at,
-              otherPerson: {
-                first_name: date.sender?.first_name || 'Date',
-                age: date.sender?.age || 0,
-                avatar_url: date.sender?.avatar_url || null
-              }
-            }}
-          />
-        </div>
-      ) : (
-        <>
-          {/* Profile Section */}
-          <div 
-            onClick={handleProfileClick}
-            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-6"
-          >
-            <div className="relative w-16 h-16">
-              <Image
-                src={date.sender?.avatar_url || '/images/default-avatar.png'}
-                alt={`${date.sender?.first_name}'s profile`}
-                fill
-                className="rounded-full object-cover hover:scale-105 transition-transform"
-              />
-            </div>
-            <div>
-              <span className="text-xl font-medium hover:text-[#BA2525] transition-colors">
-                {date.sender?.first_name}, {date.sender?.age}
-              </span>
-            </div>
-          </div>
-          
-          {/* Venue Section */}
-          <div className="flex items-center gap-3 text-gray-700 mb-6">
-            <Calendar className="w-6 h-6 text-[#cc0000]" />
-            <div className="flex flex-col">
-              <span className="text-lg font-medium">
-                {date.venue || 'No venue selected'}
-              </span>
-              <span className="text-sm text-gray-500">
-                {formatUpcomingDate(date)}
-              </span>
-            </div>
-          </div>
-
-          {/* Map Section */}
-          {date.venue && coordinates && (
-            <div className="relative h-48 rounded-lg overflow-hidden shadow-lg mb-6">
-              <Map 
-                markers={[{
-                  coordinates: coordinates,
-                  title: date.venue
-                }]}
-                center={coordinates}
-                zoom={15}
-              />
-            </div>
-          )}
-
-          {/* Payment Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-4">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-gray-600" />
-              <span className="font-medium text-gray-700">Payment Status</span>
-            </div>
-            <div>
-              {date.payment_status === 'paid' ? (
-                <span className="text-green-600 font-medium">Paid</span>
-              ) : date.payment_status === 'pending' ? (
-                <button
-                  onClick={handlePayment}
-                  className="px-4 py-1 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a01f1f] transition-colors"
-                >
-                  Pay Now
-                </button>
-              ) : (
-                <span className="text-gray-600">{date.payment_status}</span>
-              )}
-            </div>
-          </div>
-
-          {/* View Ticket Button */}
-          <button
-            onClick={() => setShowTicket(true)}
-            className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a01f1f] transition-colors flex items-center justify-center gap-2"
-          >
-            <Ticket className="w-5 h-5" />
-            View Ticket
-          </button>
-        </>
-      )}
-    </Card>
-  );
-};
-
 const handleGroupInvite = async (inviteId: string, accept: boolean) => {
   try {
     const { error } = await supabase
@@ -647,11 +491,34 @@ export default function DateRequestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [valentineRequests, setValentineRequests] = useState<ValentineRequest[]>([]);
   const [groupInvites, setGroupInvites] = useState<any[]>([]);
-  const [challengeRequests, setChallengeRequests] = useState<ChallengeRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'invites' | 'upcoming'>('requests');
+  const [challengeRequests, setChallengeRequests] = useState<DatabaseUserChallenge[]>([]);
+  const [activeTab, setActiveTab] = useState<'requests' | 'upcoming' | 'challenges' | 'groups'>('upcoming');
   const [showReceiptDetails, setShowReceiptDetails] = useState(false);
   const [upcomingDates, setUpcomingDates] = useState<DateRequest[]>([]);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<{ relationship_status?: string } | null>(null);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('relationship_status')
+        .eq('id', user.id)
+        .single();
+
+      setUserProfile(profile);
+      
+      // If user is in a relationship, set active tab to upcoming
+      if (profile?.relationship_status === 'in_relationship') {
+        setActiveTab('upcoming');
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -760,12 +627,69 @@ export default function DateRequestsPage() {
           latitude: request.latitude,
           longitude: request.longitude,
           venue_id: request.venue_id,
-          date_time: request.date_reservations?.[0]?.date_time || new Date().toISOString()
+          date_time: request.date_reservations?.[0]?.date_time || new Date().toISOString(),
+          payment_status: 'paid' as const,
+          payment_amount: request.proposed_payment || 50.00
         };
       });
 
       console.log('Formatted upcoming:', formattedUpcoming);
       setUpcomingDates(formattedUpcoming);
+
+      // Fetch challenge requests
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('user_challenges')
+        .select(`
+          id,
+          status,
+          deadline,
+          proof_type,
+          created_at,
+          date_challenges!inner (
+            id,
+            title,
+            description,
+            level,
+            points
+          ),
+          profiles!user_challenges_challenger_id_fkey!inner (
+            id,
+            first_name,
+            avatar_url,
+            age,
+            bio
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (challengeError) throw challengeError;
+
+      // Transform the data to match DatabaseUserChallenge type
+      const transformedChallenges: DatabaseUserChallenge[] = (challengeData || []).map((challenge: any) => ({
+        id: challenge.id,
+        status: challenge.status,
+        deadline: challenge.deadline,
+        proof_type: challenge.proof_type,
+        created_at: challenge.created_at,
+        date_challenges: {
+          id: challenge.date_challenges.id,
+          title: challenge.date_challenges.title,
+          description: challenge.date_challenges.description,
+          level: challenge.date_challenges.level,
+          points: challenge.date_challenges.points
+        },
+        profiles: {
+          id: challenge.profiles.id,
+          first_name: challenge.profiles.first_name,
+          avatar_url: challenge.profiles.avatar_url,
+          age: challenge.profiles.age,
+          bio: challenge.profiles.bio
+        }
+      }));
+
+      setChallengeRequests(transformedChallenges);
 
     } catch (error: any) {
       console.error('Error in fetchData:', error);
@@ -921,60 +845,50 @@ export default function DateRequestsPage() {
     }
   };
 
-  const handleChallengeResponse = async (challengeId: string, accept: boolean) => {
+  const handleChallengeResponse = async (challengeId: string, status: 'accepted' | 'declined') => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
       const challenge = challengeRequests.find(c => c.id === challengeId);
-      if (!challenge) {
-        toast.error('Challenge not found');
-        return;
-      }
+      if (!challenge) return;
 
       // Update challenge status
       const { error: updateError } = await supabase
         .from('user_challenges')
-        .update({ 
-          status: accept ? 'committed' : 'declined',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status })
         .eq('id', challengeId);
 
       if (updateError) throw updateError;
 
-      // Create notification for challenger
-      await supabase
+      // Create notification
+      const { error: notificationError } = await supabase
         .from('notifications')
         .insert({
-          user_id: challenge.challenger.id,
-          type: accept ? 'challenge_accepted' : 'challenge_declined',
-          title: accept ? 'Challenge Accepted!' : 'Challenge Declined',
-          message: accept 
-            ? `Your challenge "${challenge.challenge.title}" has been accepted!`
-            : `Your challenge "${challenge.challenge.title}" was declined.`,
+          user_id: challenge.profiles.id,
+          type: status === 'accepted' ? 'challenge_accepted' : 'challenge_declined',
+          title: status === 'accepted' ? 'Challenge Accepted!' : 'Challenge Declined',
+          message: status === 'accepted'
+            ? `Your challenge "${challenge.date_challenges.title}" has been accepted!`
+            : `Your challenge "${challenge.date_challenges.title}" was declined.`,
           data: {
             challenge_id: challengeId,
-            challenge_title: challenge.challenge.title
+            challenge_title: challenge.date_challenges.title
           }
         });
 
-      // Remove from current requests
-      setChallengeRequests(prev =>
-        prev.filter(c => c.id !== challengeId)
-      );
+      if (notificationError) throw notificationError;
 
-      toast.success(accept ? 'Challenge accepted!' : 'Challenge declined');
-      
-      if (accept) {
-        router.push('/challenges');
+      // Update local state
+      setChallengeRequests(prev => prev.filter(c => c.id !== challengeId));
+
+      // Show success message
+      toast.success(status === 'accepted' ? 'Challenge accepted!' : 'Challenge declined');
+
+      // If accepted, redirect to challenge details
+      if (status === 'accepted') {
+        router.push(`/challenges/${challengeId}`);
       }
     } catch (error) {
       console.error('Error handling challenge response:', error);
-      toast.error('Failed to update challenge');
+      toast.error('Failed to process your response. Please try again.');
     }
   };
 
@@ -1058,48 +972,67 @@ export default function DateRequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto p-5 pb-24">
-        <Header variant="default" />
+    <div className={`min-h-screen bg-white ${prompt.className}`}>
+      <Header variant="default" />
+      <div className="max-w-4xl mx-auto px-4 mt-4">
+        <div className="flex gap-2">
+          {/* Only show date requests tab for single users */}
+          {userProfile?.relationship_status !== 'in_relationship' && (
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
+                activeTab === 'requests'
+                  ? 'bg-[#cc0000] text-white font-bold'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Heart className="w-4 h-4" />
+              Date Requests {dateRequests.length > 0 && `(${dateRequests.length})`}
+            </button>
+          )}
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 mt-8">
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              activeTab === 'requests'
-                ? 'bg-[#cc0000] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Date Requests {dateRequests.length > 0 && `(${dateRequests.length})`}
-          </button>
           <button
             onClick={() => setActiveTab('upcoming')}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
               activeTab === 'upcoming'
-                ? 'bg-[#cc0000] text-white'
+                ? 'bg-[#cc0000] text-white font-bold'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
+            <Calendar className="w-4 h-4" />
             Upcoming Dates {upcomingDates.length > 0 && `(${upcomingDates.length})`}
           </button>
+
           <button
-            onClick={() => setActiveTab('invites')}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              activeTab === 'invites'
-                ? 'bg-[#cc0000] text-white'
+            onClick={() => setActiveTab('challenges')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
+              activeTab === 'challenges'
+                ? 'bg-[#cc0000] text-white font-bold'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
+            <Target className="w-4 h-4" />
+            Challenges {challengeRequests.length > 0 && `(${challengeRequests.length})`}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('groups')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
+              activeTab === 'groups'
+                ? 'bg-[#cc0000] text-white font-bold'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Users className="w-4 h-4" />
             Group Invites {groupInvites.length > 0 && `(${groupInvites.length})`}
           </button>
         </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto p-5 pb-24">
         {/* Content Sections */}
         {activeTab === 'requests' && (
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">Date Requests</h2>
             {dateRequests.length === 0 ? (
               <p className="text-gray-500">No pending date requests</p>
             ) : (
@@ -1117,25 +1050,138 @@ export default function DateRequestsPage() {
 
         {activeTab === 'upcoming' && (
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">Upcoming Dates</h2>
             {upcomingDates.length === 0 ? (
               <p className="text-gray-500">No upcoming dates</p>
             ) : (
               upcomingDates.map(date => (
-                <UpcomingDateCard
-                  key={date.id}
-                  date={date}
-                />
+                <Card className="p-6 mb-4 bg-white shadow-sm" key={date.id}>
+                  {/* Profile Section */}
+                  <div 
+                    onClick={() => router.push(`/profile/${date.sender?.id}`)}
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-6"
+                  >
+                    <div className="relative w-16 h-16">
+                      <Image
+                        src={date.sender?.avatar_url || '/images/default-avatar.png'}
+                        alt={`${date.sender?.first_name}'s profile`}
+                        fill
+                        className="rounded-full object-cover hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xl font-bold text-gray-900 hover:text-[#BA2525] transition-colors">
+                        {date.sender?.first_name}, {date.sender?.age}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Venue Section */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="text-xl">📍</span>
+                    <div className="flex flex-col">
+                      <span className="text-lg font-bold text-gray-900">
+                        {date.venue || 'Venue not specified'}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {formatDate(date.proposed_time)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Map Section */}
+                  {date.venue && (
+                    <div className="relative h-64 rounded-lg overflow-hidden shadow-lg mb-6">
+                      <Map 
+                        markers={[{
+                          coordinates: venueCoordinates[date.venue] || [-71.0589, 42.3601],
+                          title: date.venue
+                        }]}
+                        center={venueCoordinates[date.venue] || [-71.0589, 42.3601]}
+                        zoom={15}
+                      />
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => router.push(`/dates/upcoming/${date.id}`)}
+                      className="flex-1 bg-[#cc0000] text-white py-3 px-6 rounded-full hover:bg-[#a02020] transition-colors font-medium"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </Card>
               ))
             )}
           </section>
         )}
 
-        {activeTab === 'invites' && (
+        {activeTab === 'challenges' && (
           <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">Group Invites</h2>
+            {challengeRequests.length === 0 ? (
+              <p className="text-gray-500">No pending challenges</p>
+            ) : (
+              challengeRequests.map(challenge => (
+                <Card className="p-6 mb-4 bg-white shadow-sm" key={challenge.id}>
+                  {/* Profile Section */}
+                  <div 
+                    onClick={() => router.push(`/challenges/${challenge.id}`)}
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-6"
+                  >
+                    <div className="relative w-16 h-16">
+                      <Image
+                        src={challenge.profiles.avatar_url || '/images/default-avatar.png'}
+                        alt={`${challenge.profiles.first_name}'s profile`}
+                        fill
+                        className="rounded-full object-cover hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-xl font-bold text-gray-900 hover:text-[#BA2525] transition-colors">
+                        {challenge.profiles.first_name}, {challenge.profiles.age}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Venue Section */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <span className="text-xl">📍</span>
+                    <div className="flex flex-col">
+                      <span className="text-lg font-bold text-gray-900">
+                        {challenge.date_challenges.title}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {challenge.date_challenges.description}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleChallengeResponse(challenge.id, 'accepted')}
+                      className="flex-1 bg-[#cc0000] text-white py-3 px-6 rounded-full hover:bg-[#a02020] transition-colors font-medium"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => handleChallengeResponse(challenge.id, 'declined')}
+                      className="flex-1 border-2 border-[#cc0000] text-[#cc0000] py-3 px-6 rounded-full hover:bg-red-50 transition-colors font-medium"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </Card>
+              ))
+            )}
+          </section>
+        )}
+
+        {activeTab === 'groups' && (
+          <section className="space-y-4">
             {groupInvites.length === 0 ? (
-              <p className="text-gray-500">No pending group invites</p>
+              <p className="text-gray-500">No group invites</p>
             ) : (
               groupInvites.map(invite => (
                 <GroupInviteCard
