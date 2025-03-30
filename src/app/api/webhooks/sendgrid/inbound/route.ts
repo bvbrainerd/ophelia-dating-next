@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { simpleParser } from "mailparser";
 import { createClient } from "redis";
 
 export async function POST(request: Request) {
