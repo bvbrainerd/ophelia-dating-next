@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Use a restricted token with only the necessary scopes
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiYm9icmFpbmVyZCIsImEiOiJjbHNpMXB5Y2cwMjJqMnFxbXB3ZWx0ZXlsIn0.HHePY4xUmR9gJ_JUkLnrjg';
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiYm9icmFpbmVyZCIsImEiOiJjbHNpMXB5Y2cwMjJqMnFxbXB3ZWx0ZXlsIn0.HHePY4xUmR9gJ_JUkLnrjg';
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -35,7 +35,7 @@ const Map = ({ markers, center, zoom }: MapProps) => {
       if (!map.current) {
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/navigation-day-v1',
+          style: 'mapbox://styles/mapbox/satellite-streets-v12',
           center: center,
           zoom: zoom,
           attributionControl: false,
