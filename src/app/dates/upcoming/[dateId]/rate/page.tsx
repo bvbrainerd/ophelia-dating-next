@@ -18,8 +18,11 @@ interface DateRequestResponse {
   profiles: Profile;
 }
 
-export default function RatePage() {
-  const params = useParams();
+export default function RateDatePage({
+  params,
+}: {
+  params: { dateId: string }
+}) {
   const router = useRouter();
   const [personRating, setPersonRating] = useState<number>(0);
   const [dateRating, setDateRating] = useState<number>(0);
@@ -29,39 +32,46 @@ export default function RatePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
-    const fetchDateDetails = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/auth/login');
-        return;
-      }
+    const checkDateAccess = async () => {
+      try {
+        if (!params?.dateId) throw new Error('Date ID is required');
 
-      // First get the date request to determine if user is sender or receiver
-      const { data: dateRequest } = await supabase
-        .from('date_requests')
-        .select('sender_id, receiver_id')
-        .eq('id', params.dateId)
-        .single();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/auth/login');
+          return;
+        }
 
-      if (!dateRequest) return;
+        // First get the date request to determine if user is sender or receiver
+        const { data: dateRequest } = await supabase
+          .from('date_requests')
+          .select('sender_id, receiver_id')
+          .eq('id', params.dateId)
+          .single();
 
-      // Determine which profile to fetch based on user's role
-      const isUserSender = dateRequest.sender_id === session.user.id;
-      const otherPersonId = isUserSender ? dateRequest.receiver_id : dateRequest.sender_id;
+        if (!dateRequest) return;
 
-      // Fetch the other person's profile
-      const { data: otherProfile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name, age, avatar_url')
-        .eq('id', otherPersonId)
-        .single();
+        // Determine which profile to fetch based on user's role
+        const isUserSender = dateRequest.sender_id === session.user.id;
+        const otherPersonId = isUserSender ? dateRequest.receiver_id : dateRequest.sender_id;
 
-      if (otherProfile) {
-        setProfile(otherProfile);
+        // Fetch the other person's profile
+        const { data: otherProfile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, age, avatar_url')
+          .eq('id', otherPersonId)
+          .single();
+
+        if (otherProfile) {
+          setProfile(otherProfile);
+        }
+      } catch (error) {
+        console.error('Error checking date access:', error);
+        alert('Failed to check date access. Please try again.');
       }
     };
 
-    fetchDateDetails();
+    checkDateAccess();
   }, [params.dateId, router]);
 
   const handleSubmitRating = async () => {

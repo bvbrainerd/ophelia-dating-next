@@ -2,8 +2,11 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function PaymentSuccess() {
-    const searchParams = useSearchParams();
+export default function PaymentSuccessPage({
+  searchParams,
+}: {
+  searchParams: { paymentId?: string; amountPaid?: string }
+}) {
     const router = useRouter();
 
     const [paymentId, setPaymentId] = useState<string | null>(null);
@@ -11,9 +14,12 @@ export default function PaymentSuccess() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setPaymentId(searchParams.get('paymentId'));
-        const amount = searchParams.get('amountPaid');
-        setAmountPaid(amount ? parseFloat(amount) / 100 : null);
+        if (searchParams.paymentId) {
+            setPaymentId(searchParams.paymentId);
+        }
+        if (searchParams.amountPaid) {
+            setAmountPaid(parseFloat(searchParams.amountPaid) / 100);
+        }
 
         setLoading(false);
         

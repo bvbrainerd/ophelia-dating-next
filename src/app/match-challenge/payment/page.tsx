@@ -27,19 +27,29 @@ const VENUE_PAYMENT_LINKS: Record<string, string> = {
   'Private Helicopter Ride': 'https://buy.stripe.com/14k2ax7yM0xv6qs8wz',
 };
 
-export default function MatchChallengePaymentPage() {
+export default function PaymentPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(true);
-  const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
 
-  const matchId = searchParams.get('matchId');
-  const venue = searchParams.get('venue');
-  const date = searchParams.get('date');
-  const time = searchParams.get('time');
+  const matchId = searchParams.matchId as string;
+  const venue = searchParams.venue as string;
+  const date = searchParams.date as string;
+  const time = searchParams.time as string;
+  const amount = searchParams.amount ? parseFloat(searchParams.amount as string) : 0;
 
   useEffect(() => {
+    if (!matchId || !venue || !date || !time || !amount) {
+      setError('Missing required parameters');
+      setLoading(false);
+      return;
+    }
+
     const fetchMatchProfile = async () => {
       try {
         if (!matchId) {
@@ -59,7 +69,7 @@ export default function MatchChallengePaymentPage() {
         console.error('Error:', error);
         setError('Failed to load match profile');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -108,7 +118,7 @@ export default function MatchChallengePaymentPage() {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>

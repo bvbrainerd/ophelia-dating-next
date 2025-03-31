@@ -20,10 +20,13 @@ interface DateRequest {
   date_reservations: any[];
 }
 
-export default function PaymentConfirmationPage() {
-  const params = useParams();
+export default function PaymentConfirmationPage({
+  params,
+}: {
+  params: { dateId: string }
+}) {
   const router = useRouter();
-  const dateId = params.dateId as string;
+  const dateId = params.dateId;
   const [dateDetails, setDateDetails] = useState<DateRequest | null>(null);
   const [loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +34,8 @@ export default function PaymentConfirmationPage() {
   useEffect(() => {
     const fetchDateDetails = async () => {
       try {
+        if (!dateId) throw new Error('Date ID is required');
+
         // Validate UUID format
         if (!UUID_REGEX.test(dateId)) {
           setError('Invalid date ID format');

@@ -40,8 +40,11 @@ interface Challenge {
   };
 }
 
-export default function ChallengePage() {
-  const params = useParams();
+export default function ChallengePage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -52,6 +55,8 @@ export default function ChallengePage() {
   useEffect(() => {
     const fetchChallenge = async () => {
       try {
+        if (!params?.id) throw new Error('Challenge ID is required');
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/auth/login');

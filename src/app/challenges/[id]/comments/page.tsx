@@ -81,9 +81,12 @@ interface ProfileImageProps {
   className?: string;
 }
 
-export default function ChallengePage() {
+export default function ChallengePage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter();
-  const params = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [challenge, setChallenge] = useState<ChallengeDetails | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -93,6 +96,8 @@ export default function ChallengePage() {
   useEffect(() => {
     const fetchChallengeData = async () => {
       try {
+        if (!params?.id) throw new Error('Challenge ID is required');
+
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {

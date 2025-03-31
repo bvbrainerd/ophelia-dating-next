@@ -26,8 +26,11 @@ interface DateRequest {
   sender: Profile;
 }
 
-export default function DateDetailsPage() {
-  const params = useParams();
+export default function UpcomingDatePage({
+  params,
+}: {
+  params: { dateId: string }
+}) {
   const router = useRouter();
   const [dateRequest, setDateRequest] = useState<DateRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +40,8 @@ export default function DateDetailsPage() {
   useEffect(() => {
     const fetchDateDetails = async () => {
       try {
+        if (!params?.dateId) throw new Error('Date ID is required');
+
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           router.push('/auth/login');

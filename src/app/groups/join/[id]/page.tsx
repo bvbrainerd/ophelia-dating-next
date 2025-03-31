@@ -33,17 +33,22 @@ interface DatabaseInvite {
   };
 }
 
-export default function JoinGroupPage() {
+export default function JoinGroupPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter();
-  const params = useParams();
+  const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<Group | null>(null);
   const [invite, setInvite] = useState<GroupInvite | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInviteData = async () => {
+    const fetchInvitation = async () => {
       try {
+        if (!params?.id) throw new Error('Group ID is required');
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/login');
@@ -74,7 +79,7 @@ export default function JoinGroupPage() {
         if (inviteError) throw inviteError;
         if (!inviteData) {
           setError('Invite not found or already accepted');
-          setIsLoading(false);
+          setLoading(false);
           return;
         }
 
@@ -96,11 +101,11 @@ export default function JoinGroupPage() {
         console.error('Error fetching invite data:', error);
         setError('Failed to load invite data');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    fetchInviteData();
+    fetchInvitation();
   }, [params.id, router]);
 
   const handleJoinGroup = async () => {
@@ -138,7 +143,7 @@ export default function JoinGroupPage() {
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>

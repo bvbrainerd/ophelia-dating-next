@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/supabase/client';
 import { UUID_REGEX } from '@/utils/constants';
@@ -20,11 +20,14 @@ interface DateRequest {
   date_reservations: any[];
 }
 
-export default function PaymentConfirmationPage() {
-  const params = useParams();
+export default function PaymentConfirmationPage({
+  params,
+}: {
+  params: { dateId: string; paymentId: string }
+}) {
   const router = useRouter();
-  const dateId = params.dateId as string;
-  const paymentId = params.paymentId as string;
+  const dateId = params.dateId;
+  const paymentId = params.paymentId;
   const [dateDetails, setDateDetails] = useState<DateRequest | null>(null);
   const [loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,8 @@ export default function PaymentConfirmationPage() {
   useEffect(() => {
     const fetchDateDetails = async () => {
       try {
+        if (!dateId || !paymentId) throw new Error('Date ID and Payment ID are required');
+
         // Validate UUID format
         if (!UUID_REGEX.test(dateId)) {
           setError('Invalid date ID format');

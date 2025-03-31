@@ -72,9 +72,12 @@ interface PendingInvite {
   created_at: string;
 }
 
-export default function GroupPage() {
+export default function GroupPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter();
-  const params = useParams();
   const [isLoading, setIsLoading] = useState(true);
   const [groupName, setGroupName] = useState('');
   const [groupPhotoUrl, setGroupPhotoUrl] = useState<string | null>(null);
@@ -95,6 +98,8 @@ export default function GroupPage() {
   useEffect(() => {
     const fetchGroupData = async () => {
       try {
+        if (!params?.id) throw new Error('Group ID is required');
+
         // Fetch group details
         const { data: group } = await supabase
           .from('groups')

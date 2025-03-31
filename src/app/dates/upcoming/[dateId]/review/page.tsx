@@ -43,8 +43,11 @@ interface ReviewAnswers {
   improvement: string;
 }
 
-export default function ReviewPage() {
-  const params = useParams();
+export default function ReviewDatePage({
+  params,
+}: {
+  params: { dateId: string }
+}) {
   const router = useRouter();
   const [dateRequest, setDateRequest] = useState<DateRequest | null>(null);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
@@ -85,8 +88,10 @@ export default function ReviewPage() {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDateDetails = async () => {
       try {
+        if (!params?.dateId) throw new Error('Date ID is required');
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/auth/login');
@@ -145,7 +150,7 @@ export default function ReviewPage() {
       }
     };
 
-    fetchData();
+    fetchDateDetails();
   }, [params.dateId, router]);
 
   const handleSubmitReview = async () => {

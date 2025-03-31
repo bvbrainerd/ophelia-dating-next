@@ -35,14 +35,18 @@ interface DateStatus {
   status: 'pending' | 'started' | 'completed' | 'cancelled';
 }
 
-export default function MessagingPage() {
-  const params = useParams();
+export default function MessagesPage({
+  params,
+}: {
+  params: { userId: string }
+}) {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dateId, setDateId] = useState<string | null>(null);
   const [dateStatus, setDateStatus] = useState<DateStatus | null>(null);
+  const [newMessage, setNewMessage] = useState('');
 
   type MessageCategory = 'Arriving' | 'Excited' | 'On the Way' | 'Leaving' | 'After' | 'Plans';
   const [activeTab, setActiveTab] = useState<MessageCategory>('Arriving');
@@ -93,6 +97,8 @@ export default function MessagingPage() {
   useEffect(() => {
     const fetchUserAndMessages = async () => {
       try {
+        if (!params?.userId) throw new Error('User ID is required');
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/auth/login');

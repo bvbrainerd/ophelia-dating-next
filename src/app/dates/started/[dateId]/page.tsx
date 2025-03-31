@@ -33,8 +33,11 @@ interface MapMarker {
   title: string;
 }
 
-export default function DateStartedPage() {
-  const params = useParams();
+export default function StartedDatePage({
+  params,
+}: {
+  params: { dateId: string }
+}) {
   const router = useRouter();
   const [dateRequest, setDateRequest] = useState<DateRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +48,8 @@ export default function DateStartedPage() {
   useEffect(() => {
     const fetchDateDetails = async () => {
       try {
+        if (!params?.dateId) throw new Error('Date ID is required');
+
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           router.push('/auth/login');

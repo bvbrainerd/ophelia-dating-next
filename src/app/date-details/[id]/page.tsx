@@ -87,8 +87,11 @@ function calculateArchetypeCompatibility(userArchetype: string, matchedArchetype
   return Math.floor(Math.random() * 11 + 60); // 60-70%
 }
 
-export default function DateDetailsPage() {
-  const params = useParams();
+export default function DateDetailsPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
@@ -178,7 +181,7 @@ export default function DateDetailsPage() {
       setCurrentUser(currentUserData);
 
       // Get current match ID from params and remove any timestamp
-      const fullId = params.id as string;
+      const fullId = params.id;
       const baseId = fullId.split('-1')[0]; // Remove timestamp if present
       console.log('Attempting to fetch match with ID:', baseId);
 
