@@ -279,7 +279,7 @@ const dateOptions = [
 
 export default function DateRequestPage() {
   const params = useParams();
-  const profileId = params.id as string;
+  const profileId = params?.id as string;
   const router = useRouter();
   
   const [isLoading, setIsLoading] = useState(true);

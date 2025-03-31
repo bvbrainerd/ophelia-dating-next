@@ -194,7 +194,7 @@ const stripeLinks: { [key: string]: string } = {
   'Lucca North End': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc',
   'Lolita Back Bay': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc',
   'Blue Ribbon Sushi': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc',
-  'Joes on Newbury': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc',
+  'Joe\'s on Newbury': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc',
   'Boston Celtics Game': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
   'The Clay Room': 'https://buy.stripe.com/00g8yVaKYgwt4ikaEO',
   'Lorettas Last Call': 'https://buy.stripe.com/bIYeXj06k7ZX2acfZc'
@@ -910,11 +910,17 @@ export default function DateRequestsPage() {
       // Step 5: Update local state to remove from current list
       setDateRequests(prev => prev.filter(req => req.id !== requestId));
 
-      // Step 6: Redirect to Stripe or payment confirmation  
-      if (status === "accepted") {
+      // Step 6: Redirect to Stripe or payment confirmation, based on payment preference
+      
+      if (status === "accepted" && request.proposed_payment === 0) {
+        // Paying in person: Redirect to matching page 
+        router.push("/matching"); // ✅  Can customize this redirect
+      }
+      else if (status === "accepted") {
+        // For Pre-Pay, Trigger Stripe payment
         const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
         window.open(stripeLink, "_blank", "noopener,noreferrer");
-        router.push("/matching"); // ✅  Can customize this redirect
+        router.push("/matching");
       }
     } catch (error) {
       console.error("Error handling date response:", error);
@@ -951,6 +957,7 @@ export default function DateRequestsPage() {
     }
   };
 
+  // Send confirmation email to confirm date
   const sendDateRequestEmail = async (senderId: string, recipientId: string, dateDetails: DateRequest) => {
     try {
       const response = await fetch('/api/send-date-request', {
