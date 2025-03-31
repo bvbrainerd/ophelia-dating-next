@@ -11,25 +11,22 @@ import Map from '@/components/Map';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 
-interface DateRequest {
+interface Profile {
   id: string;
-  venue: string;
-  proposed_time: string;
-  status: string;
-  payment_status?: string;
-  payment_amount?: number;
-  sender: {
-    id: string;
-    first_name: string;
-    avatar_url: string | null;
-    age: number;
-    bio?: string;
-  };
-  latitude: number | null;
-  longitude: number | null;
+  first_name: string;
+  last_name: string;
+  age: number;
+  avatar_url: string | null;
 }
 
-export default function DateRequestDetails() {
+interface DateRequest {
+  id: string;
+  venue: string | null;
+  proposed_time: string | null;
+  sender: Profile;
+}
+
+export default function DateDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const [dateRequest, setDateRequest] = useState<DateRequest | null>(null);
@@ -38,10 +35,10 @@ export default function DateRequestDetails() {
   const [dateStarted, setDateStarted] = useState(false);
 
   useEffect(() => {
-    const fetchDateRequestDetails = async () => {
+    const fetchDateDetails = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
           router.push('/auth/login');
           return;
         }
@@ -53,9 +50,9 @@ export default function DateRequestDetails() {
             sender:profiles!date_requests_sender_id_fkey (
               id,
               first_name,
-              avatar_url,
+              last_name,
               age,
-              bio
+              avatar_url
             )
           `)
           .eq('id', params.dateId)
@@ -64,14 +61,14 @@ export default function DateRequestDetails() {
         if (error) throw error;
         setDateRequest(data);
       } catch (error) {
-        console.error('Error fetching date request details:', error);
-        toast.error('Failed to load date details');
+        console.error('Error fetching date details:', error);
+        router.push('/dates/upcoming');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchDateRequestDetails();
+    fetchDateDetails();
   }, [params.dateId, router]);
 
   const handleStartDate = async () => {
@@ -104,15 +101,18 @@ export default function DateRequestDetails() {
 
       if (error) throw error;
       
-      router.push(`/dates/payment/${dateRequest.id}`);
+      router.push(`/dates/post-date-payment`);
     } catch (error) {
       console.error('Error ending date:', error);
       toast.error('Failed to end date. Please try again.');
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -124,25 +124,25 @@ export default function DateRequestDetails() {
 
   if (isLoading) {
     return (
-      <div className='flex justify-center items-center min-h-screen'>
-        <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]'></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
       </div>
     );
   }
 
   if (!dateRequest) {
     return (
-      <div className="min-h-screen bg-[#f5f7fa]">
+      <div className="min-h-screen bg-white">
         <Header variant="default" />
         <div className="max-w-4xl mx-auto p-5">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-[#cc0000] mb-4">Date Not Found</h1>
             <p className="text-gray-600 mb-6">This date request doesn't exist or has been removed.</p>
             <button
-              onClick={() => router.push('/daterequests')}
+              onClick={() => router.push('/dates/upcoming')}
               className="bg-[#cc0000] text-white px-6 py-2 rounded-full hover:bg-[#a02020] transition-colors"
             >
-              Back to Date Requests
+              Back to Dates
             </button>
           </div>
         </div>
@@ -152,10 +152,10 @@ export default function DateRequestDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa]">
+    <div className="min-h-screen bg-white">
       <Header variant="default" />
       
-      <div className="container max-w-[600px] mx-auto p-5">
+      <div className="max-w-2xl mx-auto p-5">
         <div className="header flex items-center mb-6">
           <button 
             onClick={() => router.back()} 
@@ -186,7 +186,7 @@ export default function DateRequestDetails() {
                 {dateRequest.sender.first_name}, {dateRequest.sender.age}
               </h2>
               <p className="text-gray-600">
-                {dateRequest.sender.bio?.split(' ').slice(0, 3).join(' ') || 'Ophelia Member'}
+                {dateRequest.sender.last_name?.split(' ').slice(0, 3).join(' ') || 'Ophelia Member'}
               </p>
             </div>
           </div>
@@ -216,19 +216,19 @@ export default function DateRequestDetails() {
 
               <div className="detail-item">
                 <div className="text-sm text-gray-500 mb-1">Location</div>
-                <div className="font-medium">{dateRequest.venue}</div>
+                <div className="font-medium">{dateRequest.venue || 'Date Location'}</div>
               </div>
 
-              {dateRequest.latitude && dateRequest.longitude && (
+              {dateRequest.venue && (
                 <div className="detail-item col-span-2">
                   <div className="h-40 rounded-lg overflow-hidden mt-2">
                     <Map
+                      center={[-71.0589, 42.3601]}
+                      zoom={15}
                       markers={[{
-                        coordinates: [dateRequest.longitude, dateRequest.latitude],
+                        coordinates: [-71.0589, 42.3601],
                         title: dateRequest.venue
                       }]}
-                      center={[dateRequest.longitude, dateRequest.latitude]}
-                      zoom={15}
                     />
                   </div>
                 </div>
@@ -245,22 +245,17 @@ export default function DateRequestDetails() {
             <div className="payment-details border-t border-gray-100 pt-4">
               <div className="payment-row flex justify-between mb-3">
                 <div className="text-gray-600">Date booking</div>
-                <div>${dateRequest.payment_amount || '25.00'}</div>
+                <div>${dateRequest.proposed_time ? '25.00' : '0.00'}</div>
               </div>
 
               <div className="payment-row flex justify-between mb-3">
                 <div className="text-gray-600">Service fee</div>
-                <div>$3.50</div>
-              </div>
-
-              <div className="payment-row flex justify-between mb-3">
-                <div className="text-gray-600">Taxes</div>
-                <div>$2.85</div>
+                <div>$6.35</div>
               </div>
 
               <div className="payment-row total flex justify-between pt-3 border-t border-gray-100 font-semibold">
                 <div>Total paid</div>
-                <div>${((dateRequest.payment_amount || 25) + 6.35).toFixed(2)}</div>
+                <div>${dateRequest.proposed_time ? '31.35' : '6.35'}</div>
               </div>
             </div>
           </div>

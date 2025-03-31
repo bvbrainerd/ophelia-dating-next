@@ -8,6 +8,7 @@ import type { FC } from 'react';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import { Calendar, Chrome } from 'lucide-react';
+import UpcomingDateCard from '@/components/UpcomingDateCard';
 
 interface Profile {
   id: string;
@@ -18,36 +19,28 @@ interface Profile {
   bio: string;
 }
 
-interface UpcomingDate {
-  id: string;
-  otherPerson: Profile;
-  venue: string;
-  proposed_time: string;
-  status: string;
-  isSender: boolean;
-}
-
-// Types for Supabase responses
-interface ReceiverDateResponse {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: string;
-  profiles: Profile;
-}
-
-interface SenderDateResponse {
-  id: string;
-  venue: string;
-  proposed_time: string;
-  status: string;
-  profiles: Profile;
-}
-
 interface DateRequest {
   id: string;
-  is_challenge: boolean;
-  payment_status: string;
+  sender_id: string;
+  receiver_id: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  proposed_time: string | null;
+  venue: string | null;
+  sender?: Profile;
+  proposed_payment: number | null;
+  split_payment: boolean;
+  challenge_id: string | null;
+  watcher_votes: number;
+  latitude: number | null;
+  longitude: number | null;
+  venue_id: string | null;
+  date_reservations?: Array<{ date_time: string }>;
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_amount?: number;
+  payment_method_id?: string;
+  stripe_payment_intent_id?: string;
 }
 
 interface DateRequestUpdateData {
@@ -70,8 +63,8 @@ const warningMessages = [
 const UpcomingDatesPage: FC = () => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([]);
-  const [previousDates, setPreviousDates] = useState<UpcomingDate[]>([]);
+  const [upcomingDates, setUpcomingDates] = useState<DateRequest[]>([]);
+  const [previousDates, setPreviousDates] = useState<DateRequest[]>([]);
   const [calendarLoading, setCalendarLoading] = useState<string | null>(null);
 
   const fetchDates = async () => {
@@ -88,11 +81,8 @@ const UpcomingDatesPage: FC = () => {
       const { data: receiverDates, error: receiverError } = await supabase
         .from('date_requests')
         .select(`
-          id,
-          venue,
-          proposed_time,
-          status,
-          profiles!date_requests_sender_id_fkey (
+          *,
+          sender:profiles!date_requests_sender_id_fkey (
             id,
             first_name,
             last_name,
@@ -102,8 +92,7 @@ const UpcomingDatesPage: FC = () => {
           )
         `)
         .eq('receiver_id', session.user.id)
-        .in('status', ['accepted', 'completed'])
-        .returns<ReceiverDateResponse[]>();
+        .in('status', ['accepted', 'completed']);
 
       if (receiverError) {
         console.error('Error fetching receiver dates:', receiverError);
@@ -113,11 +102,8 @@ const UpcomingDatesPage: FC = () => {
       const { data: senderDates, error: senderError } = await supabase
         .from('date_requests')
         .select(`
-          id,
-          venue,
-          proposed_time,
-          status,
-          profiles!date_requests_receiver_id_fkey (
+          *,
+          sender:profiles!date_requests_receiver_id_fkey (
             id,
             first_name,
             last_name,
@@ -127,42 +113,24 @@ const UpcomingDatesPage: FC = () => {
           )
         `)
         .eq('sender_id', session.user.id)
-        .in('status', ['accepted', 'completed'])
-        .returns<SenderDateResponse[]>();
+        .in('status', ['accepted', 'completed']);
 
       if (senderError) {
         console.error('Error fetching sender dates:', senderError);
         return;
       }
 
-      // Format and combine all dates
-      const formattedDates = [
-        ...(receiverDates || []).map(date => ({
-          id: date.id,
-          otherPerson: date.profiles,
-          venue: date.venue,
-          proposed_time: date.proposed_time,
-          status: date.status,
-          isSender: false,
-        })),
-        ...(senderDates || []).map(date => ({
-          id: date.id,
-          otherPerson: date.profiles,
-          venue: date.venue,
-          proposed_time: date.proposed_time,
-          status: date.status,
-          isSender: true,
-        }))
-      ];
+      // Combine all dates
+      const allDates = [...(receiverDates || []), ...(senderDates || [])];
 
       // Split dates into upcoming and previous based on date
       const now = new Date();
-      const upcoming = formattedDates.filter(date => new Date(date.proposed_time) > now && date.status === 'accepted');
-      const previous = formattedDates.filter(date => new Date(date.proposed_time) < now || date.status === 'completed');
+      const upcoming = allDates.filter(date => new Date(date.proposed_time || '') > now && date.status === 'accepted');
+      const previous = allDates.filter(date => new Date(date.proposed_time || '') < now || date.status === 'completed');
 
       // Sort dates by time
-      setUpcomingDates(upcoming.sort((a, b) => new Date(a.proposed_time).getTime() - new Date(b.proposed_time).getTime()));
-      setPreviousDates(previous.sort((a, b) => new Date(b.proposed_time).getTime() - new Date(a.proposed_time).getTime()));
+      setUpcomingDates(upcoming.sort((a, b) => new Date(a.proposed_time || '').getTime() - new Date(b.proposed_time || '').getTime()));
+      setPreviousDates(previous.sort((a, b) => new Date(b.proposed_time || '').getTime() - new Date(a.proposed_time || '').getTime()));
 
     } catch (error) {
       console.error('Error fetching dates:', error);
@@ -268,7 +236,7 @@ const UpcomingDatesPage: FC = () => {
     }
   };
 
-  const addToCalendar = async (date: UpcomingDate, calendarType: 'google' | 'ical') => {
+  const addToCalendar = async (date: DateRequest, calendarType: 'google' | 'ical') => {
     try {
       setCalendarLoading(`${date.id}-${calendarType}`);
       
@@ -291,8 +259,8 @@ const UpcomingDatesPage: FC = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title: `Date with ${date.otherPerson.first_name} at ${date.venue}`,
-          description: `Date with ${date.otherPerson.first_name} ${date.otherPerson.last_name} at ${date.venue}.\n\nBooked through Ophelia Dating.`,
+          title: `Date with ${date.sender?.first_name} at ${date.venue}`,
+          description: `Date with ${date.sender?.first_name} ${date.sender?.last_name} at ${date.venue}.\n\nBooked through Ophelia Dating.`,
           location: date.venue,
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
@@ -351,91 +319,7 @@ const UpcomingDatesPage: FC = () => {
       ) : (
         <div className="mb-12">
           {upcomingDates.map((date) => (
-            <div
-              key={date.id}
-              className='border border-gray-200 rounded-lg p-5 mb-5 shadow-sm'
-            >
-              <div className='flex items-center mb-4'>
-                <div className='relative w-24 h-24 mr-4'>
-                  <Image
-                    src={date.otherPerson.avatar_url || '/images/default-avatar.png'}
-                    alt={`${date.otherPerson.first_name}'s profile`}
-                    fill
-                    loading="lazy"
-                    sizes="(max-width: 768px) 96px, 96px"
-                    className="object-cover rounded-full"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = '/images/default-avatar.png';
-                    }}
-                  />
-                </div>
-                <div>
-                  <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                    {date.otherPerson.first_name} {date.otherPerson.last_name}, {date.otherPerson.age}
-                  </h3>
-                  <p className='text-gray-600 mb-1'>{date.otherPerson.bio}</p>
-                  <p className='mb-1 font-medium'>
-                    When: {new Date(date.proposed_time).toLocaleDateString()}, {new Date(date.proposed_time).toLocaleTimeString()}
-                  </p>
-                  <p className='font-medium'>Where: {date.venue}</p>
-                </div>
-              </div>
-
-              <div className='space-y-2'>
-                <button
-                  onClick={() => handleStartDate(date.id)}
-                  className='w-full p-2.5 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors'
-                  type="button"
-                >
-                  Start Date
-                </button>
-                <button
-                  onClick={() => router.push(`/dates/upcoming/${date.id}/messaging`)}
-                  className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                  type="button"
-                >
-                  Go to Messages
-                </button>
-                <button
-                  onClick={() => handleRescheduleOrCancel(date.id)}
-                  className='w-full p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                  type="button"
-                >
-                  Reschedule or Cancel Date
-                </button>
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => addToCalendar(date, 'google')}
-                    disabled={calendarLoading === `${date.id}-google`}
-                    className='flex-1 p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
-                    type="button"
-                  >
-                    {calendarLoading === `${date.id}-google` ? (
-                      <div className="w-5 h-5 border-2 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                        <path d="M21.56 10.738l-9.002-8.002c-.47-.47-1.234-.47-1.704 0l-9.002 8.002c-.47.47-.47 1.234 0 1.704l9.002 8.002c.47.47 1.234.47 1.704 0l9.002-8.002c.47-.47.47-1.234 0-1.704zM12 19.684L3.316 12 12 4.316 20.684 12 12 19.684z"/>
-                      </svg>
-                    )}
-                    Add to Google Calendar
-                  </button>
-                  <button
-                    onClick={() => addToCalendar(date, 'ical')}
-                    disabled={calendarLoading === `${date.id}-ical`}
-                    className='flex-1 p-2.5 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors flex items-center justify-center gap-2 disabled:opacity-50'
-                    type="button"
-                  >
-                    {calendarLoading === `${date.id}-ical` ? (
-                      <div className="w-5 h-5 border-2 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Calendar className="w-5 h-5" />
-                    )}
-                    Add to Apple Calendar
-                  </button>
-                </div>
-              </div>
-            </div>
+            <UpcomingDateCard key={date.id} date={date} />
           ))}
         </div>
       )}
@@ -450,55 +334,11 @@ const UpcomingDatesPage: FC = () => {
           No previous dates yet.
         </p>
       ) : (
-        previousDates.map((date) => (
-          <div
-            key={date.id}
-            className='border border-gray-200 rounded-lg p-5 mb-5 shadow-sm'
-          >
-            <div className='flex items-center mb-4'>
-              <div className='relative w-24 h-24 mr-4'>
-                <Image
-                  src={date.otherPerson.avatar_url || '/images/default-avatar.png'}
-                  alt={`${date.otherPerson.first_name}'s profile`}
-                  fill
-                  loading="lazy"
-                  sizes="(max-width: 768px) 96px, 96px"
-                  className="object-cover rounded-full"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/images/default-avatar.png';
-                  }}
-                />
-              </div>
-              <div>
-                <h3 className='text-[#cc0000] text-xl font-medium mb-1'>
-                  {date.otherPerson.first_name} {date.otherPerson.last_name}, {date.otherPerson.age}
-                </h3>
-                <p className='text-gray-600 mb-1'>{date.otherPerson.bio}</p>
-                <p className='mb-1 font-medium'>
-                  When: {new Date(date.proposed_time).toLocaleDateString()}, {new Date(date.proposed_time).toLocaleTimeString()}
-                </p>
-                <p className='font-medium'>Where: {date.venue}</p>
-              </div>
-            </div>
-            <div className='space-y-2 mt-4'>
-              <button
-                onClick={() => router.push(`/dates/upcoming/${date.id}/second-date`)}
-                className='w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a02020] transition-colors'
-                type="button"
-              >
-                Second Date
-              </button>
-              <button
-                onClick={() => router.push(`/dates/upcoming/${date.id}/rate`)}
-                className='w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors'
-                type="button"
-              >
-                Rate
-              </button>
-            </div>
-          </div>
-        ))
+        <div className="mb-12">
+          {previousDates.map((date) => (
+            <UpcomingDateCard key={date.id} date={date} />
+          ))}
+        </div>
       )}
 
       <BottomNav />
