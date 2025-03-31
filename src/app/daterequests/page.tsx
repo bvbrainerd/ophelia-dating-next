@@ -16,6 +16,7 @@ import ProfileImage from '@/components/ProfileImage';
 import Link from 'next/link';
 import TicketView from '@/components/TicketView';
 import { Prompt } from 'next/font/google';
+import { getVenueType } from '@/utils/venues';
 
 interface Profile {
   id: string;
@@ -359,7 +360,6 @@ const DateRequestCard = ({ request, onAccept, onDecline }: {
   };
 
   const coordinates = getDefaultVenueCoordinates(request.venue);
-  console.log('Venue Coordinates:', coordinates);
   
   return (
     <Card className="p-6 mb-4 bg-white shadow-sm">
@@ -889,6 +889,7 @@ export default function DateRequestsPage() {
   }, []);
 
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
+    console.log('Handling date response:', { requestId, status });
     try {
       // Step 1: Get the date request details first
       const { data: request, error: requestError } = await supabase
@@ -896,19 +897,73 @@ export default function DateRequestsPage() {
         .select('*')
         .eq('id', requestId)
         .single();
+        console.log('request.id:', request.id);
 
-      if (requestError || !request) throw requestError || new Error('Date request not found');
+      console.log('request:', request);
 
-      // Step 2: Update the request status in Supabase
-      const { error: updateError } = await supabase
+      if (requestError || !request) {
+        console.log('dateRequest not found');
+        throw requestError || new Error('Date request not found');
+      }
+      if (status === 'accepted') {
+        // Step 2: Trigger reservation API call before updating DB
+        try {
+          const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+          });
+          const reservationTime = new Date(request.proposed_time || request.created_at).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          console.log('reservation date', reservationDate);
+          console.log('reservation time', reservationTime);
+
+          // const reservationResponse = await fetch("/api/reserve/opentable", {
+          //   method: "POST",
+          //   headers: {
+          //     "Content-Type": "application/json",
+          //   },
+          //   body: JSON.stringify({
+          //     restaurantName: request.venue,
+          //     restaurantURL: '',
+          //     reservationTime: reservationTime,
+          //     reservationDate: reservationDate,
+          //   }),
+          // });
+
+          // const reservationData = await reservationResponse.json();
+
+          // if (!reservationData.success) {
+          //   alert("Reservation failed: " + reservationData.error);
+          //   return; // Stop here if reservation failed
+          // }
+
+          // Optional: store reservationData.url in the database if needed
+
+          // alert("Reservation confirmed! You can view it here:" + reservationData.url);
+        } catch (error) {
+          console.error("Error during reservation booking:", error);
+          toast.error("Reservation booking failed");
+          return;
+        }
+      }
+
+      // Step 3. Update the request status in Supabase
+      const { data: data, status: resStatus, statusText: statusText } = await supabase
         .from('date_requests')
         .update({
           status: status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', requestId);
+        .filter('id', 'eq', requestId)
+        .select();
 
-      if (updateError) throw updateError;
+      console.log('Update response:', { data, status: resStatus, statusText });
+      // console.log('Update response:', { error: updateError });
+
+      // if (updateError) throw updateError;
 
       // Step 3: If accepted, update match status (optional if you're tracking this in another table)
       if (status === 'accepted') {
@@ -926,11 +981,37 @@ export default function DateRequestsPage() {
       // Step 4: Update local state to remove from current list
       setDateRequests(prev => prev.filter(req => req.id !== requestId));
 
-      // Step 5: Redirect to Stripe or payment confirmation  
+      // step 5: Add date request to upcomingDates if accepted
+      if (status === 'accepted') {
+        const updatedRequest = {
+          ...request,
+          status: 'accepted',
+          date_time: request.proposed_time || request.created_at
+        };
+        setUpcomingDates(prev => [...prev, updatedRequest]);
+      }
+      
+
+      // step 6: Add date request to upcomingDates if accepted
+      if (status === 'accepted') {
+        const updatedRequest = {
+          ...request,
+          status: 'accepted',
+          date_time: request.proposed_time || request.created_at
+        };
+        setUpcomingDates(prev => [...prev, updatedRequest]);
+      }
+      
+
+      // Step 7: Redirect to Stripe or payment confirmation  
       if (status === "accepted") {
-        const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
-        window.open(stripeLink, "_blank", "noopener,noreferrer");
-        router.push("/matching");
+        console.log(request.venue)
+        const venueType = getVenueType(request.venue);
+        if (!(venueType.toLowerCase().includes("restaurant") || venueType.toLowerCase().includes("cafe") || venueType.toLowerCase().includes("bar"))) {
+          const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
+          window.open(stripeLink, "_blank", "noopener,noreferrer");
+        }
+        router.refresh(); // ✅  Can customize this redirect
       }
     } catch (error) {
       console.error("Error handling date response:", error);
