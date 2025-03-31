@@ -1,6 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Database } from '@/types/supabase'
 
 let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null;
 

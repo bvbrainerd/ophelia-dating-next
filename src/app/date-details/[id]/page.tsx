@@ -9,6 +9,7 @@ import ProfileImage from '@/components/ProfileImage';
 import { Card } from '@/components/ui/card';
 import { getVenueForArchetype } from '../../../utils/venues';
 import BottomNav from '@/components/BottomNav';
+import { CreditCard } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -28,7 +29,15 @@ interface SuggestedDate {
   matchedUser: Profile;
   compatibility: number;
   description: string;
-  status?: 'denied' | 'accepted' | null;
+  status?: 'denied' | 'accepted' | 'completed' | null;
+}
+
+interface Receipt {
+  merchant: string;
+  total_amount: number;
+  items?: Array<{ description: string; quantity: number; totalPrice: number }>;
+  date: string;
+  ophelia_fee: number;
 }
 
 const VENUE_COORDINATES: { [key: string]: [number, number] } = {
@@ -90,6 +99,8 @@ export default function DateDetailsPage() {
   const [allDates, setAllDates] = useState<SuggestedDate[]>([]);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
 
   // Handle touch events for swipe
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -399,6 +410,121 @@ export default function DateDetailsPage() {
     }
   };
 
+  const handleEndDate = async () => {
+    if (!suggestedDate) return;
+
+    // Update UI state first
+    const updatedDates = allDates.map(date => 
+      date.id === suggestedDate.id ? { ...date, status: 'completed' as const } : date
+    ) as SuggestedDate[];
+    setAllDates(updatedDates);
+
+    // Get the base ID without timestamp
+    const baseId = suggestedDate.id.split('-1')[0];
+    console.log('Updating match status for ID:', baseId);
+
+    // Update the status in the database
+    try {
+      const { error: updateError } = await supabase
+        .from('daily_matches')
+        .update({ status: 'completed' })
+        .eq('id', baseId);
+
+      if (updateError) {
+        console.error('Error updating match status:', updateError);
+        return;
+      }
+
+      // After successful database update, redirect to post-payment page
+      router.push(`/dates/post-date-payment`);
+    } catch (error) {
+      console.error('Error updating match status:', error);
+    }
+  };
+
+  // Add this function to fetch receipt data
+  const fetchReceipt = async (dateId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('date_id', dateId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching receipt:', error);
+        return;
+      }
+
+      if (data) {
+        setReceipt(data);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (params.id) {
+      fetchReceipt(params.id as string);
+    }
+  }, [params.id]);
+
+  // Add this component for displaying receipt details
+  const ReceiptModal = () => {
+    if (!receipt) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold">Receipt Details</h3>
+            <button
+              onClick={() => setShowReceipt(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="border-b pb-2">
+              <p className="font-medium">{receipt.merchant}</p>
+              <p className="text-sm text-gray-500">
+                {new Date(receipt.date).toLocaleDateString()}
+              </p>
+            </div>
+
+            {receipt.items && receipt.items.length > 0 && (
+              <div className="space-y-2">
+                {receipt.items.map((item, index) => (
+                  <div key={index} className="flex justify-between">
+                    <div>
+                      <span className="text-sm">{item.quantity}x </span>
+                      <span>{item.description}</span>
+                    </div>
+                    <span>${item.totalPrice.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-2 space-y-2">
+              <div className="flex justify-between">
+                <span>Total</span>
+                <span className="font-medium">${receipt.total_amount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-[#BA2525]">
+                <span>Ophelia Fee (15%)</span>
+                <span className="font-medium">${receipt.ophelia_fee.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading || !suggestedDate) {
     return (
       <div className='flex justify-center items-center min-h-screen'>
@@ -553,6 +679,7 @@ export default function DateDetailsPage() {
           </Card>
         </div>
       </div>
+      {showReceipt && <ReceiptModal />}
       <BottomNav />
     </>
   );

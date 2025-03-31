@@ -126,44 +126,22 @@ const DEFAULT_AVATAR = '/images/default-avatar.png';
 const DAILY_MATCH_LIMIT = 10;
 const DEFAULT_VENUE_IMAGE = 'https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/barcelona.jpg';
 
-const getAvatarUrl = async (avatarPath: string | null) => {
-  if (!avatarPath) {
-    console.log('No avatar path provided, using default');
-    return DEFAULT_AVATAR;
-  }
+const getAvatarUrl = (avatarPath: string | null): string => {
+  if (!avatarPath) return DEFAULT_AVATAR;
 
-  try {
-    // If it's a static image or default avatar, return it directly
-    if (avatarPath.startsWith('/images/')) {
-      return avatarPath;
-    }
-
-    // Get the Supabase URL from environment variable
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!supabaseUrl) {
-      console.error('Supabase URL not found in environment');
-      return DEFAULT_AVATAR;
-    }
-
-    // If it's already a full URL, clean it up
+  // If it's already a full URL, return it
     if (avatarPath.startsWith('http')) {
-      const url = new URL(avatarPath);
-      const pathParts = url.pathname.split('/');
-      const filename = pathParts[pathParts.length - 1];
-      return `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
-    }
+    return avatarPath;
+  }
 
-    // For relative paths, clean up the filename
-    const filename = avatarPath
-      .replace(/^avatars\//, '')  // Remove leading avatars/
-      .split('?')[0];             // Remove query parameters
-
-    // Return the direct public URL
-    return `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
-  } catch (error) {
-    console.error('Error getting avatar URL:', error);
+  // If it's the default avatar path, return the full URL
+  if (avatarPath.includes('default-avatar.png')) {
     return DEFAULT_AVATAR;
   }
+
+  // Clean up the path and construct the full URL
+  const cleanPath = avatarPath.replace(/^avatars\//, '').split('?')[0];
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${cleanPath}`;
 };
 
 const getRandomVenueForArchetype = (archetype: string): string => {
@@ -1028,10 +1006,21 @@ const calculateMatchPercentage = (userProfile: Profile, otherProfile: Profile): 
   return Math.min(100, Math.round(score));
 };
 
+const formatDaterArchetype = (archetype: string): string => {
+  if (!archetype) return '';
+  return archetype
+    .replace(/([A-Z])/g, ' $1')
+    .split(/(?=[A-Z])/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const profilesPerPage = 10;
   const router = useRouter();
   const supabase = createClientComponentClient();
 
@@ -1049,16 +1038,25 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
         .from('profiles')
         .select('*')
         .neq('id', currentUser.id)
-        .or('relationship_status.eq.single,relationship_status.is.null')
-        .limit(10);
+        .eq('gender', currentUser.preferred_gender)
+        .eq('relationship_status', 'single');
 
       console.log('Query results:', { profilesData, profilesError });
 
       if (profilesError) throw profilesError;
 
-      const sortedProfiles = (profilesData || []).sort((a, b) => {
-        if (a.avatar_url && !b.avatar_url) return -1;
-        if (!a.avatar_url && b.avatar_url) return 1;
+      // Process profiles with correct avatar URLs
+      const processedProfiles = (profilesData || []).map(profile => ({
+        ...profile,
+        avatar_url: getAvatarUrl(profile.avatar_url)
+      }));
+
+      // Sort profiles - those with actual images first
+      const sortedProfiles = processedProfiles.sort((a, b) => {
+        const aHasImage = a.avatar_url && a.avatar_url !== DEFAULT_AVATAR;
+        const bHasImage = b.avatar_url && b.avatar_url !== DEFAULT_AVATAR;
+        if (aHasImage && !bHasImage) return -1;
+        if (!aHasImage && bHasImage) return 1;
         return 0;
       });
 
@@ -1077,98 +1075,151 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
     }
   };
 
+  // Calculate pagination values
+  const totalPages = Math.ceil(profiles.length / profilesPerPage);
+  const indexOfLastProfile = currentPage * profilesPerPage;
+  const indexOfFirstProfile = indexOfLastProfile - profilesPerPage;
+  const currentProfiles = profiles.slice(indexOfFirstProfile, indexOfLastProfile);
+
+  const paginate = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
     return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8 pb-32">
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+                </div>
         )}
 
         {error && (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-                <button
+                    <button
               onClick={fetchProfiles}
               className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
+            >
               Retry
-                </button>
+                    </button>
                 </div>
               )}
 
         {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {profiles.map((profile) => (
-              <div
-                key={profile.id}
-                className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-              >
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {currentProfiles.map((profile) => (
                 <div
-                  className="relative h-72 cursor-pointer"
-                  onClick={() => router.push(`/profile/${profile.id}`)}
+                  key={profile.id}
+                  className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden max-w-sm mx-auto w-full"
                 >
-                  <ProfileImage
-                    user={profile}
-                    className="object-cover"
-                    priority
-                  />
-                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-sm font-medium">
-                    {profile.matchPercentage}% Match
+                  <div 
+                    className="relative w-full h-[400px] cursor-pointer" 
+                    onClick={() => router.push(`/profile/${profile.id}`)}
+                  >
+                    <ProfileImage
+                      user={profile}
+                      className="object-cover"
+                      priority
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold text-[#cc0000]">
+                      {profile.matchPercentage}% Match
             </div>
           </div>
-                <div className="p-4">
-                  <div className="mb-3">
-                    <h3 className="text-lg font-semibold mb-1">
-                      {profile.first_name}, {profile.age}
-                    </h3>
-                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                      {profile.school && (
-                        <>
-                          <span>🎓</span>
-                          {profile.school}
-                        </>
-                      )}
-                    </p>
+                  <div className="p-4">
+                    <div className="mb-3">
+                      <h3 className="text-lg font-semibold mb-1">
+                        {profile.first_name}, {profile.age}
+                      </h3>
+                      <div className="space-y-1">
+                        {profile.school && (
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <span>🎓</span>
+                            {profile.school}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <MapPin className="h-4 w-4 text-[#cc0000]" />
+                          {profile.location || 'Location not set'}
+                        </p>
+                        {profile.bio && (
+                          <p className="text-sm text-gray-600 line-clamp-2 mt-2">
+                            {profile.bio}
+                          </p>
+                        )}
                   </div>
-                  <div className="flex gap-2 mb-4">
-                    <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                      <Crown className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">
-                        {profile.dater_status || 'bronze'}
-                      </span>
                 </div>
-                    <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                      <Heart className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">
-                        {profile.matchPercentage || '90'}%
-                      </span>
+                    <div className="flex gap-2 mb-4">
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Crown className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.dater_status || 'bronze'}
+                        </span>
                   </div>
-                    <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5" />
-                      <span className="text-xs font-medium">
-                        {profile.average_rating ? `${profile.average_rating.toFixed(1)}★` : 'New'}
-                      </span>
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.matchPercentage}%
+                        </span>
                   </div>
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.average_rating ? profile.average_rating.toFixed(1) : 'New'}
+                        </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {profile.location || 'Location not set'}
                 </div>
                   <button
-                      onClick={() => router.push(`/profile/${profile.id}`)}
-                      className="px-4 py-2 bg-[#cc0000] text-white text-sm font-medium rounded-full hover:bg-[#aa0000] transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/send-date-request/${profile.id}`);
+                      }}
+                      className="w-full px-4 py-2 bg-[#cc0000] text-white text-sm font-bold rounded-full hover:bg-[#aa0000] transition-colors"
                     >
                       Send Date Request
                     </button>
-                </div>
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8 mb-24">
+            <button
+                  onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+            </button>
+                {[...Array(totalPages)].map((_, index) => (
+            <button
+                    key={index + 1}
+                    onClick={() => paginate(index + 1)}
+                    className={`w-8 h-8 rounded-full text-sm font-medium ${
+                      currentPage === index + 1
+                        ? 'bg-[#cc0000] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
+            )}
+          </>
         )}
       </div>
       <BottomNav />

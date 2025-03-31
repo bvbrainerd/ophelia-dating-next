@@ -103,7 +103,8 @@ export default function DateRequestDetails() {
         .eq('id', dateRequest.id);
 
       if (error) throw error;
-      router.push(`/dates/upcoming/${dateRequest.id}/review`);
+      
+      router.push(`/dates/payment/${dateRequest.id}`);
     } catch (error) {
       console.error('Error ending date:', error);
       toast.error('Failed to end date. Please try again.');

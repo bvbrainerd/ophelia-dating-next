@@ -439,8 +439,7 @@ export default function DateRequestPage() {
       const response = await fetch(`/api/send-date-request/${profileId}`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           sender_id: requestDetails.sender_id,
@@ -454,6 +453,9 @@ export default function DateRequestPage() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to send date request');
       }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error('Error sending date request notification:', error);
       throw error;
