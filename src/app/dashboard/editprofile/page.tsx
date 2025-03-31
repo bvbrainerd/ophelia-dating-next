@@ -1229,7 +1229,7 @@ const EditProfilePage = () => {
         avatar_url: cleanAvatarUrl,
         profile_visibility: profileData.profile_visibility,
         couple_status: profileData.couple_status,
-        email: profileData.email
+        email: profileData.email,
       };
 
       console.log('Updating profile with:', updates);

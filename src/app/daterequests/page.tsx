@@ -850,10 +850,17 @@ export default function DateRequestsPage() {
         // Step 2: Trigger reservation API call before updating DB
         try {
           const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
-            weekday: "long",
             month: "long",
             day: "numeric",
           });
+          const reservationTime = new Date(request.proposed_time || request.created_at).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          console.log(request);
+          console.log('reservation date', reservationDate);
+          console.log('reservation time', reservationTime);
 
           const reservationResponse = await fetch("/api/reserve/opentable", {
             method: "POST",
@@ -862,8 +869,9 @@ export default function DateRequestsPage() {
             },
             body: JSON.stringify({
               restaurantName: request.venue,
-              reservationTime: '6:30 PM',
-              reservationDate,
+              restaurantURL: '',
+              reservationTime: reservationTime,
+              reservationDate: reservationDate,
             }),
           });
 
