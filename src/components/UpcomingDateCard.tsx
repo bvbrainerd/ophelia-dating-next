@@ -17,17 +17,27 @@ interface DateRequest {
   venue: string | null;
   proposed_time: string | null;
   sender?: Profile;
+  is_couple_date?: boolean;
+  status?: string;
 }
 
 interface UpcomingDateCardProps {
   date: DateRequest;
+  isPast?: boolean;
+  onStartDate?: () => void;
+  onRescheduleOrCancel?: () => void;
 }
 
-const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
+const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ 
+  date, 
+  isPast = false,
+  onStartDate,
+  onRescheduleOrCancel 
+}) => {
   const router = useRouter();
 
   const handleProfileClick = () => {
-    if (date.sender?.id) {
+    if (date.sender?.id && !date.is_couple_date) {
       router.push(`/profile/${date.sender.id}`);
     }
   };
@@ -48,25 +58,27 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
 
   return (
     <Card className="p-6 bg-white rounded-lg shadow-sm mb-4">
-      {/* Profile Section */}
-      <div 
-        onClick={handleProfileClick}
-        className="flex items-center gap-4 mb-6 cursor-pointer"
-      >
-        <div className="relative w-16 h-16 flex-shrink-0">
-          <Image
-            src={date.sender?.avatar_url || '/images/default-avatar.png'}
-            alt={`${date.sender?.first_name}'s profile`}
-            fill
-            className="rounded-full object-cover"
-          />
+      {/* Profile Section - Only show for single dates */}
+      {!date.is_couple_date && (
+        <div 
+          onClick={handleProfileClick}
+          className="flex items-center gap-4 mb-6 cursor-pointer"
+        >
+          <div className="relative w-16 h-16 flex-shrink-0">
+            <Image
+              src={date.sender?.avatar_url || '/images/default-avatar.png'}
+              alt={`${date.sender?.first_name}'s profile`}
+              fill
+              className="rounded-full object-cover"
+            />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold">
+              {date.sender?.first_name}, {date.sender?.age}
+            </h3>
+          </div>
         </div>
-        <div>
-          <h3 className="text-2xl font-bold">
-            {date.sender?.first_name}, {date.sender?.age}
-          </h3>
-        </div>
-      </div>
+      )}
 
       {/* Date Details */}
       <div className="flex items-center gap-3 mb-6">
@@ -95,14 +107,39 @@ const UpcomingDateCard: React.FC<UpcomingDateCardProps> = ({ date }) => {
         <span className="font-bold">Payment Status</span>
       </div>
 
-      {/* View Ticket Button */}
-      <button
-        onClick={() => router.push(`/dates/upcoming/${date.id}`)}
-        className="w-full p-3 bg-[#BA2525] text-white rounded-full font-bold flex items-center justify-center gap-2"
-      >
-        <Ticket className="w-5 h-5" />
-        View Ticket
-      </button>
+      {/* Action Buttons */}
+      {!isPast && (
+        <div className="space-y-3">
+          {onStartDate && (
+            <button
+              onClick={onStartDate}
+              className="w-full p-3 bg-[#BA2525] text-white rounded-full font-bold flex items-center justify-center gap-2"
+            >
+              <Ticket className="w-5 h-5" />
+              Start Date
+            </button>
+          )}
+          {onRescheduleOrCancel && (
+            <button
+              onClick={onRescheduleOrCancel}
+              className="w-full p-3 border-2 border-[#BA2525] text-[#BA2525] rounded-full font-bold"
+            >
+              Reschedule/Cancel
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* View Details Button for Past Dates */}
+      {isPast && (
+        <button
+          onClick={() => router.push(`/dates/upcoming/${date.id}`)}
+          className="w-full p-3 bg-[#BA2525] text-white rounded-full font-bold flex items-center justify-center gap-2"
+        >
+          <Ticket className="w-5 h-5" />
+          View Details
+        </button>
+      )}
     </Card>
   );
 };

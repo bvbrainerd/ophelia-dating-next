@@ -14,6 +14,7 @@ import Map from '@/components/Map';
 import { VENUES } from '@/utils/venues';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Challenge {
   id: string;
@@ -669,7 +670,7 @@ export default function ChallengesPage() {
     if (!customChallengeTitle || !customChallengeDescription) return;
     
     const customChallenge: Challenge = {
-      id: `custom-${Date.now()}`,
+      id: uuidv4(),
       title: customChallengeTitle,
       description: customChallengeDescription,
       level: selectedLevel,
@@ -739,6 +740,11 @@ export default function ChallengesPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <div className="sticky top-0 z-50 bg-white shadow-sm">
+        <div className="text-center py-4 text-[#cc0000] text-2xl font-bold">
+          Ophelia
+        </div>
+      </div>
       <Header variant="challenges" />
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-t-3xl p-5">

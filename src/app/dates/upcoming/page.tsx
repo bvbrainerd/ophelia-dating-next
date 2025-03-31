@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import type { FC } from 'react';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import { Calendar, Chrome } from 'lucide-react';
 import UpcomingDateCard from '@/components/UpcomingDateCard';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Link from 'next/link';
 
 interface Profile {
   id: string;
@@ -41,6 +43,7 @@ interface DateRequest {
   payment_amount?: number;
   payment_method_id?: string;
   stripe_payment_intent_id?: string;
+  is_couple_date?: boolean;
 }
 
 interface DateRequestUpdateData {
@@ -62,10 +65,12 @@ const warningMessages = [
 
 const UpcomingDatesPage: FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [upcomingDates, setUpcomingDates] = useState<DateRequest[]>([]);
-  const [previousDates, setPreviousDates] = useState<DateRequest[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState<string | null>(null);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [groupInvites, setGroupInvites] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('upcoming');
 
   const fetchDates = async () => {
     try {
@@ -77,7 +82,14 @@ const UpcomingDatesPage: FC = () => {
         return;
       }
 
-      // Fetch all accepted dates
+      // Fetch user profile to check if they're in a couple
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('is_coupled')
+        .eq('id', session.user.id)
+        .single();
+
+      // Fetch all accepted dates (both single and couple dates)
       const { data: receiverDates, error: receiverError } = await supabase
         .from('date_requests')
         .select(`
@@ -120,25 +132,86 @@ const UpcomingDatesPage: FC = () => {
         return;
       }
 
+      // Fetch couple date requests if user is in a couple
+      let coupleDates: DateRequest[] = [];
+      if (userProfile?.is_coupled) {
+        const { data: coupleRequests, error: coupleError } = await supabase
+          .from('couple_date_requests')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .in('status', ['pending', 'confirmed', 'completed']);
+
+        if (!coupleError && coupleRequests) {
+          coupleDates = coupleRequests.map(request => ({
+            ...request,
+            is_couple_date: true,
+            sender_id: session.user.id,
+            receiver_id: session.user.id, // Same for couple dates
+            status: request.status === 'confirmed' ? 'accepted' : request.status
+          }));
+        }
+      }
+
       // Combine all dates
-      const allDates = [...(receiverDates || []), ...(senderDates || [])];
+      const allDates = [...(receiverDates || []), ...(senderDates || []), ...coupleDates];
 
       // Split dates into upcoming and previous based on date
       const now = new Date();
-      const upcoming = allDates.filter(date => new Date(date.proposed_time || '') > now && date.status === 'accepted');
-      const previous = allDates.filter(date => new Date(date.proposed_time || '') < now || date.status === 'completed');
+      const upcoming = allDates.filter(date => 
+        new Date(date.proposed_time || '') > now && 
+        (date.status === 'accepted' || (date.is_couple_date && date.status === 'confirmed'))
+      );
+      const previous = allDates.filter(date => 
+        new Date(date.proposed_time || '') < now || 
+        date.status === 'completed'
+      );
 
       // Sort dates by time
-      setUpcomingDates(upcoming.sort((a, b) => new Date(a.proposed_time || '').getTime() - new Date(b.proposed_time || '').getTime()));
-      setPreviousDates(previous.sort((a, b) => new Date(b.proposed_time || '').getTime() - new Date(a.proposed_time || '').getTime()));
+      setUpcomingDates(upcoming.sort((a, b) => 
+        new Date(a.proposed_time || '').getTime() - new Date(b.proposed_time || '').getTime()
+      ));
 
     } catch (error) {
       console.error('Error fetching dates:', error);
       if (error instanceof Error && error.message.includes('session')) {
         router.push('/auth/login');
       }
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const fetchChallenges = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('user_challenges')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      setChallenges(data || []);
+    } catch (error) {
+      console.error('Error fetching challenges:', error);
+    }
+  };
+
+  const fetchGroupInvites = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('group_invites')
+        .select('*')
+        .eq('invited_user_id', session.user.id)
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      setGroupInvites(data || []);
+    } catch (error) {
+      console.error('Error fetching group invites:', error);
     }
   };
 
@@ -238,7 +311,7 @@ const UpcomingDatesPage: FC = () => {
 
   const addToCalendar = async (date: DateRequest, calendarType: 'google' | 'ical') => {
     try {
-      setCalendarLoading(`${date.id}-${calendarType}`);
+      setIsLoading(true);
       
       if (!date.proposed_time) {
         throw new Error('Date and time not set');
@@ -288,13 +361,14 @@ const UpcomingDatesPage: FC = () => {
       console.error('Error adding to calendar:', error);
       alert(error instanceof Error ? error.message : 'Failed to add event to calendar. Please try again.');
     } finally {
-      setCalendarLoading(null);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDates();
-  }, [router]);
+    Promise.all([fetchDates(), fetchChallenges(), fetchGroupInvites()])
+      .finally(() => setIsLoading(false));
+  }, []);
 
   if (isLoading) {
     return (
@@ -305,41 +379,59 @@ const UpcomingDatesPage: FC = () => {
   }
 
   return (
-    <div className='max-w-2xl mx-auto p-5 pt-8 pb-24'>
-      <Header variant="matching" />
-      {/* Upcoming Dates Section */}
-      <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
-        Your Upcoming Dates
-      </h2>
+    <div className="min-h-screen bg-white pb-20">
+      <Header variant="default" />
+      
+      {/* Ophelia Header with white fill and red text */}
+      <div className="bg-white py-4 shadow-sm">
+        <h1 className="text-center text-[#cc0000] text-3xl font-prompt">Ophelia</h1>
+      </div>
 
-      {upcomingDates.length === 0 ? (
-        <p className='text-center mb-8 text-gray-600'>
-          No upcoming dates scheduled yet.
-        </p>
-      ) : (
-        <div className="mb-12">
-          {upcomingDates.map((date) => (
-            <UpcomingDateCard key={date.id} date={date} />
-          ))}
+      <div className="sticky top-0 z-50 bg-white shadow-sm">
+        <div className="flex justify-center space-x-8 py-4 px-4 font-prompt">
+          <Link 
+            href="/dates/upcoming"
+            className={`text-lg font-medium ${pathname === '/dates/upcoming' ? 'text-[#cc0000]' : 'text-gray-500'}`}
+          >
+            Upcoming Dates
+          </Link>
+          <Link 
+            href="/challenges"
+            className={`text-lg font-medium ${pathname === '/challenges' ? 'text-[#cc0000]' : 'text-gray-500'}`}
+          >
+            Challenges
+          </Link>
+          <Link 
+            href="/group-invites"
+            className={`text-lg font-medium ${pathname === '/group-invites' ? 'text-[#cc0000]' : 'text-gray-500'}`}
+          >
+            Group Invites
+          </Link>
         </div>
-      )}
+      </div>
 
-      {/* Previous Dates Section */}
-      <h2 className='text-center text-[#cc0000] font-bold text-3xl mb-6'>
-        Previous Dates
-      </h2>
-
-      {previousDates.length === 0 ? (
-        <p className='text-center mb-5 text-gray-600'>
-          No previous dates yet.
-        </p>
-      ) : (
-        <div className="mb-12">
-          {previousDates.map((date) => (
-            <UpcomingDateCard key={date.id} date={date} />
-          ))}
+      <div className="max-w-4xl mx-auto px-4 py-8 font-prompt">
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#cc0000]" />
+            </div>
+          ) : upcomingDates.length > 0 ? (
+            upcomingDates.map((date) => (
+              <UpcomingDateCard
+                key={`${date.id}-${date.sender_id}`}
+                date={date}
+                onStartDate={() => handleStartDate(date.id)}
+                onRescheduleOrCancel={() => handleRescheduleOrCancel(date.id)}
+              />
+            ))
+          ) : (
+            <div className="text-center text-gray-500 py-10">
+              No upcoming dates yet
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       <BottomNav />
     </div>

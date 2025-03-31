@@ -1028,6 +1028,452 @@ const calculateMatchPercentage = (userProfile: Profile, otherProfile: Profile): 
   return Math.min(100, Math.round(score));
 };
 
+const DEFAULT_DATE_SUGGESTIONS: DateSuggestionData[] = [
+  // Food
+  {
+    venue: "Barcelona Wine Bar",
+    description: "Intimate Spanish tapas restaurant with an extensive wine list",
+    priceRange: "$$$",
+    imageUrl: "barcelona.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Bartaco",
+    description: "Upscale street food with coastal vibes",
+    priceRange: "$$",
+    imageUrl: "bartaco.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Blue Ribbon Sushi",
+    description: "Premium sushi experience in an elegant atmosphere",
+    priceRange: "$$$",
+    imageUrl: "blueribbon.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Boston Burger",
+    description: "Creative burgers in a casual setting",
+    priceRange: "$$",
+    imageUrl: "bostonburger.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Branchline",
+    description: "Rotisserie-focused New American cuisine",
+    priceRange: "$$",
+    imageUrl: "branchline.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Buttermilk & Bourbon",
+    description: "Southern comfort food in an intimate setting",
+    priceRange: "$$$",
+    imageUrl: "buttermilkandbourbon.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Capital Grille",
+    description: "Classic steakhouse experience",
+    priceRange: "$$$$",
+    imageUrl: "capitalgrille.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Capo",
+    description: "Upscale Italian dining with a lively atmosphere",
+    priceRange: "$$$",
+    imageUrl: "capo.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Carmelina's",
+    description: "Authentic North End Italian cuisine",
+    priceRange: "$$$",
+    imageUrl: "carmelinas.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Coquette",
+    description: "French coastal cuisine with flair",
+    priceRange: "$$$",
+    imageUrl: "coquette.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Fuji at Ink Block",
+    description: "Contemporary Japanese cuisine",
+    priceRange: "$$$",
+    imageUrl: "fujiatinkblock.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Grill 23",
+    description: "Sophisticated steakhouse in historic setting",
+    priceRange: "$$$$",
+    imageUrl: "grill23.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Joe's On Newbury",
+    description: "American cuisine on iconic Newbury Street",
+    priceRange: "$$",
+    imageUrl: "joes.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Krasi",
+    description: "Greek wine bar with mezedes",
+    priceRange: "$$$",
+    imageUrl: "krasi.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Kured",
+    description: "Artisanal charcuterie and wine bar",
+    priceRange: "$$",
+    imageUrl: "kured.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Loco Taqueria",
+    description: "Vibrant taco spot with creative cocktails",
+    priceRange: "$$",
+    imageUrl: "loco.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Lola 42",
+    description: "Global cuisine with waterfront views",
+    priceRange: "$$$",
+    imageUrl: "lola42.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Lolita Back Bay",
+    description: "Vibrant Mexican cuisine and cocktails",
+    priceRange: "$$",
+    imageUrl: "lolitabackbay.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Lucca",
+    description: "Refined Italian dining in the North End",
+    priceRange: "$$$",
+    imageUrl: "lucca.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Mida",
+    description: "Modern Italian cuisine in the South End",
+    priceRange: "$$$",
+    imageUrl: "mida.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Mike & Patty's",
+    description: "Gourmet breakfast sandwiches",
+    priceRange: "$$",
+    imageUrl: "mikeandpattys.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Mooo....",
+    description: "Modern steakhouse in Beacon Hill",
+    priceRange: "$$$$",
+    imageUrl: "moo.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Parla",
+    description: "Intimate Italian speakeasy",
+    priceRange: "$$$",
+    imageUrl: "parla.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Serafina",
+    description: "Chic Italian restaurant with vibrant atmosphere",
+    priceRange: "$$$",
+    imageUrl: "serafina.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Sweet Green",
+    description: "Healthy salads and grain bowls",
+    priceRange: "$$",
+    imageUrl: "sweetgreen.jpg",
+    mood: "food"
+  },
+  {
+    venue: "Trattoria Il Panino",
+    description: "Classic North End Italian dining",
+    priceRange: "$$",
+    imageUrl: "trattoriailpanino.jpg",
+    mood: "food"
+  },
+
+  // Adventurous
+  {
+    venue: "Barry's Bootcamp",
+    description: "High-intensity interval training workouts",
+    priceRange: "$$",
+    imageUrl: "barrys.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "CorePower Yoga",
+    description: "Intense yoga workouts in heated studios",
+    priceRange: "$$",
+    imageUrl: "corepower.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "Duck Tour",
+    description: "Land and water tour of Boston",
+    priceRange: "$$",
+    imageUrl: "ducktour.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "Escape Room",
+    description: "Interactive puzzle-solving adventure",
+    priceRange: "$$",
+    imageUrl: "escaperoom.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "F1 Boston",
+    description: "High-speed indoor karting",
+    priceRange: "$$",
+    imageUrl: "f1arcade.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "Private Helicopter Ride",
+    description: "Scenic helicopter tour over Boston",
+    priceRange: "$$$$",
+    imageUrl: "helicopter.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "Puttshack",
+    description: "High-tech mini golf experience",
+    priceRange: "$$",
+    imageUrl: "puttshack.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "Solid Core",
+    description: "Intense full-body workout",
+    priceRange: "$$",
+    imageUrl: "solidcore.jpg",
+    mood: "adventurous"
+  },
+  {
+    venue: "View Boston",
+    description: "Observation deck with city views",
+    priceRange: "$$",
+    imageUrl: "viewboston.jpg",
+    mood: "adventurous"
+  },
+
+  // Arts
+  {
+    venue: "Museum of Fine Arts",
+    description: "World-class art collections",
+    priceRange: "$$",
+    imageUrl: "mfa.jpg",
+    mood: "arts"
+  },
+  {
+    venue: "The Clay Room",
+    description: "Pottery painting studio",
+    priceRange: "$$",
+    imageUrl: "clayroom.jpg",
+    mood: "arts"
+  },
+  {
+    venue: "Museum of Ice Cream",
+    description: "Interactive ice cream-themed museum",
+    priceRange: "$$",
+    imageUrl: "museumoficecream.jpg",
+    mood: "arts"
+  },
+  {
+    venue: "WNDR Museum",
+    description: "Interactive art installations",
+    priceRange: "$$",
+    imageUrl: "wndrmuseum.jpg",
+    mood: "arts"
+  },
+
+  // Entertainment
+  {
+    venue: "BC Basketball",
+    description: "College basketball at Conte Forum",
+    priceRange: "$$",
+    imageUrl: "bcbasketball.jpg",
+    mood: "entertainment"
+  },
+  {
+    venue: "BC Hockey",
+    description: "College hockey at Conte Forum",
+    priceRange: "$$",
+    imageUrl: "bchockey.jpg",
+    mood: "entertainment"
+  },
+  {
+    venue: "BC Lacrosse",
+    description: "College lacrosse games",
+    priceRange: "$$",
+    imageUrl: "bclacrosse.jpg",
+    mood: "entertainment"
+  },
+  {
+    venue: "Boston Bruins",
+    description: "NHL hockey at TD Garden",
+    priceRange: "$$$",
+    imageUrl: "bruins.jpg",
+    mood: "entertainment"
+  },
+  {
+    venue: "Boston Celtics",
+    description: "NBA basketball at TD Garden",
+    priceRange: "$$$",
+    imageUrl: "celtics.jpg",
+    mood: "entertainment"
+  },
+  {
+    venue: "House of Blues",
+    description: "Live music venue",
+    priceRange: "$$",
+    imageUrl: "houseofblues.jpg",
+    mood: "entertainment"
+  },
+
+  // Chill
+  {
+    venue: "Bell In Hand",
+    description: "Historic tavern with casual atmosphere",
+    priceRange: "$$",
+    imageUrl: "bellinhand.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Blank Street Coffee",
+    description: "Modern coffee shop",
+    priceRange: "$",
+    imageUrl: "blankstreetcoffee.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Brick Street Bagels",
+    description: "Artisanal bagels and coffee",
+    priceRange: "$",
+    imageUrl: "brickstreetbagels.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Boston Common",
+    description: "America's oldest public park",
+    priceRange: "$",
+    imageUrl: "commons.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Farmers Horse Coffee",
+    description: "Cozy neighborhood coffee shop",
+    priceRange: "$",
+    imageUrl: "farmershorsecoffee.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "George Howell Coffee",
+    description: "Premium coffee experience",
+    priceRange: "$$",
+    imageUrl: "georgehowellcoffee.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Greystone Cafe",
+    description: "Casual cafe with outdoor seating",
+    priceRange: "$$",
+    imageUrl: "greystonecafe.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "JP Licks",
+    description: "Local ice cream shop",
+    priceRange: "$",
+    imageUrl: "jplicks.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Kava Neo-Taverna",
+    description: "Relaxed Greek dining",
+    priceRange: "$$",
+    imageUrl: "kava.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Levain Bakery",
+    description: "Famous cookies and baked goods",
+    priceRange: "$$",
+    imageUrl: "levain.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Madeline's Candy",
+    description: "Artisanal candy shop",
+    priceRange: "$$",
+    imageUrl: "madelinescandy.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Phin Coffee House",
+    description: "Vietnamese coffee and treats",
+    priceRange: "$",
+    imageUrl: "phincoffeehouse.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Pop Up Bagel",
+    description: "Fresh bagels and coffee",
+    priceRange: "$",
+    imageUrl: "popupbagel.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Pressed",
+    description: "Healthy juices and smoothies",
+    priceRange: "$$",
+    imageUrl: "pressed.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "South End Buttery",
+    description: "Charming cafe and bakery",
+    priceRange: "$$",
+    imageUrl: "southendbuttery.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "Tatte",
+    description: "Beloved local bakery and cafe",
+    priceRange: "$$",
+    imageUrl: "tatte.jpg",
+    mood: "chill"
+  },
+  {
+    venue: "White Mountain Creamery",
+    description: "Local ice cream shop",
+    priceRange: "$",
+    imageUrl: "whitemountain.jpg",
+    mood: "chill"
+  }
+];
+
 const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1253,7 +1699,6 @@ const MatchingPage = () => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -1289,7 +1734,7 @@ const MatchingPage = () => {
   }
 
   if (currentUser.relationship_status === 'couple') {
-    return <CuratedDatesView userProfile={currentUser} dateSuggestions={[]} />;
+    return <CuratedDatesView userProfile={currentUser} dateSuggestions={DEFAULT_DATE_SUGGESTIONS} />;
   }
 
   return (
