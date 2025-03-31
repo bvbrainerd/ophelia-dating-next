@@ -151,7 +151,7 @@ export default function PostDatePayment({ searchParams }: { searchParams?: { [ke
                 .eq('id', dateId);
 
             if (updateError) throw updateError;
-            router.push(`/dates/post-date-payment/confirm?dateId=${dateId}`);
+            router.push(`/dates/post-date-payment/confirm?dateId=${dateId}&amount=${amount}`);
         } catch (err) {
             console.error('Error submitting manual total:', err);
             setError('Failed to submit total. Please try again.');

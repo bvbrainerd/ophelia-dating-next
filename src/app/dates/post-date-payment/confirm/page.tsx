@@ -1,75 +1,93 @@
 'use client'
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
-import { Receipt, ReceiptItem } from '@/types/receipt';
+import { Receipt } from '@/types/receipt';
 import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 
-
-// Load Stripe with your public key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-
-// TODO: Cancel payment intent if user navigates away from page without completing payment
 export default function ConfirmBill() {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
-    const [receipt, setReceipt] = useState<Receipt | null>(typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('receipt') || 'null') : null);
+    const [receipt, setReceipt] = useState<Receipt | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [manualAmount, setManualAmount] = useState<number | null>(null);
-    const [manual, setManual] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const searchParams = useSearchParams();
+    const router = useRouter();
+
+    const dateId = searchParams?.get('dateId');
     const amount = searchParams?.get('amount');
+    const manualAmount = amount ? parseFloat(amount) : null;
+    const isManualEntry = Boolean(manualAmount);
 
     useEffect(() => {
-        if (amount) {
-            setManual(true);
-            setManualAmount(parseFloat(amount));
+        if (!dateId) {
+            router.push('/dates');
+            return;
         }
-        
+
         const fetchClientSecret = async () => {
             try {
                 let paymentAmount;
-                if (amount) {
-                    paymentAmount = parseFloat(amount) * 0.15;
-                } else if (receipt?.opheliaFee) {
-                    paymentAmount = receipt.opheliaFee;
+                
+                if (isManualEntry && manualAmount) {
+                    // For manual entry, calculate 15% of the entered amount
+                    paymentAmount = manualAmount * 0.15;
                 } else {
-                    throw new Error("No valid amount found");
+                    // Try to get receipt from localStorage for OCR path
+                    const storedReceipt = localStorage.getItem('receipt');
+                    if (storedReceipt) {
+                        const parsedReceipt = JSON.parse(storedReceipt);
+                        setReceipt(parsedReceipt);
+                        paymentAmount = parsedReceipt.total * 0.15; // Calculate 15% of total
+                    }
                 }
 
-                if (isNaN(paymentAmount) || paymentAmount <= 0) {
-                    throw new Error("Invalid amount");
+                if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
+                    throw new Error("Invalid payment amount");
                 }
+
+                // Convert amount to cents for Stripe
+                const amountInCents = Math.round(paymentAmount * 100);
 
                 const response = await fetch('/api/create-payment-intent', {
                     method: "POST",
-                    headers: { 'Content-Type': 'application/json'},
-                    body: JSON.stringify({ amount: paymentAmount }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: amountInCents,
+                        dateId: dateId
+                    }),
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || "Failed to create payment intent");
                 }
-                
+
                 const data = await response.json();
                 setClientSecret(data.clientSecret);
-            } catch (error) {
-                console.error("Error fetching client secret:", error);
-                setError(error instanceof Error ? error.message : "Error creating payment intent");
+            } catch (err) {
+                console.error("Error creating payment intent:", err);
+                setError(err instanceof Error ? err.message : "Failed to setup payment");
+            } finally {
+                setLoading(false);
             }
         };
-        
-        if (amount || receipt?.opheliaFee) {
-            fetchClientSecret();
-        }
-        setLoading(false);
-    }, [amount, receipt?.opheliaFee]);
+
+        fetchClientSecret();
+    }, [dateId, isManualEntry, manualAmount, router]);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#F5F7FA]">
@@ -82,58 +100,29 @@ export default function ConfirmBill() {
                     </div>
 
                     <div className="p-8">
-                        {!manual ? (
-                            <>
-                                {receipt?.merchant && (
-                                    <div className="mb-6">
-                                        <h2 className="text-xl font-semibold text-[#334155] mb-2">{receipt.merchant}</h2>
-                                    </div>
-                                )}
-
-                                {receipt?.items && receipt.items.length > 0 && (
-                                    <div className="space-y-3 mb-6">
-                                        {receipt.items.map((item: ReceiptItem, index: number) => (
-                                            <div key={index} className="flex justify-between items-center py-2 border-b border-gray-100">
-                                                <div className="flex items-center space-x-2">
-                                                    <span className="text-[#64748B]">{item.quantity}x</span>
-                                                    <span className="text-[#334155]">{item.description}</span>
-                                                </div>
-                                                <span className="text-[#334155] font-medium">${item.totalPrice.toFixed(2)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <div className="space-y-2 mb-8">
-                                    <div className="flex justify-between items-center text-[#64748B]">
-                                        <span>Subtotal:</span>
-                                        <span>${receipt?.subtotal.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[#64748B]">
-                                        <span>Tax:</span>
-                                        <span>${((receipt?.tax || 0) + ((receipt?.total || 0) - (receipt?.subtotal || 0))).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xl font-semibold text-[#334155]">
-                                        <span>Total:</span>
-                                        <span>${receipt?.total.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="mb-8">
-                                <div className="flex justify-between items-center text-xl font-semibold text-[#334155]">
-                                    <span>Total:</span>
+                        {isManualEntry ? (
+                            <div className="space-y-4 mb-8">
+                                <div className="flex justify-between items-center text-[#64748B]">
+                                    <span>Total Amount:</span>
                                     <span>${manualAmount?.toFixed(2)}</span>
                                 </div>
+                                <div className="flex justify-between items-center text-lg font-semibold text-[#cc0000]">
+                                    <span>Ophelia Date Fee (15%):</span>
+                                    <span>${(manualAmount ? manualAmount * 0.15 : 0).toFixed(2)}</span>
+                                </div>
                             </div>
-                        )}
-
-                        <div className="border-t border-gray-200 pt-6 mb-8">
-                            <div className="flex justify-between items-center text-lg font-semibold text-[#cc0000]">
-                                <span>Ophelia Date Fee (15%):</span>
-                                <span>${manual ? ((manualAmount || 0) * 0.15).toFixed(2) : (receipt?.opheliaFee || 0).toFixed(2)}</span>
+                        ) : receipt ? (
+                            <div className="space-y-4 mb-8">
+                                <div className="flex justify-between items-center text-[#64748B]">
+                                    <span>Total Amount:</span>
+                                    <span>${receipt.total.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-lg font-semibold text-[#cc0000]">
+                                    <span>Ophelia Date Fee (15%):</span>
+                                    <span>${receipt.opheliaFee.toFixed(2)}</span>
+                                </div>
                             </div>
-                        </div>
+                        ) : null}
 
                         {error && (
                             <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
@@ -141,13 +130,25 @@ export default function ConfirmBill() {
                             </div>
                         )}
 
-                        {clientSecret && (
-                            <div className="bg-white rounded-xl">
-                                <Elements stripe={stripePromise} options={{ clientSecret }}>
-                                    <StripePaymentForm />
+                        {clientSecret ? (
+                            <div className="mt-8">
+                                <Elements stripe={stripePromise} options={{ 
+                                    clientSecret,
+                                    appearance: {
+                                        theme: 'stripe',
+                                        variables: {
+                                            colorPrimary: '#cc0000',
+                                        },
+                                    },
+                                }}>
+                                    <StripePaymentForm dateId={dateId!} />
                                 </Elements>
                             </div>
-                        )}
+                        ) : !error ? (
+                            <div className="text-center py-8 text-[#64748B]">
+                                Setting up payment...
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>
@@ -157,85 +158,74 @@ export default function ConfirmBill() {
     );
 }
 
-// StripePaymentForm component
-function StripePaymentForm() {
+function StripePaymentForm({ dateId }: { dateId: string }) {
     const stripe = useStripe();
     const elements = useElements();
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const dateId = searchParams?.get('dateId');
-
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        if (!dateId) {
-            router.push('/dates');
-        }
-    }, [dateId, router]);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!stripe || !elements) return;
 
-    const handlePayment = async () => {
-        if (!stripe || !elements || !dateId) {
-            setError("Missing required information");
-            return;
-        }
-        
         setLoading(true);
         setError(null);
 
         try {
-            const { paymentIntent, error } = await stripe.confirmPayment({
+            const { error: paymentError, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
-                    return_url: `${window.location.origin}/dates/post-date-payment/success`,
+                    return_url: `${window.location.origin}/dates/post-date-payment/success?dateId=${dateId}`,
                 },
                 redirect: 'if_required',
             });
 
-            if (error) {
-                setError(error.message || "Payment failed");
-            } else if (paymentIntent?.status === "succeeded") {
-                // Update date_requests table with payment information
+            if (paymentError) {
+                throw new Error(paymentError.message);
+            }
+
+            if (paymentIntent?.status === 'succeeded') {
+                // Update date request status
                 const { error: updateError } = await supabase
                     .from('date_requests')
                     .update({
                         payment_status: 'paid',
-                        payment_amount: paymentIntent.amount / 100, // Convert from cents to dollars
                         payment_id: paymentIntent.id,
                         payment_date: new Date().toISOString()
                     })
                     .eq('id', dateId);
 
-                if (updateError) {
-                    console.error('Error updating date request:', updateError);
-                }
+                if (updateError) throw updateError;
 
-                // Redirect to success page
-                router.push(`/dates/post-date-payment/success?paymentId=${paymentIntent.id}&amountPaid=${paymentIntent.amount}&dateId=${dateId}`);
+                router.push(`/dates/post-date-payment/success?dateId=${dateId}&paymentId=${paymentIntent.id}`);
             }
         } catch (err) {
-            setError(`Error processing payment, please try again`);
-            console.log("Error", err);
+            console.error('Payment error:', err);
+            setError(err instanceof Error ? err.message : 'Payment failed');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!dateId) {
-        return <div>Invalid date request</div>;
-    }
-
     return (
-        <div className="mt-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
             <PaymentElement />
-            {error && <p className="text-red-500 mt-2">{error}</p>}
+            
+            {error && (
+                <div className="bg-red-50 text-red-600 p-4 rounded-lg">
+                    {error}
+                </div>
+            )}
+
             <button
-                onClick={handlePayment}
-                disabled={loading}
-                className="w-full p-2 bg-[#cc0000] text-white rounded-md mt-4 hover:bg-[#aa0000] transition-colors"
+                type="submit"
+                disabled={!stripe || loading}
+                className={`w-full py-4 bg-[#cc0000] text-white rounded-full font-medium shadow-sm transition-colors
+                    ${(!stripe || loading) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#aa0000]'}`}
             >
-                {loading ? "Processing..." : "Pay Now"}
+                {loading ? 'Processing...' : 'Pay Now'}
             </button>
-        </div>
+        </form>
     );
 }
