@@ -1,10 +1,8 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/supabase/client';
 import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
 // Initialize SendGrid with your API key
 sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
@@ -37,7 +35,7 @@ export async function GET(
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
     
     // Verify authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession();
