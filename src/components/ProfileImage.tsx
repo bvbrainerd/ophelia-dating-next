@@ -2,7 +2,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/supabase/client';
 
-const DEFAULT_AVATAR = 'https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/avatars/default-avatar.png';
+// const DEFAULT_AVATAR = 'https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/avatars/default-avatar.png';
 
 interface User {
   id?: string;
@@ -22,7 +22,7 @@ const getAvatarUrl = (avatarPath: string | null) => {
   
   try {
     // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('images/') || avatarPath.startsWith('/images/')) {
       return avatarPath;
     }
 
@@ -55,6 +55,8 @@ const ProfileImage = ({ user, className = '', priority = false, sizes }: Profile
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   useEffect(() => {
     const fetchAvatarUrl = async () => {
+      console.log('Avatar URL:', user.avatar_url);
+
       const url = getAvatarUrl(user.avatar_url || null);
       setAvatarUrl(url);
     };
@@ -64,12 +66,12 @@ const ProfileImage = ({ user, className = '', priority = false, sizes }: Profile
   return (
     <div className={`relative w-full h-full ${className}`}>
       <Image
-        src={error ? DEFAULT_AVATAR : (avatarUrl || DEFAULT_AVATAR)}
+        src={avatarUrl || '/images/default-avatar.png'}
         alt={user?.first_name ? `${user.first_name}'s profile` : 'Profile'}
         fill
         className="object-cover"
         onError={() => {
-          console.error('Image load error for:', DEFAULT_AVATAR);
+          console.error('Image load error for:', avatarUrl || '/images/default-avatar.png');
           setError(true);
         }}
         sizes={sizes}
