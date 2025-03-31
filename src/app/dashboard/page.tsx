@@ -12,14 +12,41 @@ import BottomNav from '@/components/BottomNav';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import Image from 'next/image';
-import PenaltyDare from '@/components/PenaltyDare';
+import { toast } from 'react-hot-toast';
 
-const Map = dynamic(() => import('@/components/Map'), { ssr: false });
+const Map = dynamic(() => import('@/components/Map'), { 
+  ssr: false,
+  loading: () => <div className="animate-pulse bg-gray-200 h-48 rounded-lg"></div>
+});
 
 const prompt = Prompt({
   weight: ['400', '700'],
   subsets: ['latin']
 });
+
+interface SupabaseProfile {
+  id: string;
+  first_name: string;
+  avatar_url: string | null;
+}
+
+interface SupabaseGroup {
+  id: string;
+  name: string;
+  group_photo_url: string | null;
+}
+
+interface SupabaseGroupMember {
+  groups: {
+    id: string;
+    name: string;
+    group_photo_url: string | null;
+  };
+}
+
+interface GroupMemberResponse {
+  groups: SupabaseGroup;
+}
 
 interface DatePost {
   id: string;
@@ -29,22 +56,11 @@ interface DatePost {
     avatar_url: string | null;
   };
   venue: string;
-  location?: {
-    lat: number;
-    lng: number;
-  };
-  challenge: {
-    title: string;
-    points: number;
-  };
   created_at: string;
   watcher_votes: number;
   comments_count: number;
-  proof_media_url?: string | null;
-  hasLiked?: boolean;
-  visibility: string;
-  group_id: string;
-  group_name?: string;
+  hasLiked: boolean;
+  proof_media_url: string | null;
 }
 
 interface Group {
@@ -53,34 +69,19 @@ interface Group {
   group_photo_url?: string | null;
 }
 
-interface GroupMember {
-  group_id: string;
-  groups: Group;
-}
-
-interface LiveDate {
-  id: string;
-  venue: string;
-  created_at: string;
-  watcher_votes: number;
-  challenge_title: string;
-  user_id: string;
-  first_name: string;
-  avatar_url: string | null;
-  challenge_points: number;
-  latitude: number | null;
-  longitude: number | null;
-  visibility: string;
-  group_id: string;
-  groups: {
-    name: string;
-  } | null;
-}
-
 interface User {
   id: string;
   first_name: string;
   avatar_url: string | null;
+}
+
+interface DateRequestResponse {
+  id: string;
+  venue: string;
+  created_at: string;
+  watcher_votes: number;
+  proof_media_url: string | null;
+  profiles: SupabaseProfile;
 }
 
 export default function DashboardPage() {
@@ -94,21 +95,29 @@ export default function DashboardPage() {
   const [selectedTab, setSelectedTab] = useState<string>('all');
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [showPenaltyDare, setShowPenaltyDare] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get current user and their groups
     const getCurrentUserAndGroups = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('Error fetching user:', userError);
+          router.push('/auth/login');
+          return;
+        }
+
+        const firstName = user.user_metadata?.first_name || 'User';
+        const avatarUrl = user.user_metadata?.avatar_url || null;
+
         setCurrentUser({
           id: user.id,
-          first_name: user.user_metadata.first_name,
-          avatar_url: user.user_metadata.avatar_url
+          first_name: firstName,
+          avatar_url: avatarUrl
         });
         
-        // Fetch user's groups with complete group details including photo
-        const { data: groupsData } = await supabase
+        const { data: groupsData, error: groupsError } = await supabase
           .from('group_members')
           .select(`
             groups (
@@ -119,51 +128,147 @@ export default function DashboardPage() {
           `)
           .eq('user_id', user.id);
 
+        if (groupsError) {
+          console.error('Error fetching groups:', groupsError);
+          return;
+        }
+
         if (groupsData) {
-          const groups: Group[] = groupsData.map((g: any) => ({
-            id: g.groups.id,
-            name: g.groups.name,
-            group_photo_url: g.groups.group_photo_url
-          }));
+          const groups: Group[] = groupsData
+            .filter((g: any) => {
+              if (!g?.groups) return false;
+              const group = g.groups;
+              return (
+                typeof group === 'object' &&
+                typeof group.id === 'string' &&
+                typeof group.name === 'string' &&
+                (group.group_photo_url === null || typeof group.group_photo_url === 'string')
+              );
+            })
+            .map((g: any) => ({
+              id: g.groups.id,
+              name: g.groups.name,
+              group_photo_url: g.groups.group_photo_url
+            }));
           setUserGroups(groups);
         }
+      } catch (error) {
+        console.error('Error in getCurrentUserAndGroups:', error);
+        setError('Failed to load user data');
       }
     };
+
     getCurrentUserAndGroups();
-  }, []);
+  }, [router]);
+
+  const fetchDatePosts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: posts, error } = await supabase
+        .from('date_requests')
+        .select(`
+          id,
+          venue,
+          created_at,
+          watcher_votes,
+          proof_media_url,
+          profiles!date_requests_sender_id_fkey (
+            id,
+            first_name,
+            avatar_url
+          )
+        `)
+        .in('status', ['completed', 'rated'])
+        .not('proof_media_url', 'is', null)
+        .neq('status', 'deleted')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const transformedPosts = await Promise.all((posts || []).map(async (post: any) => {
+        const profile = post.profiles as SupabaseProfile;
+        
+        let proofUrl = post.proof_media_url;
+        if (proofUrl && !proofUrl.startsWith('http')) {
+          const cleanPath = proofUrl.replace(/^date-proofs\//, '');
+          const { data } = supabase.storage
+            .from('date-proofs')
+            .getPublicUrl(cleanPath);
+          proofUrl = data?.publicUrl;
+        }
+
+        const { data: likes } = await supabase
+          .from('date_likes')
+          .select('*')
+          .eq('date_request_id', post.id)
+          .eq('user_id', user.id);
+
+        return {
+          id: post.id,
+          user: {
+            id: profile.id,
+            first_name: profile.first_name,
+            avatar_url: profile.avatar_url
+          },
+          venue: post.venue,
+          created_at: post.created_at,
+          watcher_votes: post.watcher_votes || 0,
+          comments_count: 0,
+          proof_media_url: proofUrl,
+          hasLiked: Boolean(likes && likes.length > 0)
+        } as DatePost;
+      }));
+
+      setDatePosts(transformedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      setError('Failed to load posts');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchDatePosts();
+    }
+  }, [currentUser, selectedTab]);
 
   const handleLike = async (postId: string) => {
     if (!currentUser) return;
 
     try {
-      // Check if user has already liked
-      const { data: existingLike } = await supabase
+      const { data: existingLikes, error: likeError } = await supabase
         .from('date_likes')
-        .select('id')
-        .eq('date_id', postId)
-        .eq('user_id', currentUser.id)
-        .single();
+        .select('*')
+        .eq('date_request_id', postId)
+        .eq('user_id', currentUser.id);
 
-      if (existingLike) {
-        // Unlike
+      if (likeError) throw likeError;
+
+      if (existingLikes?.[0]) {
         await supabase
           .from('date_likes')
           .delete()
-          .eq('id', existingLike.id);
+          .eq('date_request_id', postId)
+          .eq('user_id', currentUser.id);
 
-        // Update local state
         setDatePosts(prev => prev.map(post => 
           post.id === postId 
-            ? { ...post, watcher_votes: post.watcher_votes - 1, hasLiked: false }
+            ? { ...post, watcher_votes: Math.max(0, post.watcher_votes - 1), hasLiked: false }
             : post
         ));
       } else {
-        // Like
         await supabase
           .from('date_likes')
-          .insert({ date_id: postId, user_id: currentUser.id });
+          .insert({ 
+            date_request_id: postId, 
+            user_id: currentUser.id,
+            created_at: new Date().toISOString()
+          });
 
-      // Update local state
         setDatePosts(prev => prev.map(post => 
           post.id === postId 
             ? { ...post, watcher_votes: post.watcher_votes + 1, hasLiked: true }
@@ -172,6 +277,7 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error handling like:', error);
+      toast.error('Failed to update like');
     }
   };
 
@@ -179,121 +285,11 @@ export default function DashboardPage() {
     router.push(`/date/${post.id}/comments`);
   };
 
-  const handleShowMap = (post: DatePost) => {
-    setSelectedPost(post);
-    setShowMap(true);
-  };
-
   const handleGroupSelect = (groupId: string) => {
     setSelectedTab(groupId);
     setShowGroupMenu(false);
     const selectedGroup = userGroups.find(g => g.id === groupId);
     setSelectedGroup(selectedGroup || null);
-  };
-
-  useEffect(() => {
-    const fetchDatePosts = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('No user found');
-
-        // Get user's groups
-        const { data: userGroups } = await supabase
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', user.id);
-
-        const groupIds = userGroups?.map(g => g.group_id) || [];
-
-        // Base query
-        let query = supabase
-          .from('live_dates')
-          .select(`
-            id,
-            venue,
-            created_at,
-            watcher_votes,
-            challenge_title,
-            user_id,
-            first_name,
-            avatar_url,
-            challenge_points,
-            latitude,
-            longitude,
-            visibility,
-            group_id,
-            groups:groups!inner (
-              name
-            )
-          `)
-          .order('created_at', { ascending: false })
-          .limit(20);
-
-        // Apply group filter if selected
-        if (selectedTab !== 'all') {
-          query = query.eq('group_id', selectedTab);
-        } else {
-          // Show all accessible posts
-          query = query.or(`visibility.eq.public,and(visibility.eq.private,group_id.in.(${groupIds.join(',')})),and(visibility.eq.private,user_id.eq.${user.id})`);
-        }
-
-        const { data: liveDates, error } = await query;
-
-        if (error) throw error;
-
-        // Get user's likes
-        const { data: likes } = await supabase
-          .from('date_likes')
-          .select('date_id')
-          .eq('user_id', user.id);
-        
-        const userLikes = likes?.map(like => like.date_id) || [];
-
-        const formattedPosts = (liveDates as unknown as LiveDate[]).map(date => ({
-          id: date.id,
-          user: {
-            id: date.user_id,
-            first_name: date.first_name,
-            avatar_url: date.avatar_url
-          },
-          venue: date.venue,
-          location: date.latitude && date.longitude ? {
-            lat: date.latitude,
-            lng: date.longitude
-          } : undefined,
-          challenge: {
-            title: date.challenge_title || 'Mystery Date',
-            points: date.challenge_points || 100
-          },
-          created_at: date.created_at,
-          watcher_votes: date.watcher_votes || 0,
-          comments_count: Math.floor(Math.random() * 20),
-          hasLiked: userLikes.includes(date.id),
-          visibility: date.visibility,
-          group_id: date.group_id,
-          group_name: date.groups?.name
-        }));
-
-        setDatePosts(formattedPosts);
-      } catch (error) {
-        console.error('Error fetching date posts:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDatePosts();
-  }, [currentUser, selectedTab]);
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-
-    if (diffInMinutes < 1) return 'just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
   if (isLoading) {
@@ -304,10 +300,27 @@ export default function DashboardPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#cc0000] flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg max-w-md w-full mx-4 text-center">
+          <h2 className="text-2xl font-bold text-[#cc0000] mb-4">Error</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-[#cc0000] text-white rounded-full hover:bg-[#aa0000] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#cc0000] text-white pb-20">
       <div className="max-w-2xl mx-auto p-4">
-        <Header variant="default" />
+        <Header variant="dashboard" />
 
         <div className="sticky top-0 bg-[#cc0000] pb-4 mb-6 pt-4 z-50">
           <div className="flex flex-col mt-4">
@@ -408,32 +421,22 @@ export default function DashboardPage() {
                       <div className={`text-white text-lg font-medium ${prompt.className}`}>{post.user.first_name}</div>
                       <div className={`text-white/80 text-sm ${prompt.className}`}>
                         {post.venue}
-                        {post.group_name && (
-                          <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                            {post.group_name}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
-                  <div className={`text-white/80 text-sm ${prompt.className}`}>
-                    {formatTimeAgo(post.created_at)}
-                  </div>
                 </div>
 
-                <div className="relative aspect-[4/3] bg-gray-900">
-                  {post.proof_media_url ? (
-                    <img 
+                {post.proof_media_url && (
+                  <div className="relative aspect-[3/4] bg-gray-900">
+                    <Image
                       src={post.proof_media_url}
-                      alt="Date moment" 
-                      className="w-full h-full object-cover"
+                      alt="Date moment"
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 768px"
                     />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white/20 to-black">
-                      <span className={`text-white/50 ${prompt.className}`}>No photo yet</span>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-6 text-white/80">
@@ -453,21 +456,9 @@ export default function DashboardPage() {
                       <MessagesSquare className="w-5 h-5" />
                       <span className={prompt.className}>{post.comments_count}</span>
                     </button>
-                    {post.location && (
-                    <button
-                        onClick={() => handleShowMap(post)}
-                        className="flex items-center gap-2 hover:text-white transition-colors"
-                    >
-                        <MapPin className="w-5 h-5" />
-                        <span className={prompt.className}>View Map</span>
-                    </button>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-white" />
-                    <span className={`text-white ${prompt.className}`}>
-                      {post.challenge.points} pts
-                    </span>
                   </div>
                 </div>
               </div>
@@ -476,45 +467,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {showMap && selectedPost && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl overflow-hidden">
-            <div className="p-4 bg-[#cc0000] text-white flex justify-between items-center">
-              <h3 className={`font-medium ${prompt.className}`}>{selectedPost.venue}</h3>
-              <button 
-                onClick={() => setShowMap(false)}
-                className="text-white/80 hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-            <div className="h-[400px] w-full">
-              {selectedPost.location && (
-                <Map 
-                  center={[selectedPost.location.lng, selectedPost.location.lat]}
-                  zoom={15}
-                  markers={[{
-                    coordinates: [selectedPost.location.lng, selectedPost.location.lat],
-                    title: selectedPost.venue
-                  }]}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <BottomNav />
-
-      {/* Add PenaltyDare component if user has penalties */}
-      {currentUser && showPenaltyDare && (
-        <div className="mb-8">
-          <PenaltyDare
-            userId={currentUser.id}
-            onComplete={() => setShowPenaltyDare(false)}
-          />
-        </div>
-      )}
     </div>
   );
 }

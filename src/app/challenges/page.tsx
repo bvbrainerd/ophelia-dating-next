@@ -6,27 +6,43 @@ import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import { Card } from '@/components/ui/card';
-import { Trophy, Star, Flame, Heart, ThumbsUp, MessageCircle, MapPin, Camera } from 'lucide-react';
+import { Trophy, Star, Flame, Heart, ThumbsUp, MessageCircle, MapPin, Camera, Upload, X } from 'lucide-react';
 import ProfileImage from '@/components/ProfileImage';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import VenueSelector from '@/components/VenueSelector';
 import Map from '@/components/Map';
 import { VENUES } from '@/utils/venues';
 import { toast } from 'sonner';
+import Image from 'next/image';
+import { v4 as uuidv4 } from 'uuid';
 
 interface Challenge {
   id: string;
   title: string;
   description: string;
+  type: 'date_invite' | 'date_activity';
+  venue?: string;
   level: 'beginner' | 'adventurous' | 'daredevil';
   points: number;
   total_completions: number;
   total_votes: number;
-  type: 'date_invite' | 'date_activity';
-  venue?: string;
   penalty?: {
     type: 'dare' | 'rating' | 'shame' | 'escalation' | 'financial';
     description: string;
+  };
+}
+
+interface Post {
+  id: string;
+  caption: string;
+  venue: string;
+  image_url: string;
+  visibility: 'public' | 'groups';
+  created_at: string;
+  user: {
+    id: string;
+    first_name: string;
+    avatar_url: string | null;
   };
 }
 
@@ -43,15 +59,6 @@ interface Group {
   id: string;
   name: string;
   description: string;
-}
-
-interface Rating {
-  venue_rating: number;
-  venue_review: string;
-  date_rating: number;
-  date_review: string;
-  date_partner_rating: number;
-  date_partner_review: string;
 }
 
 interface UserChallenge {
@@ -76,7 +83,6 @@ interface UserChallenge {
   proof_media_url?: string | null;
   visibility: string;
   group_ids: string[];
-  rating?: Rating;
 }
 
 interface DatabaseProfile {
@@ -125,35 +131,28 @@ interface GroupMemberResponse {
 
 export default function ChallengesPage() {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<DatabaseProfile | null>(null);
   const [selectedTab, setSelectedTab] = useState('post');
-  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<Group[]>([]);
   const [userGroups, setUserGroups] = useState<Group[]>([]);
-  const [visibility, setVisibility] = useState<'public' | 'groups' | 'private'>('public');
+  const [postVisibility, setPostVisibility] = useState<'public' | 'groups'>('public');
   const [selectedLevel, setSelectedLevel] = useState<'beginner' | 'adventurous' | 'daredevil'>('adventurous');
   const [selectedChallengeType, setSelectedChallengeType] = useState<'date_invite' | 'date_activity'>('date_invite');
   const [caption, setCaption] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [datePartner, setDatePartner] = useState<DatePartner | null>(null);
+  const [datePartner, setDatePartner] = useState<DatabaseProfile | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<DatePartner[]>([]);
-  const [ratings, setRatings] = useState<Rating>({
-    venue_rating: 0,
-    venue_review: '',
-    date_rating: 0,
-    date_review: '',
-    date_partner_rating: 0,
-    date_partner_review: ''
-  });
+  const [searchResults, setSearchResults] = useState<DatabaseProfile[]>([]);
   const [venue, setVenue] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number]>([-71.0589, 42.3601]); // Boston center
   const [isLoading, setIsLoading] = useState(false);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [activeChallenges, setActiveChallenges] = useState<UserChallenge[]>([]);
   const [venues, setVenues] = useState<Record<string, any[]>>({});
-  const [selectedDareUser, setSelectedDareUser] = useState<DatePartner | null>(null);
+  const [selectedDareUser, setSelectedDareUser] = useState<DatabaseProfile | null>(null);
   const [dareUserSearch, setDareUserSearch] = useState('');
-  const [dareUserResults, setDareUserResults] = useState<DatePartner[]>([]);
+  const [dareUserResults, setDareUserResults] = useState<DatabaseProfile[]>([]);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [customChallengeTitle, setCustomChallengeTitle] = useState('');
   const [customChallengeDescription, setCustomChallengeDescription] = useState('');
@@ -161,6 +160,12 @@ export default function ChallengesPage() {
   const [selectedProof, setSelectedProof] = useState('Photo');
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [cancelMessage, setCancelMessage] = useState('');
+  const [selectedParticipantOne, setSelectedParticipantOne] = useState<DatabaseProfile | null>(null);
+  const [selectedParticipantTwo, setSelectedParticipantTwo] = useState<DatabaseProfile | null>(null);
+  const [searchQueryOne, setSearchQueryOne] = useState('');
+  const [searchQueryTwo, setSearchQueryTwo] = useState('');
+  const [searchResultsOne, setSearchResultsOne] = useState<DatabaseProfile[]>([]);
+  const [searchResultsTwo, setSearchResultsTwo] = useState<DatabaseProfile[]>([]);
 
   const venueDares: Challenge[] = [
     {
@@ -311,6 +316,28 @@ export default function ChallengesPage() {
   ];
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        setCurrentUser(profile);
+      }
+    };
+
+    fetchCurrentUser();
+  }, [router]);
+
+  useEffect(() => {
     // Fetch venues from your venue data
     const fetchVenues = async () => {
       try {
@@ -393,49 +420,60 @@ export default function ChallengesPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedImage || !venue) return;
-    setIsLoading(true);
+    if (!selectedParticipantOne || !selectedParticipantTwo) {
+      toast.error('Please select both participants for the date dare');
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
 
-      // Upload image
-      const fileExt = selectedImage.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('challenge-proofs')
-        .upload(fileName, selectedImage);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('challenge-proofs')
-        .getPublicUrl(fileName);
-
-      // Create challenge entry
-      const { error: challengeError } = await supabase
+      // Create the challenge with both participants
+      const { data: challenge, error: challengeError } = await supabase
         .from('user_challenges')
         .insert({
-          user_id: user.id,
-          date_partner_id: datePartner?.id,
-          venue,
-          proof_media_url: publicUrl,
-          visibility,
-          status: 'completed',
-          group_ids: visibility === 'groups' ? selectedGroups : [],
-          ratings
-        });
+          user_id: selectedParticipantOne.id,
+          challenger_id: user.id,
+          participant_one_id: selectedParticipantOne.id,
+          participant_two_id: selectedParticipantTwo.id,
+          challenge_id: selectedChallenge?.id,
+          type: selectedChallenge?.type || 'date_activity',
+          status: 'pending',
+          proof_type: 'photo',
+          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          visibility: 'public',
+          group_ids: selectedGroups.map(group => group.id)
+        })
+        .select()
+        .single();
 
       if (challengeError) throw challengeError;
 
-      router.push('/dashboard');
+      // Create notifications for both participants
+      await Promise.all([
+        supabase.from('notifications').insert({
+          user_id: selectedParticipantOne.id,
+          type: 'challenge',
+          challenge_id: challenge.id,
+          message: `You've been challenged to a date dare!`
+        }),
+        supabase.from('notifications').insert({
+          user_id: selectedParticipantTwo.id,
+          type: 'challenge',
+          challenge_id: challenge.id,
+          message: `You've been challenged to a date dare!`
+        })
+      ]);
+
+      toast.success('Date dare challenge sent successfully!');
+      router.push('/daterequests');
     } catch (error) {
-      console.error('Error submitting challenge:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error creating challenge:', error);
+      toast.error('Failed to create challenge. Please try again.');
     }
   };
 
@@ -502,7 +540,7 @@ export default function ChallengesPage() {
         .limit(5);
 
       if (error) throw error;
-      return users as DatePartner[];
+      return users as DatabaseProfile[];
     } catch (error) {
       console.error('Error searching users:', error);
       return [];
@@ -632,7 +670,7 @@ export default function ChallengesPage() {
     if (!customChallengeTitle || !customChallengeDescription) return;
     
     const customChallenge: Challenge = {
-      id: `custom-${Date.now()}`,
+      id: uuidv4(),
       title: customChallengeTitle,
       description: customChallengeDescription,
       level: selectedLevel,
@@ -650,6 +688,48 @@ export default function ChallengesPage() {
     setCancelMessage(cancelMessages[Math.floor(Math.random() * cancelMessages.length)]);
   };
 
+  const searchParticipantOne = async (query: string) => {
+    setSearchQueryOne(query);
+    if (query.length < 2) {
+      setSearchResultsOne([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, avatar_url, age')
+      .ilike('first_name', `%${query}%`)
+      .limit(5);
+
+    if (error) {
+      console.error('Error searching for participant one:', error);
+      return;
+    }
+
+    setSearchResultsOne(data || []);
+  };
+
+  const searchParticipantTwo = async (query: string) => {
+    setSearchQueryTwo(query);
+    if (query.length < 2) {
+      setSearchResultsTwo([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, avatar_url, age')
+      .ilike('first_name', `%${query}%`)
+      .limit(5);
+
+    if (error) {
+      console.error('Error searching for participant two:', error);
+      return;
+    }
+
+    setSearchResultsTwo(data || []);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-[#cc0000]">
@@ -659,89 +739,131 @@ export default function ChallengesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#aa0000]">
-      <div className="max-w-4xl mx-auto">
-        <Header variant="default" />
-        <div className="bg-white rounded-t-3xl p-5">
-          <Tabs defaultValue="post" className="mb-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto p-5">
+        <div className="space-y-6">
+          <Tabs defaultValue="post" className="w-full" onValueChange={(value) => setSelectedTab(value as any)}>
             <TabsList className="w-full">
-              <TabsTrigger value="post" className="flex-1">Post Date</TabsTrigger>
-              <TabsTrigger value="challenge" className="flex-1">Challenge</TabsTrigger>
+              <TabsTrigger value="post" className="flex-1 font-bold text-lg">Post Date</TabsTrigger>
+              <TabsTrigger value="challenge" className="flex-1 font-bold text-lg">Challenge</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="post" className="space-y-6">
-              {/* Upload Card */}
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-xl font-bold text-[#aa0000] mb-4">Share Your Date Experience</h3>
-                
-                {/* Upload Area */}
-                <label className="block border-2 border-dashed border-[#aa0000] rounded-lg p-6 text-center cursor-pointer hover:bg-red-50 transition-colors mb-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                  <Camera className="w-12 h-12 text-[#aa0000] mx-auto mb-2" />
-                  <p className="text-gray-600">Add photos/videos of your date</p>
-                </label>
+            <TabsContent value="post" className="space-y-6 pb-20">
+              {/* Upload Section */}
+              <div className="space-y-6">
+                {/* Image Upload/Preview */}
+                <div className="w-full">
+                  {previewUrl ? (
+                    <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden">
+                      <Image
+                        src={previewUrl}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        onClick={() => {
+                          setSelectedImage(null);
+                          setPreviewUrl(null);
+                        }}
+                        className="absolute top-2 right-2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center">
+                      <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">Upload a photo of your completed dare</p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="photo-upload"
+                      />
+                      <label
+                        htmlFor="photo-upload"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#cc0000] text-[#cc0000] rounded-full cursor-pointer hover:bg-red-50 transition-colors mt-4 text-sm"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Select Photo
+                      </label>
+                    </div>
+                  )}
+                </div>
 
-                {/* Preview */}
-                {previewUrl && (
-                  <div className="relative w-full h-48 rounded-lg overflow-hidden mb-4">
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-
-                {/* Title instead of Caption */}
-                <input
+                {/* Caption Input */}
+                <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Give your date a title..."
-                  className="w-full p-3 border border-gray-200 rounded-lg mb-4 font-bold text-lg"
+                  placeholder="Add a caption to your post..."
+                  className="w-full p-4 bg-white rounded-2xl border border-gray-200 focus:outline-none focus:border-[#cc0000] resize-none min-h-[120px]"
                 />
 
-                {/* Venue Selector */}
-                <div className="mb-4">
+                {/* Post Visibility */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-black">Post Visibility</h3>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setPostVisibility('public')}
+                      className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
+                        postVisibility === 'public'
+                          ? 'bg-[#cc0000] text-white'
+                          : 'bg-white text-gray-600 border-2 border-gray-200'
+                      }`}
+                    >
+                      Public
+                    </button>
+                    <button
+                      onClick={() => setPostVisibility('groups')}
+                      className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-colors ${
+                        postVisibility === 'groups'
+                          ? 'bg-[#cc0000] text-white'
+                          : 'bg-white text-gray-600 border-2 border-gray-200'
+                      }`}
+                    >
+                      Groups Only
+                    </button>
+                  </div>
+                </div>
+
+                {/* Venue Selection */}
+                <div className="space-y-3">
                   <VenueSelector
                     venues={VENUES}
                     onVenueSelect={handleVenueSelect}
                     selectedVenue={venue}
                   />
+                  
+                  {venue && (
+                    <div className="relative h-48 rounded-2xl overflow-hidden">
+                      <Map
+                        center={mapCenter}
+                        zoom={14}
+                        markers={[{ coordinates: mapCenter, title: venue }]}
+                      />
+                      <div className="absolute bottom-2 left-2 bg-white px-3 py-1 rounded-full shadow-md flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#cc0000]" />
+                        <span className="text-sm font-medium">{venue}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Map */}
-                {venue && (
-                  <div className="mb-4 relative h-48 rounded-lg overflow-hidden">
-                    <Map
-                      center={mapCenter}
-                      zoom={14}
-                      markers={[{ coordinates: mapCenter, title: venue }]}
-                    />
-                    <div className="absolute bottom-2 left-2 bg-white px-3 py-1 rounded-full shadow-md flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#aa0000]" />
-                      <span className="text-sm font-medium">{venue}</span>
-                    </div>
-                  </div>
-                )}
-
                 {/* Date Partner Selection */}
-                <div className="mb-6">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Who did you go on a date with?</h4>
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-black">Who did you go on a date with?</h3>
                   <div className="relative">
                     <input
                       type="text"
+                      placeholder="Search for your date partner..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search for your date partner..."
-                      className="w-full p-3 border border-gray-200 rounded-lg"
+                      className="w-full p-3 bg-white rounded-full border-2 border-gray-200 focus:outline-none focus:border-[#cc0000]"
                     />
                     {searchResults.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-2xl shadow-lg overflow-hidden">
                         {searchResults.map((user) => (
                           <button
                             key={user.id}
@@ -765,7 +887,7 @@ export default function ChallengesPage() {
                     )}
                   </div>
                   {datePartner && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                    <div className="p-3 bg-gray-50 rounded-2xl flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden">
                           <ProfileImage user={datePartner} className="w-full h-full object-cover" />
@@ -785,127 +907,19 @@ export default function ChallengesPage() {
                   )}
                 </div>
 
-                {/* Ratings Section */}
-                <div className="space-y-6 mb-6">
-                  {/* Venue Rating */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Rate the Venue</h4>
-                    <div className="flex gap-2 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-6 h-6 cursor-pointer ${
-                            star <= ratings.venue_rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                          }`}
-                          onClick={() => setRatings({ ...ratings, venue_rating: star })}
-                        />
-                      ))}
-                    </div>
-                    <textarea
-                      value={ratings.venue_review}
-                      onChange={(e) => setRatings({ ...ratings, venue_review: e.target.value })}
-                      placeholder="How was the venue?"
-                      className="w-full p-3 border border-gray-200 rounded-lg resize-none"
-                      rows={2}
-                    />
-                  </div>
-
-                  {/* Overall Date Rating */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Rate the Overall Date</h4>
-                    <div className="flex gap-2 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-6 h-6 cursor-pointer ${
-                            star <= ratings.date_rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                          }`}
-                          onClick={() => setRatings({ ...ratings, date_rating: star })}
-                        />
-                      ))}
-                    </div>
-                    <textarea
-                      value={ratings.date_review}
-                      onChange={(e) => setRatings({ ...ratings, date_review: e.target.value })}
-                      placeholder="How was the date overall?"
-                      className="w-full p-3 border border-gray-200 rounded-lg resize-none"
-                      rows={2}
-                    />
-                  </div>
-
-                  {/* Date Partner Rating */}
-                  {datePartner && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Rate Your Date Partner</h4>
-                      <div className="flex gap-2 mb-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`w-6 h-6 cursor-pointer ${
-                              star <= ratings.date_partner_rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                            }`}
-                            onClick={() => setRatings({ ...ratings, date_partner_rating: star })}
-                          />
-                        ))}
-                      </div>
-                      <textarea
-                        value={ratings.date_partner_review}
-                        onChange={(e) => setRatings({ ...ratings, date_partner_review: e.target.value })}
-                        placeholder="How was your date partner?"
-                        className="w-full p-3 border border-gray-200 rounded-lg resize-none"
-                        rows={2}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Group Selection */}
-                {visibility === 'groups' && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Select Groups</h4>
-                    <div className="space-y-2">
-                      {userGroups.map((group) => (
-                        <label
-                          key={group.id}
-                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedGroups.includes(group.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedGroups([...selectedGroups, group.id]);
-                              } else {
-                                setSelectedGroups(selectedGroups.filter(id => id !== group.id));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-[#aa0000] focus:ring-[#aa0000]"
-                          />
-                          <div>
-                            <div className="font-medium">{group.name}</div>
-                            <div className="text-sm text-gray-500">{group.description}</div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Submit Button */}
+                {/* Post Button */}
                 <button
                   onClick={handleSubmit}
                   disabled={isLoading || !selectedImage || !venue}
-                  className="w-full bg-[#aa0000] text-white py-3 rounded-full font-bold mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 px-6 bg-[#aa0000] text-white rounded-full font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8 mb-6 text-lg shadow-lg"
                 >
-                  {isLoading ? 'Posting...' : 'POST TO COMMUNITY'}
+                  {isLoading ? 'Posting...' : 'Post'}
                 </button>
               </div>
             </TabsContent>
 
             <TabsContent value="challenge" className="space-y-6">
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h3 className="text-2xl font-bold text-[#aa0000] mb-6">Create a Date Challenge</h3>
-
                 {/* Challenge Type Tabs */}
                 <div className="grid grid-cols-2 gap-2 mb-6">
                   <button
@@ -1162,10 +1176,11 @@ export default function ChallengesPage() {
                   </div>
                 )}
 
+                {/* Send Challenge Button */}
                 <button
                   onClick={() => handleDareSubmit(selectedChallenge!)}
                   disabled={!selectedDareUser || !selectedChallenge}
-                  className="w-full py-4 bg-[#aa0000] text-white rounded-lg font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 px-6 bg-[#aa0000] text-white rounded-full font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4 mb-6 text-lg shadow-lg"
                 >
                   Send Challenge
                 </button>

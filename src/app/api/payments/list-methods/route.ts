@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@/supabase/server';
 import Stripe from 'stripe';
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -16,7 +15,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export async function GET(request: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
 
     // Get the authorization header
     const authHeader = request.headers.get('Authorization');

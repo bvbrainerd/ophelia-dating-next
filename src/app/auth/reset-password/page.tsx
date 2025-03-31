@@ -6,7 +6,7 @@ import { supabase } from '../../../supabase/client';
 
 export default function ResetPassword() {
   const searchParams = useSearchParams();
-  const email = searchParams.get('email');
+  const email = searchParams?.get('email');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

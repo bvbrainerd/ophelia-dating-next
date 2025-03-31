@@ -1,14 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import { Card } from '@/components/ui/card';
-import { Camera, Star, MapPin } from 'lucide-react';
-import ProfileImage from '@/components/ProfileImage';
+import { Camera, Upload, Star } from 'lucide-react';
+import Image from 'next/image';
 import { toast } from 'sonner';
+
+interface ChallengeData {
+  id: string;
+  status: string;
+  proof_media_url: string | null;
+  date_requests: Array<{
+    venue: string;
+  }>;
+  profiles: Array<{
+    id: string;
+    first_name: string;
+    avatar_url: string | null;
+  }>;
+  date_dares: Array<{
+    dare_text: string;
+  }>;
+}
 
 interface Challenge {
   id: string;
@@ -16,10 +32,7 @@ interface Challenge {
   venue: string;
   has_posted: boolean;
   proof_media_url: string | null;
-  venue_review: string | null;
-  date_review: string | null;
-  venue_rating: number | null;
-  date_rating: number | null;
+  dare: string | null;
   user: {
     id: string;
     first_name: string;
@@ -28,55 +41,62 @@ interface Challenge {
 }
 
 export default function ChallengePage() {
-  const router = useRouter();
   const params = useParams();
+  const router = useRouter();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showPostReminder, setShowPostReminder] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [review, setReview] = useState({
-    venue_review: '',
-    date_review: '',
-    venue_rating: 0,
-    date_rating: 0
-  });
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchChallenge = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/auth/login');
+          return;
+        }
+
+        // Get challenge details
+        const { data: challengeData, error: challengeError } = await supabase
           .from('user_challenges')
           .select(`
             id,
             status,
-            venue,
-            has_posted,
             proof_media_url,
-            venue_review,
-            date_review,
-            venue_rating,
-            date_rating,
-            profiles!user_challenges_user_id_fkey (
+            date_requests (
+              venue
+            ),
+            profiles (
               id,
               first_name,
               avatar_url
+            ),
+            date_dares (
+              dare_text
             )
           `)
           .eq('id', params.id)
           .single();
 
-        if (error) throw error;
+        if (challengeError) throw challengeError;
+
+        const typedData = challengeData as ChallengeData;
 
         setChallenge({
-          ...data,
-          user: data.profiles[0]
+          id: typedData.id,
+          status: typedData.status,
+          venue: typedData.date_requests[0]?.venue || '',
+          has_posted: !!typedData.proof_media_url,
+          proof_media_url: typedData.proof_media_url,
+          dare: typedData.date_dares[0]?.dare_text || null,
+          user: {
+            id: typedData.profiles[0].id,
+            first_name: typedData.profiles[0].first_name,
+            avatar_url: typedData.profiles[0].avatar_url
+          }
         });
-
-        // Start notification check interval if challenge is active
-        if (data.status === 'in_progress' && !data.has_posted) {
-          const interval = setInterval(checkForNotification, 5 * 60 * 1000); // Check every 5 minutes
-          return () => clearInterval(interval);
-        }
       } catch (error) {
         console.error('Error fetching challenge:', error);
       } finally {
@@ -85,252 +105,238 @@ export default function ChallengePage() {
     };
 
     fetchChallenge();
-  }, [params.id]);
-
-  const checkForNotification = async () => {
-    try {
-      const response = await fetch('/api/date-notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_challenge_id: params.id })
-      });
-
-      const data = await response.json();
-      
-      if (data.type === 'date_reminder' && !challenge?.has_posted) {
-        setShowPostReminder(true);
-        toast.message('Time to capture a moment!', {
-          description: 'Take a photo to remember your date.',
-          action: {
-            label: 'Take Photo',
-            onClick: () => document.getElementById('photo-upload')?.click()
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error checking for notifications:', error);
-    }
-  };
+  }, [params.id, router]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Preview
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
     setSelectedImage(file);
-    setShowPostReminder(false);
   };
 
   const handleSubmitPost = async () => {
-    if (!selectedImage || !challenge) return;
-
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
+      if (!selectedImage || !challenge) return;
 
-      // Upload image
-      const { data: imageData, error: imageError } = await supabase.storage
-        .from('date-photos')
-        .upload(`${challenge.id}/${Date.now()}.jpg`, selectedImage);
+      // Upload image to Supabase Storage
+      const fileName = `${Date.now()}-${selectedImage.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(fileName, selectedImage);
 
-      if (imageError) throw imageError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
-      // Get public URL
+      // Get the public URL of the uploaded image
       const { data: { publicUrl } } = supabase.storage
-        .from('date-photos')
-        .getPublicUrl(imageData.path);
+        .from('uploads')
+        .getPublicUrl(fileName);
 
-      // Update challenge
-      const { error: updateError } = await supabase
-        .from('user_challenges')
-        .update({
-          has_posted: true,
-          proof_media_url: publicUrl,
-          venue_review: review.venue_review,
-          date_review: review.date_review,
-          venue_rating: review.venue_rating,
-          date_rating: review.date_rating
-        })
-        .eq('id', challenge.id);
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
 
-      if (updateError) throw updateError;
+      // First, get or create the venue
+      const { data: venueData, error: venueError } = await supabase
+        .from('venues')
+        .select('id')
+        .eq('name', challenge.venue)
+        .single();
 
-      // Add location data
-      const { error: locationError } = await supabase
-        .from('date_locations')
+      let venueId;
+      if (venueError || !venueData) {
+        // Create new venue if it doesn't exist
+        const { data: newVenue, error: createVenueError } = await supabase
+          .from('venues')
+          .insert({
+            name: challenge.venue,
+            description: 'Venue from challenge',
+            location: '{}',
+            price_range: 2,
+            cuisine_type: 'Other'
+          })
+          .select('id')
+          .single();
+
+        if (createVenueError) throw createVenueError;
+        venueId = newVenue.id;
+      } else {
+        venueId = venueData.id;
+      }
+
+      // Create a new date entry
+      const { data: dateData, error: dateError } = await supabase
+        .from('dates')
         .insert({
-          user_challenge_id: challenge.id,
-          user_id: challenge.user.id,
-          venue_name: challenge.venue,
-          latitude: 42.3601, // Replace with actual coordinates
-          longitude: -71.0589
+          user_id: user.id,
+          venue_id: venueId,
+          status: 'accepted',
+          scheduled_time: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (dateError) throw dateError;
+
+      // Create post in date_requests table with the new schema
+      const { error: postError } = await supabase
+        .from('date_requests')
+        .insert({
+          sender_id: user.id,
+          venue_id: venueId,
+          status: 'accepted',
+          proof_media_url: publicUrl,
+          watcher_votes: 0,
+          scheduled_time: new Date().toISOString(),
+          split_payment: true,
+          challenge_id: params.id,
+          date_id: dateData.id
         });
 
-      if (locationError) throw locationError;
+      if (postError) {
+        throw postError;
+      }
 
-      toast.success('Successfully posted your date memory!');
-      router.refresh();
+      // Update user_challenges status to completed
+      const { error: challengeError } = await supabase
+        .from('user_challenges')
+        .update({ status: 'completed', proof_media_url: publicUrl })
+        .eq('id', params.id);
+
+      if (challengeError) {
+        throw challengeError;
+      }
+
+      toast.success('Challenge completed successfully!');
+      router.push('/challenges');
     } catch (error) {
-      console.error('Error submitting post:', error);
-      toast.error('Failed to post. Please try again.');
+      console.error('Error creating post:', error);
+      toast.error('Failed to post challenge. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#cc0000]"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white pb-24">
-      <div className="max-w-4xl mx-auto p-5">
-        <Header variant="default" />
-        
+    <div className="min-h-screen bg-gray-50">
+      <Header variant="default" />
+      
+      <main className="max-w-2xl mx-auto p-5 pb-24">
         {challenge && (
-          <Card className="mt-8 p-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-full overflow-hidden">
-                <ProfileImage user={challenge.user} className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <h3 className="font-medium">{challenge.user.first_name}</h3>
-                <div className="flex items-center gap-2 text-gray-600 text-sm">
-                  <MapPin className="w-4 h-4" />
-                  {challenge.venue}
+          <div className="space-y-6">
+            {/* Challenge Info */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h1 className="text-2xl font-bold text-[#cc0000] mb-4">
+                Date Challenge
+              </h1>
+              
+              <div className="flex items-center gap-4 mb-6">
+                <div className="relative w-16 h-16">
+                  <Image
+                    src={challenge.user.avatar_url || '/images/default-avatar.png'}
+                    alt={challenge.user.first_name}
+                    fill
+                    className="object-cover rounded-full"
+                  />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    {challenge.user.first_name}
+                  </h2>
+                  <p className="text-gray-600">{challenge.venue}</p>
                 </div>
               </div>
-            </div>
 
-            {!challenge.has_posted && challenge.status === 'in_progress' && (
-              <div className="mb-6">
-                <input
-                  type="file"
-                  id="photo-upload"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-                <button
-                  onClick={() => document.getElementById('photo-upload')?.click()}
-                  className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center gap-2 hover:border-[#BA2525] transition-colors"
-                >
-                  <Camera className="w-8 h-8 text-gray-400" />
-                  <span className="text-gray-600">Capture a moment from your date</span>
-                </button>
-              </div>
-            )}
+              {/* Date Dare */}
+              {challenge.dare && (
+                <div className="bg-red-50 rounded-lg p-4 mb-6 border-2 border-[#cc0000]">
+                  <h3 className="font-semibold text-[#cc0000] mb-2">Today's Date Dare</h3>
+                  <p className="text-gray-800">{challenge.dare}</p>
+                </div>
+              )}
 
-            {selectedImage && (
-              <div className="space-y-4 mb-6">
-                <img
-                  src={URL.createObjectURL(selectedImage)}
-                  alt="Selected"
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-                
+              {/* Upload Section */}
+              {!challenge.has_posted && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Rating
-                    </label>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((rating) => (
-                        <button
-                          key={rating}
-                          onClick={() => setReview(prev => ({ ...prev, venue_rating: rating }))}
-                          className={`p-2 ${review.venue_rating >= rating ? 'text-[#BA2525]' : 'text-gray-300'}`}
-                        >
-                          <Star className="w-6 h-6" fill={review.venue_rating >= rating ? '#BA2525' : 'none'} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Review
-                    </label>
-                    <textarea
-                      value={review.venue_review}
-                      onChange={(e) => setReview(prev => ({ ...prev, venue_review: e.target.value }))}
-                      className="w-full p-2 border rounded-lg"
-                      rows={3}
-                      placeholder="How was the venue?"
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    {previewUrl ? (
+                      <div className="relative aspect-[3/4] w-full max-w-md mx-auto mb-4">
+                        <Image
+                          src={previewUrl}
+                          alt="Preview"
+                          fill
+                          className="object-cover rounded-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="py-8">
+                        <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">Upload a photo of your completed dare</p>
+                      </div>
+                    )}
+                    
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="photo-upload"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date Rating
+                    <label
+                      htmlFor="photo-upload"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#cc0000] text-[#cc0000] rounded-full cursor-pointer hover:bg-red-50 transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      {previewUrl ? 'Change Photo' : 'Select Photo'}
                     </label>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((rating) => (
-                        <button
-                          key={rating}
-                          onClick={() => setReview(prev => ({ ...prev, date_rating: rating }))}
-                          className={`p-2 ${review.date_rating >= rating ? 'text-[#BA2525]' : 'text-gray-300'}`}
-                        >
-                          <Star className="w-6 h-6" fill={review.date_rating >= rating ? '#BA2525' : 'none'} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Date Review
-                    </label>
-                    <textarea
-                      value={review.date_review}
-                      onChange={(e) => setReview(prev => ({ ...prev, date_review: e.target.value }))}
-                      className="w-full p-2 border rounded-lg"
-                      rows={3}
-                      placeholder="How was your date?"
-                    />
                   </div>
 
                   <button
                     onClick={handleSubmitPost}
-                    disabled={isLoading}
-                    className="w-full py-2 bg-[#BA2525] text-white rounded-full hover:bg-[#990000] transition-colors disabled:opacity-50"
+                    disabled={!selectedImage || isSubmitting}
+                    className="w-full py-3 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors disabled:opacity-50"
                   >
-                    {isLoading ? 'Posting...' : 'Post Memory'}
+                    {isSubmitting ? 'Posting...' : 'Post Challenge'}
                   </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {challenge.has_posted && challenge.proof_media_url && (
-              <div className="space-y-4">
-                <img
-                  src={challenge.proof_media_url}
-                  alt="Date memory"
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-                
-                {challenge.venue_review && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 text-[#BA2525]" />
-                      <span className="text-sm">Venue Rating: {challenge.venue_rating}/5</span>
-                    </div>
-                    <p className="text-gray-600">{challenge.venue_review}</p>
+              {/* Completed Challenge */}
+              {challenge.has_posted && challenge.proof_media_url && (
+                <div>
+                  <div className="relative aspect-[3/4] w-full max-w-md mx-auto mb-4">
+                    <Image
+                      src={challenge.proof_media_url}
+                      alt="Challenge proof"
+                      fill
+                      className="object-cover rounded-lg"
+                    />
                   </div>
-                )}
-
-                {challenge.date_review && (
-                  <div className="mt-4">
-                    <p className="text-gray-600">{challenge.date_review}</p>
+                  <div className="text-center text-green-600 font-medium">
+                    Challenge completed! 🎉
                   </div>
-                )}
-              </div>
-            )}
-          </Card>
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </div>
+      </main>
+
       <BottomNav />
     </div>
   );

@@ -41,6 +41,9 @@ export default function HighlightReelPage() {
     
     if (!video) return;
 
+    // Log the video URL being attempted
+    console.log('Attempting to load video from:', '/videos/highlightreel.mp4');
+
     // Set a timeout to handle stalled loading
     loadTimeoutRef.current = setTimeout(() => {
       if (mounted && videoLoading) {
@@ -51,7 +54,7 @@ export default function HighlightReelPage() {
           // Set a final timeout for complete failure
           setTimeout(() => {
             if (mounted && videoLoading) {
-              console.log('Video recovery failed - falling back to error state');
+              console.error('Video recovery failed - falling back to error state');
               setVideoError(true);
               setVideoLoading(false);
             }
@@ -72,7 +75,9 @@ export default function HighlightReelPage() {
       console.log('Video metadata loaded', {
         duration: video.duration,
         videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight
+        videoHeight: video.videoHeight,
+        readyState: video.readyState,
+        networkState: video.networkState
       });
     };
 
@@ -87,34 +92,15 @@ export default function HighlightReelPage() {
       
       video.play().catch(error => {
         console.error('Initial play attempt failed:', error);
-      });
-    };
-
-    const handlePlaying = () => {
-      if (!mounted) return;
-      console.log('Video playing');
-      setVideoLoading(false);
-      setVideoError(false);
-    };
-
-    const handleStalled = () => {
-      if (!mounted) return;
-      console.log('Video stalled', {
-        networkState: video.networkState,
-        readyState: video.readyState,
-        error: video.error
-      });
-      
-      if (!videoReady) {
         setVideoError(true);
-        setVideoLoading(false);
-      }
+      });
     };
 
     const handleError = () => {
       if (!mounted) return;
       console.error('Video error:', {
-        error: video.error,
+        error: video.error?.message,
+        code: video.error?.code,
         networkState: video.networkState,
         readyState: video.readyState,
         currentSrc: video.currentSrc
@@ -127,18 +113,9 @@ export default function HighlightReelPage() {
     video.addEventListener('loadstart', handleLoadStart);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('playing', handlePlaying);
-    video.addEventListener('stalled', handleStalled);
     video.addEventListener('error', handleError);
 
-    try {
-      video.load();
-    } catch (error) {
-      console.error('Error loading video:', error);
-      setVideoError(true);
-      setVideoLoading(false);
-    }
-
+    // Cleanup function
     return () => {
       mounted = false;
       if (loadTimeoutRef.current) {
@@ -148,8 +125,6 @@ export default function HighlightReelPage() {
         video.removeEventListener('loadstart', handleLoadStart);
         video.removeEventListener('loadedmetadata', handleLoadedMetadata);
         video.removeEventListener('loadeddata', handleLoadedData);
-        video.removeEventListener('playing', handlePlaying);
-        video.removeEventListener('stalled', handleStalled);
         video.removeEventListener('error', handleError);
       }
     };
@@ -172,72 +147,55 @@ export default function HighlightReelPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center relative">
-      {/* Main Container */}
-      <div className="relative w-full max-w-[800px] aspect-[4/3] mx-auto">
-        <div className="absolute inset-0 rounded-[2rem] overflow-hidden bg-gradient-to-b from-[#ff3300] via-[#ff2200] to-[#cc1100]">
-          <div className="relative w-full h-full flex flex-col items-center justify-center">
-            {/* Ophelia Title Overlay */}
-            <div className="absolute inset-0 z-20 flex items-center justify-center">
-              <div className="w-full max-w-[400px]">
-                <Image
-                  src="/images/opheliatitle.png"
-                  alt="Ophelia Logo"
-                  width={400}
-                  height={100}
-                  className="w-full"
-                  priority
-                />
-              </div>
-            </div>
-
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center">
+        <div className="relative w-full max-w-2xl">
+          {/* TV Frame and Video Container */}
+          <div className="relative aspect-[4/3] rounded-[60px] overflow-hidden shadow-2xl border-4 border-black bg-black">
+            {/* Video */}
             <video
               ref={videoRef}
-              className="absolute inset-0 w-full h-full object-cover filter grayscale"
+              className="w-full h-full object-cover filter grayscale"
               playsInline
               muted
               autoPlay
+              loop
               preload="auto"
-              style={{ 
-                opacity: videoReady ? 1 : 0,
-                transform: 'scale(2.8)',
-                objectFit: 'cover',
-                objectPosition: 'center 40%'
-              }}
+              src="/videos/highlightreel.mp4"
               onEnded={handleVideoEnd}
             >
-              <source 
-                src="/videos/video.mp4" 
-                type="video/mp4"
-              />
+              Your browser does not support the video tag.
             </video>
-            
-            {/* Loading State */}
-            {videoLoading && !videoError && (
-              <div className="absolute inset-0 bg-black flex items-center justify-center">
+
+            {/* Centered Text Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30">
+              <h1 className={`text-white text-5xl md:text-6xl font-bold mb-4 ${prompt.className}`}>
+                Ophelia
+              </h1>
+              <p className={`text-white/90 text-lg md:text-xl ${prompt.className}`}>
+                Reviving the experience of in-person dating
+              </p>
+            </div>
+
+            {/* Loading Overlay */}
+            {videoLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
               </div>
             )}
-            
-            {/* Fallback Background */}
-            {videoError && (
-              <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black animate-gradient-x"></div>
-            )}
           </div>
+
+          {/* Button below video */}
+          {showSkipButton && (
+            <button
+              onClick={handleSkip}
+              className={`mt-8 mb-16 px-8 py-2 bg-[#cc0000] text-white border border-white rounded-full hover:bg-[#aa0000] transition-colors ${prompt.className} text-base font-bold mx-auto block w-36`}
+            >
+              Skip Intro
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Skip Button */}
-      {showSkipButton && (
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={handleSkip}
-          className={`relative z-50 mt-8 mb-12 px-24 py-2 bg-[#cc0000] text-white border-2 border-white rounded-full font-bold tracking-wider hover:bg-[#aa0000] transition-colors ${prompt.className}`}
-        >
-          SKIP INTRO
-        </motion.button>
-      )}
     </div>
   );
 } 

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
-import { Coffee, MapPin, Calendar, User, Utensils, ArrowLeft, Ticket, CreditCard } from 'lucide-react';
+import { Coffee, MapPin, Calendar, User, Utensils, ArrowLeft, Ticket, CreditCard, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import Map from '@/components/Map';
 import { getVenueImagePath, getVenueCoordinates } from '@/utils/venues';
@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import ProfileImage from '@/components/ProfileImage';
 import Link from 'next/link';
 import TicketView from '@/components/TicketView';
+import { Prompt } from 'next/font/google';
+import { getVenueType } from '@/utils/venues';
 
 interface Profile {
   id: string;
@@ -178,6 +180,12 @@ interface RawDateResponse {
   } | null;
 }
 
+interface User {
+  id: string;
+  first_name: string;
+  avatar_url: string | null;
+}
+
 const stripeLinks: { [key: string]: string } = {
   'Boston Bruins': 'https://buy.stripe.com/00gg1ng5i1BzeWY6os',
   'Celtics': 'https://buy.stripe.com/5kA8yVf1e0xvg12eV0',
@@ -215,7 +223,7 @@ const venueCoordinates: Record<string, [number, number]> = {
   'Boston Commons': [-71.0670, 42.3554],
   'Kured': [-71.0712, 42.3589],
   'The Clay Room': [-71.1317, 42.3396],
-  'Joes on Newbury': [-71.0793, 42.3491],
+  "Joe's on Newbury": [-71.0793, 42.3491],
   'Lucca North End': [-71.0567, 42.3647],
   'Lolita Back Bay': [-71.0816, 42.3486],
   'Capo': [-71.0472, 42.3359]
@@ -226,7 +234,7 @@ const getAvatarUrl = async (avatarPath: string | null) => {
   
   try {
     // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/') || avatarPath.startsWith('images/')) {
       return avatarPath;
     }
 
@@ -260,11 +268,24 @@ const getRandomVenues = (venues: string[], count: number = 3) => {
 };
 
 const getDefaultVenueCoordinates = (venueName?: string | null): [number, number] => {
-  // Check if we have coordinates for this venue
-  if (venueName && venueCoordinates[venueName]) {
+  if (!venueName) return [-71.0589, 42.3601]; // Default to Boston coordinates
+  
+  // First try to get coordinates from venueCoordinates object
+  if (venueCoordinates[venueName]) {
     return venueCoordinates[venueName];
   }
-  // Default to Boston coordinates - Note longitude comes first for Mapbox
+  
+  // If not found in venueCoordinates, try to get from getVenueCoordinates utility
+  try {
+    const coordinates = getVenueCoordinates(venueName);
+    if (coordinates && Array.isArray(coordinates) && coordinates.length === 2) {
+      return coordinates as [number, number];
+    }
+  } catch (error) {
+    console.error('Error getting venue coordinates:', error);
+  }
+  
+  // Default to Boston coordinates if no coordinates found
   return [-71.0589, 42.3601];
 };
 
@@ -304,6 +325,14 @@ const DateRequestCard = ({ request, onAccept, onDecline }: {
       router.push(`/profile/${request.sender.id}`);
     }
   };
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      const url = await getAvatarUrl(request.sender?.avatar_url || null);
+      setAvatarUrl(url);
+    };
+    fetchAvatarUrl();
+  }, [request.sender?.avatar_url]);
 
   const formatRequestDate = (request: DateRequest) => {
     const dateTime = request.proposed_time || 
@@ -330,8 +359,8 @@ const DateRequestCard = ({ request, onAccept, onDecline }: {
     }
   };
 
-  const coordinates = venueCoordinates[request.venue || ''] || [-71.0589, 42.3601];
-
+  const coordinates = getDefaultVenueCoordinates(request.venue);
+  
   return (
     <Card className="p-6 mb-4 bg-white shadow-sm">
       {/* Profile Section */}
@@ -341,16 +370,16 @@ const DateRequestCard = ({ request, onAccept, onDecline }: {
       >
         <div className="relative w-16 h-16">
           <Image
-            src={request.sender?.avatar_url || '/images/default-avatar.png'}
+            src={avatarUrl || '/images/default-avatar.png'}
             alt={`${request.sender?.first_name}'s profile`}
             fill
             className="rounded-full object-cover hover:scale-105 transition-transform"
           />
         </div>
         <div>
-          <span className="text-xl font-medium hover:text-[#BA2525] transition-colors">
+          <div className={`text-xl font-bold hover:text-[#BA2525] transition-colors`}>
             {request.sender?.first_name}, {request.sender?.age}
-          </span>
+          </div>
         </div>
       </div>
       
@@ -404,13 +433,23 @@ const GroupInviteCard = ({ invite, onAccept, onDecline }: {
   invite: any;
   onAccept: () => void;
   onDecline: () => void;
-}) => (
+  
+}) => {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      const url = await getAvatarUrl(invite.profiles?.avatar_url || null);
+      setAvatarUrl(url);
+    };
+    fetchAvatarUrl();
+  }, [invite.profiles?.avatar_url]);
+  return (
   <Card className="bg-white p-6 rounded-[30px] shadow-sm hover:shadow-md transition-shadow">
     <div className="flex items-start justify-between mb-6">
       <div className="flex items-center space-x-4">
         <div className="relative w-20 h-20">
           <Image
-            src={invite.profiles?.avatar_url || '/images/default-avatar.png'}
+            src={avatarUrl || '/images/default-avatar.png'}
             alt={`${invite.profiles?.first_name}'s profile`}
             fill
             className="object-cover rounded-full border-2 border-[#cc0000] shadow-md"
@@ -443,10 +482,29 @@ const GroupInviteCard = ({ invite, onAccept, onDecline }: {
     </div>
   </Card>
 );
+};
 
 const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
   const router = useRouter();
   const [showTicket, setShowTicket] = useState(false);
+  const [isCouple, setIsCouple] = useState(false);
+
+  useEffect(() => {
+    const checkUserType = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('relationship_status')
+        .eq('id', user.id)
+        .single();
+
+      setIsCouple(profile?.relationship_status === 'couple');
+    };
+
+    checkUserType();
+  }, []);
 
   const handleProfileClick = () => {
     if (date.sender?.id) {
@@ -454,18 +512,8 @@ const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
     }
   };
 
-  const handlePayment = async () => {
-    try {
-      // Here you would typically:
-      // 1. Create a Stripe Payment Intent
-      // 2. Open Stripe Elements or redirect to Stripe Checkout
-      // 3. Handle the result and update the payment status
-      
-      // For now, we'll just show an alert
-      alert('Payment will be implemented with Stripe integration');
-    } catch (error) {
-      console.error('Error processing payment:', error);
-    }
+  const handleStartDate = () => {
+    router.push(`/dates/details/${date.id}`);
   };
 
   const formatUpcomingDate = (request: DateRequest) => {
@@ -493,11 +541,20 @@ const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
     }
   };
 
-  const coordinates = venueCoordinates[date.venue || ''] || [-71.0589, 42.3601];
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      const url = await getAvatarUrl(date.sender?.avatar_url || null);
+      setAvatarUrl(url);
+    };
+    fetchAvatarUrl();
+  }, [date.sender?.avatar_url]);
+
+  const coordinates = getDefaultVenueCoordinates(date.venue);
 
   return (
     <Card className="p-6 mb-4 bg-white shadow-sm">
-      {showTicket ? (
+      {showTicket && !isCouple ? (
         <div>
           <button
             onClick={() => setShowTicket(false)}
@@ -527,16 +584,16 @@ const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
           >
             <div className="relative w-16 h-16">
               <Image
-                src={date.sender?.avatar_url || '/images/default-avatar.png'}
+                src={avatarUrl || '/images/default-avatar.png'}
                 alt={`${date.sender?.first_name}'s profile`}
                 fill
                 className="rounded-full object-cover hover:scale-105 transition-transform"
               />
             </div>
             <div>
-              <span className="text-xl font-medium hover:text-[#BA2525] transition-colors">
+              <div className={`text-xl font-bold hover:text-[#BA2525] transition-colors`}>
                 {date.sender?.first_name}, {date.sender?.age}
-              </span>
+              </div>
             </div>
           </div>
           
@@ -567,35 +624,13 @@ const UpcomingDateCard = ({ date }: { date: DateRequest }) => {
             </div>
           )}
 
-          {/* Payment Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg mb-4">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-gray-600" />
-              <span className="font-medium text-gray-700">Payment Status</span>
-            </div>
-            <div>
-              {date.payment_status === 'paid' ? (
-                <span className="text-green-600 font-medium">Paid</span>
-              ) : date.payment_status === 'pending' ? (
-                <button
-                  onClick={handlePayment}
-                  className="px-4 py-1 bg-[#BA2525] text-white rounded-full text-sm hover:bg-[#a01f1f] transition-colors"
-                >
-                  Pay Now
-                </button>
-              ) : (
-                <span className="text-gray-600">{date.payment_status}</span>
-              )}
-            </div>
-          </div>
-
-          {/* View Ticket Button */}
+          {/* Start Date Button */}
           <button
-            onClick={() => setShowTicket(true)}
-            className="w-full p-2.5 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a01f1f] transition-colors flex items-center justify-center gap-2"
+            onClick={handleStartDate}
+            className="w-full bg-[#BA2525] text-white py-3 rounded-full font-medium hover:bg-[#A01E1E] transition-colors flex items-center justify-center gap-2"
           >
-            <Ticket className="w-5 h-5" />
-            View Ticket
+            <Play className="w-5 h-5" />
+            Start Date
           </button>
         </>
       )}
@@ -648,10 +683,28 @@ export default function DateRequestsPage() {
   const [valentineRequests, setValentineRequests] = useState<ValentineRequest[]>([]);
   const [groupInvites, setGroupInvites] = useState<any[]>([]);
   const [challengeRequests, setChallengeRequests] = useState<ChallengeRequest[]>([]);
-  const [activeTab, setActiveTab] = useState<'requests' | 'invites' | 'upcoming'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'invites' | 'upcoming' | 'challenges'>('upcoming');
   const [showReceiptDetails, setShowReceiptDetails] = useState(false);
   const [upcomingDates, setUpcomingDates] = useState<DateRequest[]>([]);
   const [networkError, setNetworkError] = useState<string | null>(null);
+  const [isCouple, setIsCouple] = useState(false);
+
+  useEffect(() => {
+    const checkUserType = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('relationship_status')
+        .eq('id', user.id)
+        .single();
+
+      setIsCouple(profile?.relationship_status === 'couple');
+    };
+
+    checkUserType();
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -821,7 +874,7 @@ export default function DateRequestsPage() {
               avatar_url
             )
           `)
-          .or(`recipient_email.eq.${session.user.email},recipient_id.eq.${session.user.id}`)
+          .or(`recipient_email.eq."${session.user.email}",recipient_id.eq."${session.user.id}"`)
           .eq('status', 'curated')
           .order('created_at', { ascending: false });
 
@@ -836,46 +889,133 @@ export default function DateRequestsPage() {
   }, []);
 
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
+    console.log('Handling date response:', { requestId, status });
     try {
-      // Get the date request details first
+      // Step 1: Get the date request details first
       const { data: request, error: requestError } = await supabase
         .from('date_requests')
         .select('*')
         .eq('id', requestId)
         .single();
+        console.log('request.id:', request.id);
 
-      if (requestError) throw requestError;
-      if (!request) throw new Error('Date request not found');
+      console.log('request:', request);
 
-      // Update the date request status
-      const { error: updateError } = await supabase
+      if (requestError || !request) {
+        console.log('dateRequest not found');
+        throw requestError || new Error('Date request not found');
+      }
+      if (status === 'accepted') {
+        // Step 2: Trigger reservation API call before updating DB
+        try {
+          const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+          });
+          const reservationTime = new Date(request.proposed_time || request.created_at).toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          console.log('reservation date', reservationDate);
+          console.log('reservation time', reservationTime);
+
+          // const reservationResponse = await fetch("/api/reserve/opentable", {
+          //   method: "POST",
+          //   headers: {
+          //     "Content-Type": "application/json",
+          //   },
+          //   body: JSON.stringify({
+          //     restaurantName: request.venue,
+          //     restaurantURL: '',
+          //     reservationTime: reservationTime,
+          //     reservationDate: reservationDate,
+          //   }),
+          // });
+
+          // const reservationData = await reservationResponse.json();
+
+          // if (!reservationData.success) {
+          //   alert("Reservation failed: " + reservationData.error);
+          //   return; // Stop here if reservation failed
+          // }
+
+          // Optional: store reservationData.url in the database if needed
+
+          // alert("Reservation confirmed! You can view it here:" + reservationData.url);
+        } catch (error) {
+          console.error("Error during reservation booking:", error);
+          toast.error("Reservation booking failed");
+          return;
+        }
+      }
+
+      // Step 3. Update the request status in Supabase
+      const { data: data, status: resStatus, statusText: statusText } = await supabase
         .from('date_requests')
         .update({
           status: status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', requestId);
+        .filter('id', 'eq', requestId)
+        .select();
 
-      if (updateError) throw updateError;
+      console.log('Update response:', { data, status: resStatus, statusText });
+      // console.log('Update response:', { error: updateError });
 
-      // If accepted, redirect to payment
+      // if (updateError) throw updateError;
+
+      // Step 3: If accepted, update match status (optional if you're tracking this in another table)
       if (status === 'accepted') {
-        // Check if there's a direct Stripe link for the venue
-        const stripeLink = stripeLinks[request.venue];
-        if (stripeLink) {
-          window.location.href = stripeLink;
-        } else {
-          // Fallback to payment confirmation page
-          router.push(`/dates/payment-confirmation/${requestId}`);
+        const baseId = requestId.split('-1')[0]; // Assumes -1 is added to make ID unique
+        try {
+          await supabase
+          .from('daily_matches')
+          .update({ status: "accepted"})
+          .eq('id', baseId); 
+        } catch (error) {
+          console.warn("Match status update failed:", error);
         }
       }
 
-      // Update local state
+      // Step 4: Update local state to remove from current list
       setDateRequests(prev => prev.filter(req => req.id !== requestId));
 
+      // step 5: Add date request to upcomingDates if accepted
+      if (status === 'accepted') {
+        const updatedRequest = {
+          ...request,
+          status: 'accepted',
+          date_time: request.proposed_time || request.created_at
+        };
+        setUpcomingDates(prev => [...prev, updatedRequest]);
+      }
+      
+
+      // step 6: Add date request to upcomingDates if accepted
+      if (status === 'accepted') {
+        const updatedRequest = {
+          ...request,
+          status: 'accepted',
+          date_time: request.proposed_time || request.created_at
+        };
+        setUpcomingDates(prev => [...prev, updatedRequest]);
+      }
+      
+
+      // Step 7: Redirect to Stripe or payment confirmation  
+      if (status === "accepted") {
+        console.log(request.venue)
+        const venueType = getVenueType(request.venue);
+        if (!(venueType.toLowerCase().includes("restaurant") || venueType.toLowerCase().includes("cafe") || venueType.toLowerCase().includes("bar"))) {
+          const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
+          window.open(stripeLink, "_blank", "noopener,noreferrer");
+        }
+        router.refresh(); // ✅  Can customize this redirect
+      }
     } catch (error) {
-      console.error('Error handling date response:', error);
-      toast.error('Failed to process your response. Please try again.');
+      console.error("Error handling date response:", error);
+      toast.error("Failed to process your response. Please try again.");
     }
   };
 
@@ -1064,16 +1204,18 @@ export default function DateRequestsPage() {
 
         {/* Tab Navigation */}
         <div className="flex gap-2 mb-6 mt-8">
-          <button
-            onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
-              activeTab === 'requests'
-                ? 'bg-[#cc0000] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Date Requests {dateRequests.length > 0 && `(${dateRequests.length})`}
-          </button>
+          {!isCouple && (
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeTab === 'requests'
+                  ? 'bg-[#cc0000] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Date Requests {dateRequests.length > 0 && `(${dateRequests.length})`}
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('upcoming')}
             className={`px-4 py-2 rounded-full text-sm font-medium ${
@@ -1083,6 +1225,16 @@ export default function DateRequestsPage() {
             }`}
           >
             Upcoming Dates {upcomingDates.length > 0 && `(${upcomingDates.length})`}
+          </button>
+          <button
+            onClick={() => setActiveTab('challenges')}
+            className={`px-4 py-2 rounded-full text-sm font-medium ${
+              activeTab === 'challenges'
+                ? 'bg-[#cc0000] text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Challenges {challengeRequests.length > 0 && `(${challengeRequests.length})`}
           </button>
           <button
             onClick={() => setActiveTab('invites')}
@@ -1097,7 +1249,7 @@ export default function DateRequestsPage() {
         </div>
 
         {/* Content Sections */}
-        {activeTab === 'requests' && (
+        {activeTab === 'requests' && !isCouple && (
           <section className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-900">Date Requests</h2>
             {dateRequests.length === 0 ? (
@@ -1121,11 +1273,97 @@ export default function DateRequestsPage() {
             {upcomingDates.length === 0 ? (
               <p className="text-gray-500">No upcoming dates</p>
             ) : (
-              upcomingDates.map(date => (
-                <UpcomingDateCard
-                  key={date.id}
-                  date={date}
-                />
+              <div className="space-y-4">
+                {upcomingDates.map((date) => {
+                  const handleStartDate = () => {
+                    router.push(`/dates/details/${date.id}`);
+                  };
+
+                  return (
+                    <div key={date.id} className="bg-white rounded-2xl p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-[#BA2525]">
+                          <ProfileImage 
+                            user={date.sender as User} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold text-gray-900">
+                            {date.sender?.first_name}, {date.sender?.age}
+                          </div>
+                          <div className="text-lg text-gray-700 flex items-center gap-2">
+                            <Calendar className="w-4 h-4" />
+                            {date.venue}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Date Details */}
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          <span>{formatDate(date.proposed_time)}</span>
+                        </div>
+                      </div>
+
+                      {/* Map Section */}
+                      {date.venue && (
+                        <div className="relative h-48 rounded-lg overflow-hidden shadow-lg my-4">
+                          <Map 
+                            markers={[{
+                              coordinates: getDefaultVenueCoordinates(date.venue),
+                              title: date.venue
+                            }]}
+                            center={getDefaultVenueCoordinates(date.venue)}
+                            zoom={15}
+                          />
+                        </div>
+                      )}
+
+                      {/* Start Date Button */}
+                      <div className="mt-4">
+                        <button
+                          onClick={handleStartDate}
+                          className="w-full bg-[#BA2525] text-white py-3 rounded-full font-medium hover:bg-[#A01E1E] transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Play className="w-5 h-5" />
+                          Start Date
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'challenges' && (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-900">Challenges</h2>
+            {challengeRequests.length === 0 ? (
+              <p className="text-gray-500">No active challenges</p>
+            ) : (
+              challengeRequests.map(challenge => (
+                <div key={challenge.id} className="bg-white rounded-lg shadow p-4">
+                  <h3 className="text-lg font-semibold">{challenge.challenge.title}</h3>
+                  <p className="text-gray-600">{challenge.challenge.description}</p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleChallengeResponse(challenge.id, true)}
+                      className="px-4 py-2 bg-[#cc0000] text-white rounded-full"
+                    >
+                      Accept Challenge
+                    </button>
+                    <button
+                      onClick={() => handleChallengeResponse(challenge.id, false)}
+                      className="px-4 py-2 border border-[#cc0000] text-[#cc0000] rounded-full"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
               ))
             )}
           </section>
@@ -1153,3 +1391,4 @@ export default function DateRequestsPage() {
     </div>
   );
 }
+

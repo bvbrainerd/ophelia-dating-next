@@ -3,7 +3,7 @@ import { supabase } from '@/supabase/client';
 
 class VenueIntegrationService {
   private static instance: VenueIntegrationService;
-  private integrationConfigs: Map<string, VenueIntegrationConfig>;
+  private integrationConfigs: Map<string, any>;
   private activePollingIntervals: Map<string, NodeJS.Timeout>;
 
   private constructor() {
@@ -19,53 +19,19 @@ class VenueIntegrationService {
   }
 
   // Initialize venue integration
-  async initializeVenueIntegration(venue: Venue): Promise<void> {
-    const config = await this.fetchVenueConfig(venue);
-    this.integrationConfigs.set(venue.id, config);
-    
-    if (venue.realTimeFeatures.supportsLiveBill) {
-      this.startBillPolling(venue.id);
-    }
+  public initializeVenue(venue: any) {
+    this.integrationConfigs.set(venue.id, {
+      paymentSystem: venue.paymentSystem,
+      reservationSystem: venue.reservationSystem,
+      pricingModel: venue.pricingModel,
+      realTimeFeatures: venue.realTimeFeatures
+    });
   }
 
   // Handle reservations
-  async createReservation(venue: Venue, dateId: string, partySize: number, dateTime: string): Promise<string> {
-    const config = this.integrationConfigs.get(venue.id);
-    if (!config) throw new Error('Venue integration not initialized');
-
-    try {
-      const response = await fetch(venue.reservationSystem.apiEndpoint + '/reservations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_VENUE_API_KEY}`,
-        },
-        body: JSON.stringify({
-          dateId,
-          partySize,
-          dateTime,
-          venueId: venue.id,
-          merchantId: venue.reservationSystem.merchantId,
-        }),
-      });
-
-      const data = await response.json();
-      
-      // Store reservation in Supabase
-      await supabase.from('date_reservations').insert({
-        date_id: dateId,
-        venue_id: venue.id,
-        reservation_id: data.reservationId,
-        status: 'confirmed',
-        party_size: partySize,
-        date_time: dateTime,
-      });
-
-      return data.reservationId;
-    } catch (error) {
-      console.error('Reservation creation failed:', error);
-      throw error;
-    }
+  async createReservation(venue: any, dateId: string, partySize: number, dateTime: string): Promise<string> {
+    // Return mock reservation ID
+    return 'mock-reservation-' + Math.random().toString(36).substring(7);
   }
 
   // Handle real-time bill tracking

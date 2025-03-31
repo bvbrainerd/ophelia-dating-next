@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../supabase/client';
 import { cn } from '../utils/cn';
 import { useRouter, usePathname } from 'next/navigation';
+import { prompt } from '@/app/fonts';
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
@@ -16,7 +17,7 @@ interface Profile {
 }
 
 interface HeaderProps {
-  variant?: 'default' | 'matching' | 'logo-only' | 'dashboard';
+  variant?: 'default' | 'matching' | 'logo-only' | 'dashboard' | 'challenges' | 'transparent' | 'transparent-red';
 }
 
 const getAvatarUrl = async (avatarPath: string | null) => {
@@ -28,7 +29,7 @@ const getAvatarUrl = async (avatarPath: string | null) => {
       return avatarPath;
     }
 
-    // Clean up the path - remove any duplicate avatars/ prefix and query parameters
+    // Clean up the path - remove any duplicate avatars/ prefix
     const filename = avatarPath
       .split('/')
       .filter(part => part !== 'avatars')
@@ -58,6 +59,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   const pathname = usePathname();
   
   const isAuthPage = pathname?.startsWith('/auth/');
+  const isProfileIdPage = pathname?.startsWith('/profile/') && !pathname.endsWith('/profile');
 
   const handleLogout = async () => {
     try {
@@ -106,7 +108,12 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   return (
     <div className={cn(
       "flex justify-between items-center py-4 px-5",
-      variant === "dashboard" ? "bg-transparent" : "bg-transparent"
+      isProfileIdPage ? "bg-[#cc0000]" :
+      variant === "dashboard" ? "bg-[#cc0000]" : 
+      variant === "matching" ? "bg-white" :
+      variant === "challenges" ? "bg-[#cc0000]" :
+      variant === "transparent" || variant === "transparent-red" ? "bg-transparent" :
+      "bg-white"
     )}>
       {/* Left side - Empty for balance */}
       <div className="flex-1" />
@@ -115,26 +122,21 @@ export default function Header({ variant = 'default' }: HeaderProps) {
       <div className="flex-1 flex justify-center">
         <Link href="/dashboard">
           <h1 className={cn(
-            "text-3xl font-bold cursor-pointer hover:opacity-80 transition-opacity",
-            variant === "logo-only" ? "text-white" :
-            pathname === '/dashboard/editprofile' || pathname?.includes('editprofile') ? "text-[#BA2525]" :
-            pathname?.startsWith('/challenges') ? "text-[#BA2525]" :
-            pathname?.startsWith('/send-date-request') ? "text-[#BA2525]" :
-            variant === "matching" ? "text-white" : 
-            pathname?.startsWith('/dashboard') ? "text-white" :
-            pathname?.startsWith('/matching') ? "text-white" :
-            pathname?.startsWith('/daterequests') ? "text-[#BA2525]" :
-            variant === "dashboard" ? "text-white" : 
-            "text-[#BA2525]"
+            `text-3xl font-bold cursor-pointer hover:opacity-80 transition-opacity ${prompt.className}`,
+            isProfileIdPage ? "text-white" :
+            variant === "dashboard" || variant === "challenges" ? "text-white" : 
+            variant === "transparent" ? "text-white" :
+            variant === "transparent-red" ? "text-[#cc0000]" :
+            "text-[#cc0000]"
           )}>
             Ophelia
           </h1>
         </Link>
       </div>
-
+      
       {/* Right side - Profile */}
       <div className="flex-1 flex justify-end">
-        {currentUser && !isAuthPage && variant !== 'logo-only' && (
+        {currentUser && !isAuthPage && variant !== 'logo-only' && variant !== 'transparent' && variant !== 'transparent-red' && (
           <Link href={`/profile/${currentUser?.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="relative w-12 h-12 rounded-full overflow-hidden shadow-md">
               <Image

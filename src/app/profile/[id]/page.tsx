@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../supabase/client';
 import BottomNav from '@/components/BottomNav';
-import { Crown, Star, Heart } from 'lucide-react';
+import { Crown, Star, Heart, MapPin } from 'lucide-react';
 import Header from '@/components/Header';
 import ProfileImageGallery from '@/components/ProfileImageGallery';
 import Map from '@/components/Map';
+import Image from 'next/image';
 
 interface ProfileImage {
   id: number;
@@ -26,12 +27,43 @@ interface Profile {
   dater_archetype: 'hopelessRomantic' | 'cautiousDater' | 'adventurous' | 'traditional' | 'independent';
   preferred_gender: 'male' | 'female' | 'other';
   school: string;
+  location?: string;
   average_rating: number | null;
   total_ratings: number | null;
   dater_status: 'gold' | 'silver' | 'bronze' | null;
   follow_through_rate: number | null;
   profile_images?: ProfileImage[];
   descriptors: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }[];
+  previous_dates?: PreviousDate[];
+  relationship_status: 'single' | 'in_relationship' | 'complicated' | 'engaged' | 'married' | 'divorced' | 'widowed' | null;
+}
+
+interface DateRequestResponse {
+  id: string;
+  venue: string;
+  proposed_time: string;
+  sender: {
+    id: string;
+    first_name: string;
+    avatar_url: string | null;
+    age: number;
+  };
+  date_ratings: Array<{
+    person_rating: number;
+  }> | null;
+}
+
+interface PreviousDate {
+  id: string;
+  venue: string;
+  date: string;
+  partner: {
+    id: string;
+    first_name: string;
+    avatar_url: string | null;
+    age: number;
+  };
+  rating?: number;
 }
 
 type DaterArchetype = 'hopelessRomantic' | 'cautiousDater' | 'commitmentSeeker' | 'serialDater' | 'friendWithBenefits';
@@ -142,17 +174,19 @@ const calculateCompatibility = (userArchetype: DaterArchetype, matchArchetype: D
 };
 
 export default function UserProfile() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = typeof params?.id === 'string' ? params.id : null;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const context = searchParams.get('context');
-  const dateId = searchParams.get('dateId');
+  const context = searchParams?.get('context');
+  const dateId = searchParams?.get('dateId');
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [venueCoordinates, setVenueCoordinates] = useState<Record<string, [number, number]>>({});
   const [compatibility, setCompatibility] = useState<number | null>(null);
+  const [previousDates, setPreviousDates] = useState<PreviousDate[]>([]);
   
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -238,6 +272,57 @@ export default function UserProfile() {
     fetchUserProfile();
   }, [id]);
 
+  useEffect(() => {
+    const fetchPreviousDates = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: dateData, error } = await supabase
+          .from('date_requests')
+          .select(`
+            id,
+            venue,
+            proposed_time,
+            sender:profiles!date_requests_sender_id_fkey (
+              id,
+              first_name,
+              avatar_url,
+              age
+            ),
+            date_ratings (
+              person_rating
+            )
+          `)
+          .eq('status', 'rated')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .order('proposed_time', { ascending: false });
+
+        if (error) throw error;
+
+        if (dateData) {
+          const transformedDates = (dateData as unknown as DateRequestResponse[]).map(date => ({
+            id: date.id,
+            venue: date.venue,
+            date: date.proposed_time,
+            partner: {
+              id: date.sender.id,
+              first_name: date.sender.first_name,
+              avatar_url: date.sender.avatar_url,
+              age: date.sender.age
+            },
+            rating: date.date_ratings?.[0]?.person_rating
+          }));
+          setPreviousDates(transformedDates);
+        }
+      } catch (error) {
+        console.error('Error fetching previous dates:', error);
+      }
+    };
+
+    fetchPreviousDates();
+  }, []);
+
   const handleSendDateRequest = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -256,166 +341,182 @@ export default function UserProfile() {
   };
 
   const handleBackButton = () => {
-    if (context === 'second-date' && dateId) {
-      router.push(`/dates/upcoming/${dateId}/second-date`);
+    if (profile?.relationship_status === 'in_relationship') {
+      router.push('/matching'); // This will show curated dates view for couples
     } else {
       router.push('/matching');
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#BA2525]"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center text-[#BA2525] py-8 bg-white min-h-screen">
-        {error}
-        <BottomNav />
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="text-center text-[#BA2525] py-8 bg-white min-h-screen">
-        Profile not found.
-        <BottomNav />
-      </div>
-    );
-  }
-
   return (
-    <>
-      <main className="max-w-md mx-auto p-5 pb-24 bg-white min-h-screen">
-        <Header variant="logo-only" />
-        
-        {/* Profile Image with Compatibility Score */}
-        <div className="w-full max-w-lg mx-auto mb-6 relative">
-          <ProfileImageGallery
-            images={profile.profile_images || []}
-            mode="view"
-            className="rounded-lg shadow-md"
-          />
-          {typeof compatibility === 'number' && (
-            <div className="absolute top-2 right-2 z-10 bg-white rounded-full w-10 h-10 flex items-center justify-center">
-              <span className="text-[#BA2525] font-bold text-sm">{compatibility}%</span>
-            </div>
-          )}
+    <div className="min-h-screen bg-white pb-20">
+      {/* Header */}
+      <Header variant="default" />
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-[calc(100vh-160px)]">
+          <div className="w-8 h-8 border-4 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
         </div>
-
-        {/* Basic Info */}
-        <h1 className="text-2xl font-bold text-[#BA2525] mb-6">
-          {profile.first_name}, {profile.age}
-        </h1>
-
-        {/* Rankings Section */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {/* Dater Status */}
-          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Crown className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
-              <span className="text-[#BA2525] font-medium capitalize">
-                {profile.dater_status || 'Bronze'}
-              </span>
+      ) : error ? (
+        <div className="p-4 text-center text-red-600">{error}</div>
+      ) : profile ? (
+        <div className="max-w-2xl mx-auto p-4">
+          {/* Profile content */}
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {/* Back button */}
+            <div className="p-4 flex items-center">
+              <button
+                onClick={handleBackButton}
+                className="text-[#cc0000] hover:text-[#aa0000] transition-colors"
+              >
+                ← Back
+              </button>
+              <h1 className="text-2xl font-bold text-[#cc0000] text-center flex-1">Profile Details</h1>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Dater Status</div>
-          </div>
 
-          {/* Rating */}
-          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Star className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
-              <span className="text-[#BA2525] font-medium">
-                {profile.average_rating ? profile.average_rating.toFixed(1) : '0.0'}
-              </span>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Dater Rating</div>
-          </div>
-
-          {/* Follow-Through */}
-          <div className="bg-white rounded-full border-2 border-[#BA2525] p-3 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <Heart className="w-5 h-5 text-[#BA2525] fill-[#BA2525]" />
-              <span className="text-[#BA2525] font-medium">
-                {profile.follow_through_rate ? `${profile.follow_through_rate}%` : '0%'}
-              </span>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Follow-Through</div>
-          </div>
-        </div>
-
-        {/* Bio Section with Descriptors */}
-        {(profile.bio || (profile.descriptors && profile.descriptors.length > 0)) && (
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 className="text-lg font-semibold text-[#BA2525] mb-2">Bio</h2>
-            {profile.bio && (
-              <p className="text-gray-700 whitespace-pre-wrap mb-4">{profile.bio}</p>
-            )}
-            {profile.descriptors && profile.descriptors.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {profile.descriptors.map(descriptor => (
-                  <span
-                    key={descriptor.label}
-                    className="inline-block px-3 py-1 bg-[#BA2525] text-white rounded-full text-sm"
-                  >
-                    {descriptor.label}
-                  </span>
-                ))}
+            {/* Profile Image with Compatibility Score */}
+            <div className="relative w-full max-w-3xl mx-auto">
+              <div className="relative aspect-[4/3] md:aspect-[16/9] overflow-hidden">
+                <ProfileImageGallery
+                  images={profile.profile_images || []}
+                  mode="view"
+                  className="w-full h-full object-cover object-center"
+                />
+                {typeof compatibility === 'number' && (
+                  <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full text-sm text-[#cc0000] flex items-center gap-2 shadow-lg">
+                    <Heart className="w-4 h-4" fill="#cc0000" stroke="#cc0000" />
+                    <span className="font-bold">{compatibility}%</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
-
-        {/* Profile Details */}
-        <div className="mb-8 space-y-4">
-          {/* Dater Type */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold text-[#BA2525] mb-1">Dater Type</h2>
-            <p className="text-gray-700">{archetypeMap[profile.dater_archetype]}</p>
-          </div>
-
-          {/* Gender */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h2 className="text-lg font-semibold text-[#BA2525] mb-1">Gender</h2>
-            <p className="text-gray-700 capitalize">{profile.gender}</p>
-          </div>
-
-          {/* School */}
-          {profile.school && profile.school !== 'N/A' && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-[#BA2525] mb-1">School</h2>
-              <p className="text-gray-700">{profile.school}</p>
             </div>
-          )}
-        </div>
 
-        {/* Action Buttons */}
-        <div>
-          {error && (
-            <div className="text-[#BA2525] text-sm mb-3">
-              {error}
+            {/* Content Container */}
+            <div className="px-5 mt-4 relative z-10">
+              <div className="bg-white rounded-2xl px-6 pt-6 pb-24 max-w-2xl mx-auto shadow-lg">
+                {/* Basic Info */}
+                <div className="flex items-start gap-6 mb-6">
+                  <div className="w-1/2">
+                    <h1 className="text-2xl font-bold text-gray-800">
+                      {profile.first_name}, {profile.age}
+                    </h1>
+                    <div className="flex flex-col gap-1 mt-2">
+                      {profile.school && (
+                        <p className="text-gray-600 text-sm flex items-center gap-1">
+                          <span>🎓</span>
+                          {profile.school}
+                        </p>
+                      )}
+                      <p className="text-gray-600 text-sm flex items-center gap-1">
+                        <MapPin size={14} className="text-gray-600" />
+                        Boston, MA
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bio Section */}
+                {profile.bio && (
+                  <div className="mb-8">
+                    <h3 className="text-gray-900 font-bold text-lg mb-3">About me</h3>
+                    <p className="text-gray-700 text-sm leading-relaxed">
+                      {profile.bio}
+                    </p>
+                  </div>
+                )}
+
+                {/* Rankings Section */}
+                <div className="grid grid-cols-3 gap-2 mb-6">
+                  {/* Dater Status */}
+                  <div className="bg-gray-100 rounded-full py-2 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Crown className="w-4 h-4 text-[#cc0000] stroke-[3]" />
+                      <div className="text-gray-900 text-sm font-medium">
+                        {profile.dater_status ? profile.dater_status.charAt(0).toUpperCase() + profile.dater_status.slice(1) : 'Bronze'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rating */}
+                  <div className="bg-gray-100 rounded-full py-2 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Star className="w-4 h-4 text-[#cc0000] stroke-[3]" />
+                      <div className="text-gray-900 text-sm font-medium">
+                        {profile.average_rating ? profile.average_rating.toFixed(1) : '0.0'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Follow-Through */}
+                  <div className="bg-gray-100 rounded-full py-2 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Heart className="w-4 h-4 text-[#cc0000] stroke-[3]" />
+                      <div className="text-gray-900 text-sm font-medium">
+                        {profile.follow_through_rate ? `${profile.follow_through_rate}%` : '0%'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Descriptors */}
+                {profile.descriptors && profile.descriptors.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex flex-wrap gap-2">
+                      {profile.descriptors.map(descriptor => (
+                        <span
+                          key={descriptor.label}
+                          className="inline-block px-3 py-1 bg-[#cc0000] text-white rounded-full text-sm"
+                        >
+                          {descriptor.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Profile Details */}
+                <div className="mb-8 space-y-4">
+                  {/* Dater Type */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h2 className="text-lg font-semibold text-[#cc0000] mb-1">Dater Type</h2>
+                    <p className="text-gray-700">{archetypeMap[profile.dater_archetype]}</p>
+                  </div>
+
+                  {/* Gender */}
+                  <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                    <h2 className="text-lg font-semibold text-[#cc0000] mb-1">Gender</h2>
+                    <p className="text-gray-700 capitalize">{profile.gender}</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="max-w-lg mx-auto">
+                  {error && (
+                    <div className="text-[#cc0000] text-sm mb-3">
+                      {error}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => router.push(`/send-date-request/${id}`)}
+                    className="w-full py-3 px-6 bg-[#cc0000] text-white rounded-full font-medium hover:bg-[#aa0000] transition-colors mb-3"
+                  >
+                    Send Date Request
+                  </button>
+                  <button
+                    onClick={handleBackButton}
+                    className="w-full py-3 px-6 bg-white text-[#cc0000] border-2 border-[#cc0000] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
+                  >
+                    {profile?.relationship_status === 'in_relationship' ? 'Back to Dates' : 'Back to Matching'}
+                  </button>
+                </div>
+              </div>
             </div>
-          )}
-          <button
-            onClick={() => router.push(`/send-date-request/${id}`)}
-            className="w-full p-2.5 bg-[#BA2525] text-white border-2 border-white rounded-full font-medium hover:bg-[#a02020] transition-colors mb-2"
-          >
-            Send Date Request
-          </button>
-          <button
-            onClick={handleBackButton}
-            className="w-full p-2.5 bg-white text-[#BA2525] border-2 border-[#BA2525] rounded-full font-medium hover:bg-[#ffeeee] transition-colors"
-          >
-            {context === 'second-date' ? 'Back to Second Date' : 'Back to Matching'}
-          </button>
+          </div>
         </div>
-      </main>
+      ) : null}
+
+      {/* Bottom Navigation */}
       <BottomNav />
-    </>
+    </div>
   );
 }

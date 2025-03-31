@@ -1,7 +1,6 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/supabase/client';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
 
@@ -34,72 +33,42 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: Request
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    // Get id from URL instead of params
-    const id = request.url.split('/').pop();
+    const supabase = await createClient();
     
-    // Get the authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authorization header' },
-        { status: 401 }
-      );
+    // Verify authentication
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    if (authError || !session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Create a new Supabase client
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const { sender_id, venue, proposed_time, proposed_payment } = await request.json();
 
-    // Get user from the token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Invalid session' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-
-    // Verify that the sender_id matches the authenticated user
-    if (body.sender_id !== user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized: User ID mismatch' },
-        { status: 401 }
-      );
-    }
-
-    // Create the date request
-    const { error: insertError } = await supabase
+    // Insert the date request
+    const { data: dateRequest, error: insertError } = await supabase
       .from('date_requests')
-      .insert({
-        sender_id: user.id,
-        receiver_id: id,
-        venue: body.venue,
-        proposed_time: body.proposed_time,
-        proposed_payment: body.proposed_payment,
+      .insert([{
+        sender_id,
+        receiver_id: params.id,
+        venue,
+        proposed_time,
+        proposed_payment,
         status: 'pending'
-      });
+      }])
+      .select()
+      .single();
 
     if (insertError) {
-      console.error('Insert error:', insertError);
-      return NextResponse.json(
-        { error: insertError.message },
-        { status: 400 }
-      );
+      console.error('Insert Error:', insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 400 });
     }
 
     // After successful date request insertion, fetch receiver's email and name
     const { data: receiverProfile, error: receiverError } = await supabase
       .from('profiles')
       .select('email, first_name')
-      .eq('id', id)
+      .eq('id', params.id)
       .single();
 
     if (receiverError || !receiverProfile) {
@@ -111,7 +80,7 @@ export async function POST(
     const { data: senderProfile, error: senderError } = await supabase
       .from('profiles')
       .select('first_name, last_name')
-      .eq('id', user.id)
+      .eq('id', sender_id)
       .single();
 
     if (senderError || !senderProfile) {
@@ -130,8 +99,8 @@ export async function POST(
       dynamicTemplateData: {
         recipientName: receiverProfile.first_name,
         senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
-        venue: body.venue,
-        dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
+        venue: venue,
+        dateTime: new Date(proposed_time).toLocaleString('en-US', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -140,7 +109,7 @@ export async function POST(
           minute: 'numeric',
           hour12: true
         }),
-        paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
+        paymentAmount: proposed_payment ? `$${proposed_payment}` : 'Pre-paid by sender',
         dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
       },
       asm: {
@@ -177,11 +146,11 @@ export async function POST(
       // but we should log the error for monitoring
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data: dateRequest });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create date request' },
       { status: 500 }
     );
   }
