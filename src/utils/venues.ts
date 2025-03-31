@@ -1024,3 +1024,19 @@ export const venueCoordinates: Record<string, [number, number]> = {
 export const getVenueCoordinates = (venueName: string): [number, number] => {
   return venueCoordinates[venueName] || [-71.0589, 42.3601]; // Default to Boston center
 }; 
+
+export const getVenueType = (venueName: string): string => {
+  // Search through all venue categories
+  for (const category in VENUES) {
+    // Find the venue with matching name, case-insensitive
+    const venue = VENUES[category].find(v => 
+      v.name.toLowerCase() === venueName.toLowerCase()
+    );
+    if (venue) {
+      return venue.type;
+    }
+  }
+  
+  // Return a default type if venue not found
+  return "Venue";
+};
