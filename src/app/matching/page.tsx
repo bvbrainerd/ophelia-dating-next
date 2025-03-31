@@ -126,22 +126,44 @@ const DEFAULT_AVATAR = '/images/default-avatar.png';
 const DAILY_MATCH_LIMIT = 10;
 const DEFAULT_VENUE_IMAGE = 'https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/barcelona.jpg';
 
-const getAvatarUrl = (avatarPath: string | null): string => {
-  if (!avatarPath) return DEFAULT_AVATAR;
-
-  // If it's already a full URL, return it
-    if (avatarPath.startsWith('http')) {
-    return avatarPath;
-  }
-
-  // If it's the default avatar path, return the full URL
-  if (avatarPath.includes('default-avatar.png')) {
+const getAvatarUrl = async (avatarPath: string | null) => {
+  if (!avatarPath) {
+    console.log('No avatar path provided, using default');
     return DEFAULT_AVATAR;
   }
 
-  // Clean up the path and construct the full URL
-  const cleanPath = avatarPath.replace(/^avatars\//, '').split('?')[0];
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${cleanPath}`;
+  try {
+    // If it's a static image or default avatar, return it directly
+    if (avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Get the Supabase URL from environment variable
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error('Supabase URL not found in environment');
+      return DEFAULT_AVATAR;
+    }
+
+    // If it's already a full URL, clean it up
+    if (avatarPath.startsWith('http')) {
+      const url = new URL(avatarPath);
+      const pathParts = url.pathname.split('/');
+      const filename = pathParts[pathParts.length - 1];
+      return `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
+    }
+
+    // For relative paths, clean up the filename
+    const filename = avatarPath
+      .replace(/^avatars\//, '')  // Remove leading avatars/
+      .split('?')[0];             // Remove query parameters
+
+    // Return the direct public URL
+    return `${supabaseUrl}/storage/v1/object/public/avatars/${filename}`;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return DEFAULT_AVATAR;
+  }
 };
 
 const getRandomVenueForArchetype = (archetype: string): string => {
@@ -1006,22 +1028,22 @@ const calculateMatchPercentage = (userProfile: Profile, otherProfile: Profile): 
   return Math.min(100, Math.round(score));
 };
 
-const formatDaterArchetype = (archetype: string): string => {
-  if (!archetype) return '';
-  return archetype
-    .replace(/([A-Z])/g, ' $1')
-    .split(/(?=[A-Z])/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
-
 const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const profilesPerPage = 10;
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const [filters, setFilters] = useState({
+    school: '',
+    minAge: '',
+    maxAge: '',
+    location: '',
+    archetype: ''
+  });
+  const profilesPerPage = 10;
 
   useEffect(() => {
     fetchProfiles();
@@ -1037,25 +1059,16 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
         .from('profiles')
         .select('*')
         .neq('id', currentUser.id)
-        .eq('gender', currentUser.preferred_gender)
-        .eq('relationship_status', 'single');
+        .or('relationship_status.eq.single,relationship_status.is.null')
+        .limit(10);
 
       console.log('Query results:', { profilesData, profilesError });
 
       if (profilesError) throw profilesError;
 
-      // Process profiles with correct avatar URLs
-      const processedProfiles = (profilesData || []).map(profile => ({
-        ...profile,
-        avatar_url: getAvatarUrl(profile.avatar_url)
-      }));
-
-      // Sort profiles - those with actual images first
-      const sortedProfiles = processedProfiles.sort((a, b) => {
-        const aHasImage = a.avatar_url && a.avatar_url !== DEFAULT_AVATAR;
-        const bHasImage = b.avatar_url && b.avatar_url !== DEFAULT_AVATAR;
-        if (aHasImage && !bHasImage) return -1;
-        if (!aHasImage && bHasImage) return 1;
+      const sortedProfiles = (profilesData || []).sort((a, b) => {
+        if (a.avatar_url && !b.avatar_url) return -1;
+        if (!a.avatar_url && b.avatar_url) return 1;
         return 0;
       });
 
@@ -1085,25 +1098,25 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-    return (
+  return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-5xl mx-auto px-4 py-8 pb-32">
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                </div>
+      </div>
         )}
 
         {error && (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-                    <button
+                <button
               onClick={fetchProfiles}
               className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+                >
               Retry
-                    </button>
+                </button>
                 </div>
               )}
 
