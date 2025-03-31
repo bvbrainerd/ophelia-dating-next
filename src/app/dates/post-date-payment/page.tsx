@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { supabase } from "@/supabase/client";
 
 export default function ReceiptCapture() {
     const [image, setImage] = useState<File | null>(null);
@@ -102,19 +103,37 @@ export default function ReceiptCapture() {
         formData.append('file', image);
 
         try {
-            //Call actual API route to process image
+            // Call actual API route to process image
             const response = await fetch('/api/process-receipt', {
-                method: "POST", //Indicate the type of HTTP request (We're sending the image file to the server). 
+                method: "POST",
                 body: formData,
             });
 
             if (!response.ok) throw new Error("Failed to process receipt. Please try again.");
 
-            //OCR API will return JSON with expense details from the receipt 
+            // OCR API will return JSON with expense details from the receipt 
             const data = await response.json();
             console.log("OCR Response:", data);
 
-            // store receipt in localStorage
+            // Store receipt data in Supabase
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("No active session");
+
+            const { error: insertError } = await supabase
+                .from('receipts')
+                .insert({
+                    user_id: session.user.id,
+                    merchant: data.receipt.merchant,
+                    total_amount: data.receipt.total,
+                    items: data.receipt.items,
+                    date: new Date().toISOString(),
+                    receipt_image_url: data.receipt.imageUrl,
+                    ophelia_fee: data.receipt.total * 0.15 // 15% service fee
+                });
+
+            if (insertError) throw insertError;
+
+            // store receipt in localStorage for the confirmation page
             localStorage.setItem('receipt', JSON.stringify(data.receipt));
 
             // Redirect to confirm page
@@ -131,14 +150,35 @@ export default function ReceiptCapture() {
         setManual(true);
     };
         
-    const submitManualTotal = () => {
+    const submitManualTotal = async () => {
         if (!manualAmount) return;
 
         setIsProcessing(true);
         setError(null);
 
-        router.push(`/dates/post-date-payment/confirm?amount=${manualAmount}`);
-        setIsProcessing(false);
+        try {
+            // Store manual receipt data in Supabase
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("No active session");
+
+            const { error: insertError } = await supabase
+                .from('receipts')
+                .insert({
+                    user_id: session.user.id,
+                    total_amount: manualAmount,
+                    date: new Date().toISOString(),
+                    ophelia_fee: manualAmount * 0.15 // 15% service fee
+                });
+
+            if (insertError) throw insertError;
+
+            router.push(`/dates/post-date-payment/confirm?amount=${manualAmount}`);
+        } catch (err) {
+            console.error('Error storing manual amount:', err);
+            setError('Failed to process amount. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (

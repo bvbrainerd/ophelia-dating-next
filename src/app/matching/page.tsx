@@ -1035,7 +1035,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  
   const [filters, setFilters] = useState({
     school: '',
     minAge: '',
@@ -1087,28 +1087,21 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
     }
   };
 
+  // Calculate pagination values
+  const totalPages = Math.ceil(profiles.length / profilesPerPage);
+  const indexOfLastProfile = currentPage * profilesPerPage;
+  const indexOfFirstProfile = indexOfLastProfile - profilesPerPage;
+  const currentProfiles = profiles.slice(indexOfFirstProfile, indexOfLastProfile);
 
-  // Filter and paginate profiles for single users
-  const filteredProfiles = profiles.filter(profile => {
-    if (filters.school && profile.school !== filters.school) return false;
-    if (filters.minAge && profile.age < parseInt(filters.minAge)) return false;
-    if (filters.maxAge && profile.age > parseInt(filters.maxAge)) return false;
-    if (filters.location && profile.location !== filters.location) return false;
-    if (filters.archetype && profile.dater_archetype !== filters.archetype) return false;
-    if (searchQuery && !profile.first_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredProfiles.length / profilesPerPage);
-  const startIndex = (currentPage - 1) * profilesPerPage;
-  const paginatedProfiles = filteredProfiles.slice(startIndex, startIndex + profilesPerPage);
+  const paginate = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8 pb-32">
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -1129,171 +1122,115 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
 
         {!loading && !error && (
           <>
-          {/* Filters */}
-          <div className="sticky top-0 z-10 bg-[#cc0000] shadow-md border-b border-white/10">
-            <div className="container mx-auto px-4 py-4">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                    <input
-                      type="text"
-                    placeholder="Search by name..."
-                    className="w-full pl-10 pr-4 py-2 rounded-full border-none shadow-sm"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  </div>
-                        <button
-                  className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <Filter className="w-6 h-6 text-white" />
-                        </button>
-                    </div>
-
-              {/* Expanded Filters */}
-              {showFilters && (
-                <div className="mt-4 p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-white text-sm mb-1 block">Age Range</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          placeholder="Min"
-                          className="w-full px-3 py-1.5 rounded-lg text-sm"
-                          value={filters.minAge}
-                          onChange={(e) => setFilters({ ...filters, minAge: e.target.value })}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Max"
-                          className="w-full px-3 py-1.5 rounded-lg text-sm"
-                          value={filters.maxAge}
-                          onChange={(e) => setFilters({ ...filters, maxAge: e.target.value })}
-                        />
-                      </div>
-                </div>
-
-                    <div>
-                      <label className="text-white text-sm mb-1 block">School</label>
-                  <select
-                        className="w-full px-3 py-1.5 rounded-lg text-sm"
-                        value={filters.school}
-                        onChange={(e) => setFilters({ ...filters, school: e.target.value })}
-                      >
-                        <option value="">All Schools</option>
-                        <option value="Boston College">Boston College</option>
-                        <option value="Harvard">Harvard</option>
-                        <option value="MIT">MIT</option>
-                        <option value="Northeastern">Northeastern</option>
-                  </select>
-                </div>
-
-                    <div>
-                      <label className="text-white text-sm mb-1 block">Location</label>
-                  <select
-                        className="w-full px-3 py-1.5 rounded-lg text-sm"
-                        value={filters.location}
-                        onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                      >
-                        <option value="">All Locations</option>
-                        <option value="Boston">Boston</option>
-                        <option value="Cambridge">Cambridge</option>
-                        <option value="Brookline">Brookline</option>
-                        <option value="Newton">Newton</option>
-                  </select>
-                </div>
-
-                    <div>
-                      <label className="text-white text-sm mb-1 block">Archetype</label>
-                  <select
-                        className="w-full px-3 py-1.5 rounded-lg text-sm"
-                        value={filters.archetype}
-                        onChange={(e) => setFilters({ ...filters, archetype: e.target.value })}
-                      >
-                        <option value="">All Types</option>
-                        <option value="hopelessRomantic">Hopeless Romantic</option>
-                        <option value="cautiousDater">Cautious Dater</option>
-                        <option value="serialDater">Serial Dater</option>
-                        <option value="commitmentSeeker">Commitment Seeker</option>
-                        <option value="friendWithBenefits">Friend with Benefits</option>
-                  </select>
-                </div>
-                </div>
-                </div>
-              )}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {profiles.map((profile) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {currentProfiles.map((profile) => (
                 <div
                   key={profile.id}
-                  className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                  className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden max-w-sm mx-auto w-full"
                 >
-                  <div
-                    className="relative h-72 cursor-pointer"
+                  <div 
+                    className="relative w-full h-[400px] cursor-pointer" 
                     onClick={() => router.push(`/profile/${profile.id}`)}
                   >
                     <ProfileImage
                       user={profile}
                       className="object-cover"
                       priority
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
-                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-sm font-medium">
+                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold text-[#cc0000]">
                       {profile.matchPercentage}% Match
-                    </div>
-                  </div>
-                    <div className="p-4">
-                      <div className="mb-3">
-                        <h3 className="text-lg font-semibold mb-1">
-                          {profile.first_name}, {profile.age}
-                        </h3>
+            </div>
+          </div>
+                  <div className="p-4">
+                    <div className="mb-3">
+                      <h3 className="text-lg font-semibold mb-1">
+                        {profile.first_name}, {profile.age}
+                      </h3>
+                      <div className="space-y-1">
+                        {profile.school && (
+                          <p className="text-sm text-gray-600 flex items-center gap-1">
+                            <span>🎓</span>
+                            {profile.school}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-600 flex items-center gap-1">
-                          {profile.school && (
-                            <>
-                              <span>🎓</span>
-                              {profile.school}
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 mb-4">
-                        <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                          <Crown className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">
-                            {profile.dater_status || 'bronze'}
-                          </span>
-                        </div>
-                        <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                          <Heart className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">
-                            {profile.matchPercentage || '90'}%
-                          </span>
-                        </div>
-                        <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
-                          <Star className="h-3.5 w-3.5" />
-                          <span className="text-xs font-medium">
-                            {profile.average_rating ? `${profile.average_rating.toFixed(1)}★` : 'New'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 mr-1" />
+                          <MapPin className="h-4 w-4 text-[#cc0000]" />
                           {profile.location || 'Location not set'}
-                      </div>
-                      <button
-                        onClick={() => router.push(`/profile/${profile.id}`)}
-                        className="px-4 py-2 bg-[#cc0000] text-white text-sm font-medium rounded-full hover:bg-[#aa0000] transition-colors"
-                      >
-                        Send Date Request
-                      </button>
-                    </div>
+                        </p>
+                        {profile.bio && (
+                          <p className="text-sm text-gray-600 line-clamp-2 mt-2">
+                            {profile.bio}
+                          </p>
+                        )}
                   </div>
                 </div>
-              ))}
+                    <div className="flex gap-2 mb-4">
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Crown className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.dater_status || 'bronze'}
+                        </span>
+                  </div>
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.matchPercentage}%
+                        </span>
+                  </div>
+                      <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-[#cc0000]" />
+                        <span className="text-xs font-medium">
+                          {profile.average_rating ? profile.average_rating.toFixed(1) : 'New'}
+                        </span>
+                  </div>
+                </div>
+                  <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/send-date-request/${profile.id}`);
+                      }}
+                      className="w-full px-4 py-2 bg-[#cc0000] text-white text-sm font-bold rounded-full hover:bg-[#aa0000] transition-colors"
+                    >
+                      Send Date Request
+                    </button>
+              </div>
             </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8 mb-24">
+            <button
+                  onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+            </button>
+                {[...Array(totalPages)].map((_, index) => (
+            <button
+                    key={index + 1}
+                    onClick={() => paginate(index + 1)}
+                    className={`w-8 h-8 rounded-full text-sm font-medium ${
+                      currentPage === index + 1
+                        ? 'bg-[#cc0000] text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+            )}
           </>
         )}
       </div>

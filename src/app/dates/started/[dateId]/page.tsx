@@ -139,21 +139,18 @@ export default function DateStartedPage() {
   }, [params.dateId, router]);
 
   const handleEndDate = async () => {
-    if (!dateRequest) {
-      toast.error('No active date found');
-      return;
-    }
-
     try {
+      if (!dateRequest) return;
+
       const { error } = await supabase
         .from('date_requests')
         .update({ status: 'completed' })
         .eq('id', dateRequest.id);
 
       if (error) throw error;
-
-      toast.success('Date completed! Please rate your experience.');
-      router.push(`/dates/${dateRequest.id}/review`);
+      
+      // Route to post-payment page
+      router.push(`/dates/payment/${dateRequest.id}`);
     } catch (error) {
       console.error('Error ending date:', error);
       toast.error('Failed to end date. Please try again.');
