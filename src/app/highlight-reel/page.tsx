@@ -189,7 +189,7 @@ export default function HighlightReelPage() {
           {showSkipButton && (
             <button
               onClick={handleSkip}
-              className={`mt-8 mb-16 px-8 py-2 bg-[#cc0000] text-white border border-white rounded-full hover:bg-[#aa0000] transition-colors ${prompt.className} text-base font-medium mx-auto block w-36`}
+              className={`mt-8 mb-16 px-8 py-2 bg-[#cc0000] text-white border border-white rounded-full hover:bg-[#aa0000] transition-colors ${prompt.className} text-base font-bold mx-auto block w-36`}
             >
               Skip Intro
             </button>

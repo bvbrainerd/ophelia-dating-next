@@ -9,6 +9,7 @@ import { supabase } from '@/supabase/client';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 
+// Initialize Stripe outside component to prevent multiple initializations
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function ConfirmBill() {
@@ -30,20 +31,22 @@ export default function ConfirmBill() {
             return;
         }
 
+        let mounted = true;
+
         const fetchClientSecret = async () => {
             try {
                 let paymentAmount;
                 
                 if (isManualEntry && manualAmount) {
-                    // For manual entry, calculate 15% of the entered amount
                     paymentAmount = manualAmount * 0.15;
                 } else {
-                    // Try to get receipt from localStorage for OCR path
                     const storedReceipt = localStorage.getItem('receipt');
                     if (storedReceipt) {
                         const parsedReceipt = JSON.parse(storedReceipt);
-                        setReceipt(parsedReceipt);
-                        paymentAmount = parsedReceipt.total * 0.15; // Calculate 15% of total
+                        if (mounted) {
+                            setReceipt(parsedReceipt);
+                        }
+                        paymentAmount = parsedReceipt.total * 0.15;
                     }
                 }
 
@@ -51,7 +54,6 @@ export default function ConfirmBill() {
                     throw new Error("Invalid payment amount");
                 }
 
-                // Convert amount to cents for Stripe
                 const amountInCents = Math.round(paymentAmount * 100);
 
                 const response = await fetch('/api/create-payment-intent', {
@@ -69,16 +71,26 @@ export default function ConfirmBill() {
                 }
 
                 const data = await response.json();
-                setClientSecret(data.clientSecret);
+                if (mounted) {
+                    setClientSecret(data.clientSecret);
+                }
             } catch (err) {
                 console.error("Error creating payment intent:", err);
-                setError(err instanceof Error ? err.message : "Failed to setup payment");
+                if (mounted) {
+                    setError(err instanceof Error ? err.message : "Failed to setup payment");
+                }
             } finally {
-                setLoading(false);
+                if (mounted) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchClientSecret();
+
+        return () => {
+            mounted = false;
+        };
     }, [dateId, isManualEntry, manualAmount, router]);
 
     if (loading) {
@@ -119,7 +131,7 @@ export default function ConfirmBill() {
                                 </div>
                                 <div className="flex justify-between items-center text-lg font-semibold text-[#cc0000]">
                                     <span>Ophelia Date Fee (15%):</span>
-                                    <span>${receipt.opheliaFee.toFixed(2)}</span>
+                                    <span>${(receipt.total * 0.15).toFixed(2)}</span>
                                 </div>
                             </div>
                         ) : null}
@@ -132,15 +144,23 @@ export default function ConfirmBill() {
 
                         {clientSecret ? (
                             <div className="mt-8">
-                                <Elements stripe={stripePromise} options={{ 
-                                    clientSecret,
-                                    appearance: {
-                                        theme: 'stripe',
-                                        variables: {
-                                            colorPrimary: '#cc0000',
+                                <Elements 
+                                    stripe={stripePromise} 
+                                    options={{
+                                        clientSecret,
+                                        appearance: {
+                                            theme: 'stripe',
+                                            variables: {
+                                                colorPrimary: '#cc0000',
+                                                colorBackground: '#ffffff',
+                                                colorText: '#334155',
+                                                colorDanger: '#ef4444',
+                                                borderRadius: '8px',
+                                            },
                                         },
-                                    },
-                                }}>
+                                        loader: 'auto',
+                                    }}
+                                >
                                     <StripePaymentForm dateId={dateId!} />
                                 </Elements>
                             </div>

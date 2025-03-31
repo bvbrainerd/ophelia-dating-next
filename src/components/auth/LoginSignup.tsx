@@ -94,6 +94,7 @@ export default function LoginSignup() {
                       className="object-contain"
                       onError={() => setGoogleIconError(true)}
                       priority
+                      unoptimized
                     />
                   </div>
                 ) : (

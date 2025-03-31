@@ -1612,10 +1612,10 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
 
             {/* Expanded Filters */}
             {showFilters && (
-              <div className="mt-4 p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-black text-sm mb-1 block">Age Range</label>
+              <div className="bg-[#aa0000] rounded-xl p-4 mb-8 shadow-lg border border-white/10">
+                <div className="space-y-4">
+                  <div className="filter-group">
+                    <h3 className="text-base font-medium mb-2 text-white/90">Age Range</h3>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -1634,13 +1634,25 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     </div>
                   </div>
 
-                  <div>
-                      <label className="text-black text-sm mb-1 block">School</label>
+                  <div className="filter-group">
+                    <h3 className="text-base font-medium mb-2 text-white/90">Location</h3>
                     <select
-                        className="w-full px-3 py-1.5 rounded-lg text-sm shadow-sm"
-                        value={filters.school}
-                        onChange={(e) => setFilters({ ...filters, school: e.target.value })}
-                      >
+                      className="w-full px-3 py-1.5 rounded-lg text-sm shadow-sm"
+                      value={filters.location}
+                      onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                    >
+                      <option value="">All Locations</option>
+                      <option value="Boston">Boston</option>
+                    </select>
+                  </div>
+
+                  <div className="filter-group">
+                    <h3 className="text-base font-medium mb-2 text-white/90">School</h3>
+                    <select
+                      className="w-full px-3 py-1.5 rounded-lg text-sm shadow-sm"
+                      value={filters.school}
+                      onChange={(e) => setFilters({ ...filters, school: e.target.value })}
+                    >
                       <option value="">All Schools</option>
                       <option value="Boston College">Boston College</option>
                       <option value="Harvard">Harvard</option>
@@ -1649,24 +1661,10 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-black text-sm mb-1 block">Location</label>
+                  <div className="filter-group">
+                    <h3 className="text-base font-medium mb-2 text-white/90">Archetype</h3>
                     <select
-                        className="w-full px-3 py-1.5 rounded-lg text-sm shadow-sm"
-                        value={filters.location}
-                        onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                      >
-                      <option value="">All Locations</option>
-                      <option value="Boston">Boston</option>
-                      <option value="Cambridge">Cambridge</option>
-                      <option value="Brookline">Brookline</option>
-                      <option value="Newton">Newton</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-black text-sm mb-1 block shadow-sm">Archetype</label>
-                    <select
-                      className="w-full px-3 py-1.5 rounded-lg text-sm"
+                      className="w-full px-3 py-1.5 rounded-lg text-sm shadow-sm"
                       value={filters.archetype}
                       onChange={(e) => setFilters({ ...filters, archetype: e.target.value })}
                     >

@@ -181,6 +181,7 @@ export default function DashboardPage() {
           )
         `)
         .in('status', ['completed', 'rated'])
+        .not('proof_media_url', 'is', null)
         .neq('status', 'deleted')
         .order('created_at', { ascending: false });
 
