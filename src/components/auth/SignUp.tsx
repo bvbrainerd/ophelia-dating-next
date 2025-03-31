@@ -400,7 +400,7 @@ export default function SignUp() {
             placeholder="Tell us about yourself..."
             value={formData.bio}
             onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-            disabled={formData.relationshipStatus === 'couple'}
+            disabled={formData.relationshipStatus !== 'single'}
             rows={4}
           />
         )}

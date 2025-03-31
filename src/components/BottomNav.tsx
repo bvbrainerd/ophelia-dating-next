@@ -1,3 +1,5 @@
+'use client';
+
 import { useRouter } from 'next/navigation';
 import { Home, Heart, Bell, User, PlusCircle } from 'lucide-react';
 import { Prompt } from 'next/font/google';

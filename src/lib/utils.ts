@@ -41,4 +41,26 @@ export function formatTimeAgo(dateString: string): string {
 
   const years = Math.floor(days / 365);
   return `${years}y ago`;
-} 
+}
+
+export const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'Time not set';
+  
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid date';
+  }
+}; 
