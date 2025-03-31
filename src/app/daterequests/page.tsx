@@ -226,7 +226,7 @@ const getAvatarUrl = async (avatarPath: string | null) => {
   
   try {
     // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/') || avatarPath.startsWith('images/')) {
       return avatarPath;
     }
 

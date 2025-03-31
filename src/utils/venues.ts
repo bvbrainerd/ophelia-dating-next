@@ -97,7 +97,7 @@ export const VENUES: Record<string, Venue[]> = {
       type: "Cafe/Restaurant",
       rating: 4.6,
       price: "$$$",
-      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/southendbuttery (1).jpg",
+      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/southendbuttery.jpg",
       coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi",
       payAtVenue: true
@@ -423,7 +423,7 @@ export const VENUES: Record<string, Venue[]> = {
       type: "Restaurant",
       rating: 4.6,
       price: "$$$",
-      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/fuji.jpg",
+      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/fujiatinkblock.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0724, 42.3434] as [number, number],
       distance: "1.5 mi"
@@ -751,7 +751,7 @@ export const VENUES: Record<string, Venue[]> = {
       type: "Culture",
       rating: 4.8,
       price: "$$",
-      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/museum.jpg",
+      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/mfa.jpg",
       stripeLink: "https://buy.stripe.com/aEU8yV7yM5RP8yA3ce",
       coordinates: [-71.0942, 42.3394] as [number, number],
       distance: "3.6 mi"
@@ -789,7 +789,7 @@ export const VENUES: Record<string, Venue[]> = {
       type: "Activity",
       rating: 4.6,
       price: "$",
-      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/madelines.jpg",
+      imageUrl: "https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1/object/public/venues/madelinescandy.jpg",
       stripeLink: "https://buy.stripe.com/bIYeXj06k7ZX2acfZc",
       coordinates: [-71.0734, 42.3476] as [number, number],
       distance: "1.2 mi",
