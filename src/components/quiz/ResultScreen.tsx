@@ -26,7 +26,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ datingStyle, onContinue }) 
         You are a <strong>{datingStyle}</strong>!
       </p>
       <p style={{textAlign: 'center', marginBottom: '30px'}}>
-        Let's start dating and find your perfect match!
+        Let's start dating and find you something real!
       </p>
       <button style={commonStyles.button} onClick={handleContinue}>
         Continue to Dashboard

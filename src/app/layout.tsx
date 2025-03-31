@@ -12,7 +12,7 @@ const prompt = Prompt({
 
 export const metadata = {
   title: 'Ophelia Dating',
-  description: 'Find your perfect match at Boston College',
+  description: 'For singles. For couples. For those who date. The First Date, Reimagined.',
 };
 
 export const dynamic = 'force-dynamic';
