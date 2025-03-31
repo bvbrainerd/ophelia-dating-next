@@ -1228,7 +1228,8 @@ const EditProfilePage = () => {
         school: profileData.school,
         avatar_url: cleanAvatarUrl,
         profile_visibility: profileData.profile_visibility,
-        couple_status: profileData.couple_status
+        couple_status: profileData.couple_status,
+        email: profileData.email,
       };
 
       console.log('Updating profile with:', updates);
