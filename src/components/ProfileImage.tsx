@@ -20,8 +20,13 @@ const getAvatarUrl = async (avatarPath: string | null): Promise<string> => {
   if (!avatarPath) return DEFAULT_AVATAR;
   
   try {
-    // If it's already a public URL or default image, return it directly
-    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+    // If it's the default avatar or starts with a forward slash, return as is
+    if (avatarPath === DEFAULT_AVATAR || avatarPath.startsWith('/')) {
+      return avatarPath;
+    }
+
+    // If it's already a full URL, return it
+    if (avatarPath.startsWith('http')) {
       return avatarPath;
     }
 
@@ -47,7 +52,7 @@ const getAvatarUrl = async (avatarPath: string | null): Promise<string> => {
   }
 };
 
-export default function ProfileImage({ user, className = '', priority }: ProfileImageProps) {
+export default function ProfileImage({ user, className = '', priority = false }: ProfileImageProps) {
   const [imageUrl, setImageUrl] = useState<string>(DEFAULT_AVATAR);
   const [error, setError] = useState<boolean>(false);
 
@@ -76,15 +81,17 @@ export default function ProfileImage({ user, className = '', priority }: Profile
     <div className={`relative ${className}`}>
       <Image
         src={error ? DEFAULT_AVATAR : imageUrl}
-        alt={user?.first_name || 'Profile'}
+        alt={user?.first_name ? `${user.first_name}'s profile` : 'Profile'}
         fill
         className="object-cover"
         onError={() => {
+          console.error('Image load error for:', imageUrl);
           setError(true);
           setImageUrl(DEFAULT_AVATAR);
         }}
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         priority={priority}
+        unoptimized={imageUrl === DEFAULT_AVATAR}
       />
     </div>
   );

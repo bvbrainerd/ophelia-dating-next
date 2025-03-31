@@ -11,6 +11,7 @@ export default function LoginSignup() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [googleIconError, setGoogleIconError] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,15 +84,21 @@ export default function LoginSignup() {
                 disabled={isLoading}
                 className="w-full p-2.5 mb-4 bg-white/90 text-gray-700 rounded-full font-medium border border-white/20 hover:bg-white transition-colors flex items-center justify-center gap-3 shadow-sm text-sm"
               >
-                <div className="w-[18px] h-[18px] relative flex-shrink-0">
-                  <Image 
-                    src="/images/google.svg" 
-                    alt="Google" 
-                    width={18}
-                    height={18}
-                    className="object-contain"
-                  />
-                </div>
+                {!googleIconError ? (
+                  <div className="w-[18px] h-[18px] relative flex-shrink-0">
+                    <Image 
+                      src="/images/google.svg" 
+                      alt="Google" 
+                      width={18}
+                      height={18}
+                      className="object-contain"
+                      onError={() => setGoogleIconError(true)}
+                      priority
+                    />
+                  </div>
+                ) : (
+                  <div className="w-[18px] h-[18px] bg-[#4285F4] rounded-full flex-shrink-0" />
+                )}
                 <span>{isLoading ? 'Processing...' : 'Continue with Google'}</span>
               </button>
 

@@ -59,6 +59,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   const pathname = usePathname();
   
   const isAuthPage = pathname?.startsWith('/auth/');
+  const isProfileIdPage = pathname?.startsWith('/profile/') && !pathname.endsWith('/profile');
 
   const handleLogout = async () => {
     try {
@@ -107,6 +108,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
   return (
     <div className={cn(
       "flex justify-between items-center py-4 px-5",
+      isProfileIdPage ? "bg-[#cc0000]" :
       variant === "dashboard" ? "bg-[#cc0000]" : 
       variant === "matching" ? "bg-white" :
       variant === "challenges" ? "bg-[#cc0000]" :
@@ -121,6 +123,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
         <Link href="/dashboard">
           <h1 className={cn(
             `text-3xl font-bold cursor-pointer hover:opacity-80 transition-opacity ${prompt.className}`,
+            isProfileIdPage ? "text-white" :
             variant === "dashboard" || variant === "challenges" ? "text-white" : 
             variant === "transparent" ? "text-white" :
             variant === "transparent-red" ? "text-[#cc0000]" :

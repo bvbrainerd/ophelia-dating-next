@@ -1,7 +1,8 @@
 import './globals.css';
 import { Prompt } from 'next/font/google';
+import { createClient } from '@/supabase/server';
+import { cookies } from 'next/headers';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { createServerSupabaseClient } from '@/supabase/server';
 
 const prompt = Prompt({
   weight: ['400', '700'],
@@ -21,16 +22,8 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createServerSupabaseClient();
-
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // You can use the session information here if needed
-    console.log('Session in root layout:', session?.user?.id);
-  } catch (error) {
-    console.error('Error in root layout:', error);
-  }
+  const cookieStore = await cookies();
+  const authToken = cookieStore.get('sb-oyjfhrqfufujmsnqevgr-auth-token')?.value;
 
   return (
     <html lang="en" className={prompt.className}>

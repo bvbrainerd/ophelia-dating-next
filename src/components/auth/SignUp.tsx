@@ -15,30 +15,66 @@ const prompt = Prompt({
   display: 'swap',
 })
 
+interface SignUpFormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  location: string;
+  firstName: string;
+  lastName: string;
+  age: string;
+  gender: string;
+  preferredGender: string;
+  relationshipStatus: 'single' | 'couple';
+  partnerEmail: string;
+  bio: string;
+  descriptors: Array<{ category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }>;
+  profileVisibility: 'public' | 'private';
+  showLoginLink: boolean;
+  avatarFile: File | null;
+  previewUrl: string | null;
+  showCropper: boolean;
+  selectedFile: File | null;
+  coupleBio: string;
+  isCoupleProfile: boolean;
+  school: string;
+  isLoading: boolean;
+}
+
+const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
+  // Implementation here
+  return null;
+};
+
 export default function SignUp() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const [age, setAge] = useState('')
-  const [gender, setGender] = useState('')
-  const [preferredGender, setPreferredGender] = useState('')
-  const [relationshipStatus, setRelationshipStatus] = useState<'single' | 'couple'>('single')
-  const [partnerEmail, setPartnerEmail] = useState('')
-  const [bio, setBio] = useState('')
-  const [descriptors, setDescriptors] = useState<Array<{ category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }>>([])
-  const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('public')
-  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState<SignUpFormData>({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    location: 'boston',
+    firstName: '',
+    lastName: '',
+    age: '',
+    gender: '',
+    preferredGender: '',
+    relationshipStatus: 'single',
+    partnerEmail: '',
+    bio: '',
+    descriptors: [],
+    profileVisibility: 'public',
+    showLoginLink: false,
+    avatarFile: null,
+    previewUrl: null,
+    showCropper: false,
+    selectedFile: null,
+    coupleBio: '',
+    isCoupleProfile: false,
+    school: '',
+    isLoading: false
+  })
   const [error, setError] = useState<string | null>(null)
   const [showLoginLink, setShowLoginLink] = useState(false)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [showCropper, setShowCropper] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [coupleBio, setCoupleBio] = useState('');
-  const [isCoupleProfile, setIsCoupleProfile] = useState(false);
-  const [school, setSchool] = useState('');
 
   const validateBCEmail = (email: string): boolean => {
     return true // Allow any email domain
@@ -46,14 +82,19 @@ export default function SignUp() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
+
+    // Validate location
+    if (formData.location.toLowerCase() !== 'boston') {
+      setError('Sorry, Ophelia Dating is currently only available in Boston.');
+      return;
+    }
 
     try {
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
-        password: password,
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
       });
 
       if (authError) throw authError;
@@ -61,8 +102,8 @@ export default function SignUp() {
       if (authData.user) {
         // Upload avatar if selected
         let avatarUrl = null;
-        if (selectedFile) {
-          avatarUrl = await uploadAvatar(authData.user.id, selectedFile);
+        if (formData.selectedFile) {
+          avatarUrl = await uploadAvatar(authData.user.id, formData.selectedFile);
         }
 
         // Create profile
@@ -70,20 +111,20 @@ export default function SignUp() {
           .from('profiles')
           .insert({
             id: authData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            email: email.toLowerCase(),
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email.toLowerCase(),
             avatar_url: avatarUrl,
-            school: school || null,
-            age: parseInt(age),
-            gender,
-            preferred_gender: preferredGender,
-            bio: relationshipStatus === 'single' ? bio.trim() : coupleBio.trim(),
-            descriptors,
-            relationship_status: relationshipStatus,
-            partner_email: relationshipStatus === 'couple' ? partnerEmail.toLowerCase().trim() : null,
-            is_couple_profile: relationshipStatus === 'couple',
-            profile_visibility: profileVisibility,
+            school: formData.school || null,
+            age: parseInt(formData.age),
+            gender: formData.gender,
+            preferred_gender: formData.preferredGender,
+            bio: formData.relationshipStatus === 'single' ? formData.bio.trim() : formData.coupleBio.trim(),
+            descriptors: formData.descriptors,
+            relationship_status: formData.relationshipStatus,
+            partner_email: formData.relationshipStatus === 'couple' ? formData.partnerEmail.toLowerCase().trim() : null,
+            is_couple_profile: formData.relationshipStatus === 'couple',
+            profile_visibility: formData.profileVisibility,
           });
 
         if (profileError) throw profileError;
@@ -93,11 +134,11 @@ export default function SignUp() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: email,
+            email: formData.email,
             templateId: process.env.NEXT_PUBLIC_SENDGRID_SIGNUP_TEMPLATE_ID,
             dynamicTemplateData: {
-              first_name: firstName,
-              last_name: lastName
+              first_name: formData.firstName,
+              last_name: formData.lastName
             }
           })
         });
@@ -107,8 +148,6 @@ export default function SignUp() {
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'Failed to sign up');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -121,40 +160,41 @@ export default function SignUp() {
       return
     }
 
-    setSelectedFile(file)
-    setShowCropper(true)
+    setFormData(prev => ({ ...prev, selectedFile: file }))
+    setFormData(prev => ({ ...prev, showCropper: true }))
   }
 
   const handleCropComplete = (croppedBlob: Blob) => {
-    const croppedFile = new File([croppedBlob], selectedFile?.name || 'profile.jpg', {
+    const croppedFile = new File([croppedBlob], formData.selectedFile?.name || 'profile.jpg', {
       type: 'image/jpeg'
     })
 
-    setAvatarFile(croppedFile)
+    setFormData(prev => ({ ...prev, avatarFile: croppedFile }))
     const url = URL.createObjectURL(croppedBlob)
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl)
+    if (formData.previewUrl) {
+      URL.revokeObjectURL(formData.previewUrl)
     }
-    setPreviewUrl(url)
-    setShowCropper(false)
-    setSelectedFile(null)
+    setFormData(prev => ({ ...prev, previewUrl: url }))
+    setFormData(prev => ({ ...prev, showCropper: false }))
+    setFormData(prev => ({ ...prev, selectedFile: null }))
   }
 
   const handleCropCancel = () => {
-    setShowCropper(false)
-    setSelectedFile(null)
+    setFormData(prev => ({ ...prev, showCropper: false }))
+    setFormData(prev => ({ ...prev, selectedFile: null }))
   }
 
   const handleDescriptorSelect = (descriptor: { category: 'Personality' | 'Interests' | 'Lifestyle'; label: string }) => {
-    setDescriptors(prev => 
-      prev.some(d => d.label === descriptor.label)
-        ? prev.filter(d => d.label !== descriptor.label)
-        : [...prev, descriptor]
-    )
+    setFormData(prev => ({
+      ...prev,
+      descriptors: prev.descriptors.some(d => d.label === descriptor.label)
+        ? prev.descriptors.filter(d => d.label !== descriptor.label)
+        : [...prev.descriptors, descriptor]
+    }));
   }
 
   const renderCoupleFields = () => {
-    if (relationshipStatus !== 'couple') return null;
+    if (formData.relationshipStatus !== 'couple') return null;
 
     return (
       <div className="space-y-4">
@@ -164,8 +204,8 @@ export default function SignUp() {
           </label>
           <input
             type="email"
-            value={partnerEmail}
-            onChange={(e) => setPartnerEmail(e.target.value)}
+            value={formData.partnerEmail}
+            onChange={(e) => setFormData(prev => ({ ...prev, partnerEmail: e.target.value }))}
             className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
             required
             placeholder="Enter your partner's email"
@@ -176,8 +216,8 @@ export default function SignUp() {
             Couple Bio
           </label>
           <textarea
-            value={coupleBio}
-            onChange={(e) => setCoupleBio(e.target.value)}
+            value={formData.coupleBio}
+            onChange={(e) => setFormData(prev => ({ ...prev, coupleBio: e.target.value }))}
             className="w-full p-2.5 border border-gray-200 rounded-3xl outline-none focus:border-[#BA2525] transition-colors min-h-[120px] resize-none"
             placeholder="Tell us about you as a couple..."
             rows={4}
@@ -209,10 +249,10 @@ export default function SignUp() {
       <form onSubmit={handleSignup} className="space-y-6">
         <div className="flex flex-col items-center justify-center w-full mb-8">
           <label className="flex flex-col items-center justify-center w-32 h-32 border-2 border-gray-300 border-dashed rounded-full cursor-pointer bg-gray-50 hover:bg-gray-100 overflow-hidden">
-            {previewUrl ? (
+            {formData.previewUrl ? (
               <div className="relative w-full h-full">
                 <Image
-                  src={previewUrl}
+                  src={formData.previewUrl}
                   alt="Profile preview"
                   fill
                   className="object-cover rounded-full"
@@ -249,7 +289,7 @@ export default function SignUp() {
               className="hidden"
               accept="image/*"
               onChange={handleImageUpload}
-              disabled={isLoading}
+              disabled={formData.relationshipStatus === 'couple'}
               required
               autoComplete="photo"
             />
@@ -260,9 +300,9 @@ export default function SignUp() {
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           type="email"
           placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isLoading}
+          value={formData.email}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           autoComplete="email"
         />
@@ -271,9 +311,9 @@ export default function SignUp() {
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           type="password"
           placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
+          value={formData.password}
+          onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           minLength={6}
           autoComplete="new-password"
@@ -283,9 +323,9 @@ export default function SignUp() {
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           type="text"
           placeholder="First Name"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          disabled={isLoading}
+          value={formData.firstName}
+          onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           autoComplete="given-name"
         />
@@ -294,9 +334,9 @@ export default function SignUp() {
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           type="text"
           placeholder="Last Name"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          disabled={isLoading}
+          value={formData.lastName}
+          onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           autoComplete="family-name"
         />
@@ -305,9 +345,9 @@ export default function SignUp() {
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
           type="number"
           placeholder="Age"
-          value={age}
-          onChange={(e) => setAge(e.target.value)}
-          disabled={isLoading}
+          value={formData.age}
+          onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           min="18"
           max="100"
@@ -316,9 +356,9 @@ export default function SignUp() {
 
         <select
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
-          value={gender}
-          onChange={(e) => setGender(e.target.value)}
-          disabled={isLoading}
+          value={formData.gender}
+          onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
           autoComplete="sex"
         >
@@ -330,9 +370,9 @@ export default function SignUp() {
 
         <select
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
-          value={preferredGender}
-          onChange={(e) => setPreferredGender(e.target.value)}
-          disabled={isLoading}
+          value={formData.preferredGender}
+          onChange={(e) => setFormData(prev => ({ ...prev, preferredGender: e.target.value }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
         >
           <option value="">Select Partner's Preferred Gender</option>
@@ -344,9 +384,9 @@ export default function SignUp() {
 
         <select
           className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#BA2525] transition-colors"
-          value={relationshipStatus}
-          onChange={(e) => setRelationshipStatus(e.target.value as 'single' | 'couple')}
-          disabled={isLoading}
+          value={formData.relationshipStatus}
+          onChange={(e) => setFormData(prev => ({ ...prev, relationshipStatus: e.target.value as 'single' | 'couple' }))}
+          disabled={formData.relationshipStatus === 'couple'}
           required
         >
           <option value="">Select Relationship Status</option>
@@ -354,13 +394,13 @@ export default function SignUp() {
           <option value="couple">In a Relationship</option>
         </select>
 
-        {relationshipStatus === 'single' && (
+        {formData.relationshipStatus === 'single' && (
           <textarea
             className="w-full p-2.5 border border-gray-200 rounded-3xl outline-none focus:border-[#BA2525] transition-colors min-h-[120px] resize-none"
             placeholder="Tell us about yourself..."
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            disabled={isLoading}
+            value={formData.bio}
+            onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+            disabled={formData.relationshipStatus === 'couple'}
             rows={4}
           />
         )}
@@ -369,10 +409,10 @@ export default function SignUp() {
 
         <div className="mb-6" onClick={(e) => e.preventDefault()}>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {relationshipStatus === 'couple' ? 'Select Descriptors for Your Couple Profile' : 'Select Your Descriptors'}
+            {formData.relationshipStatus === 'couple' ? 'Select Descriptors for Your Couple Profile' : 'Select Your Descriptors'}
           </label>
           <DescriptorBubbles
-            selectedDescriptors={descriptors}
+            selectedDescriptors={formData.descriptors}
             onSelectDescriptor={handleDescriptorSelect}
             maxSelections={10}
           />
@@ -388,8 +428,8 @@ export default function SignUp() {
                 type="radio"
                 name="profile_visibility"
                 value="public"
-                checked={profileVisibility === 'public'}
-                onChange={(e) => setProfileVisibility(e.target.value as 'public' | 'private')}
+                checked={formData.profileVisibility === 'public'}
+                onChange={(e) => setFormData(prev => ({ ...prev, profileVisibility: e.target.value as 'public' | 'private' }))}
                 className="mr-2 text-[#BA2525] focus:ring-[#BA2525]"
               />
               <span className="text-sm text-gray-600">Public</span>
@@ -399,8 +439,8 @@ export default function SignUp() {
                 type="radio"
                 name="profile_visibility"
                 value="private"
-                checked={profileVisibility === 'private'}
-                onChange={(e) => setProfileVisibility(e.target.value as 'public' | 'private')}
+                checked={formData.profileVisibility === 'private'}
+                onChange={(e) => setFormData(prev => ({ ...prev, profileVisibility: e.target.value as 'public' | 'private' }))}
                 className="mr-2 text-[#BA2525] focus:ring-[#BA2525]"
               />
               <span className="text-sm text-gray-600">Private</span>
@@ -411,18 +451,44 @@ export default function SignUp() {
           </p>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          <select
+            value={formData.location}
+            onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#cc0000]"
+            required
+          >
+            <option value="boston">Boston</option>
+          </select>
+          <p className="mt-1 text-sm text-gray-500">Currently only available in Boston</p>
+        </div>
+
         <button
           type="submit"
           className="w-full p-2.5 mt-8 bg-[#BA2525] text-white rounded-full font-medium hover:bg-[#a01f1f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={isLoading}
+          disabled={formData.isLoading}
         >
-          {isLoading ? 'Creating Account...' : 'Create Account'}
+          {formData.isLoading ? 'Creating Account...' : 'Create Account'}
         </button>
+
+        {error && (
+          <p className="mt-4 text-red-500 text-center">{error}</p>
+        )}
+
+        {showLoginLink && (
+          <p className="mt-4 text-center">
+            Already have an account?{' '}
+            <Link href="/auth/login" className="text-[#BA2525] hover:underline">
+              Log In
+            </Link>
+          </p>
+        )}
       </form>
 
-      {showCropper && selectedFile && (
+      {formData.showCropper && formData.selectedFile && (
         <ImageCropper
-          imageFile={selectedFile}
+          imageFile={formData.selectedFile}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
           aspectRatio={1}

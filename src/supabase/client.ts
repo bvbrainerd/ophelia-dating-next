@@ -1,6 +1,20 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Database } from '@/types/supabase'
 
-export const createBrowserSupabaseClient = () => 
-  createClientComponentClient();
+let supabaseClient: ReturnType<typeof createClientComponentClient> | null = null;
 
-export const supabase = createBrowserSupabaseClient(); 
+export const createBrowserSupabaseClient = () => {
+  if (supabaseClient) return supabaseClient;
+  supabaseClient = createClientComponentClient();
+  return supabaseClient;
+};
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+export const supabase = createClientComponentClient(); 

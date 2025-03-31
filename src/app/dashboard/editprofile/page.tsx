@@ -255,8 +255,6 @@ const PaymentSection = ({
   setSelectedFile,
   showCropper,
   setShowCropper,
-  isUploading,
-  setIsUploading,
   previewUrl,
   avatarFile,
   imageError,
@@ -267,6 +265,7 @@ const PaymentSection = ({
   const [showAddCard, setShowAddCard] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stripeLoaded, setStripeLoaded] = useState(false);
   const [referralCode, setReferralCode] = useState<string>('');

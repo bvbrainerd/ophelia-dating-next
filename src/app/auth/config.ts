@@ -15,24 +15,33 @@ export const authConfig = {
     signUp: '/auth/signup',
     error: '/auth/error',
     verifyRequest: '/auth/verify-request',
-    newUser: '/onboarding'
+    newUser: '/auth/onboarding'
   },
   providers: [],
   callbacks: {
     authorized({ auth, request: { nextUrl } }: AuthContext) {
       const isLoggedIn = !!auth?.user;
+      const isAuthPage = 
+        nextUrl.pathname.startsWith('/auth/login') ||
+        nextUrl.pathname.startsWith('/auth/signup');
       const isProtected = 
         nextUrl.pathname.startsWith('/dashboard') ||
         nextUrl.pathname.startsWith('/matching') ||
-        nextUrl.pathname.startsWith('/profile');
+        nextUrl.pathname.startsWith('/profile') ||
+        nextUrl.pathname.startsWith('/dates') ||
+        nextUrl.pathname.startsWith('/challenges');
+
+      if (isAuthPage) {
+        if (isLoggedIn) return Response.redirect(new URL('/dashboard', nextUrl));
+        return true;
+      }
 
       if (isProtected) {
         if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      } else if (isLoggedIn) {
-        return true; // If logged in, can access any non-protected page
+        return Response.redirect(new URL('/auth/login', nextUrl));
       }
-      return true; // Allow unauthenticated users to access non-protected pages
+
+      return true;
     }
   }
 }; 
