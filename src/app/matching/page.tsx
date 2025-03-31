@@ -1033,6 +1033,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
@@ -1060,7 +1061,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
         .select('*')
         .neq('id', currentUser.id)
         .or('relationship_status.eq.single,relationship_status.is.null')
-        .limit(10);
+        .limit(50);
 
       console.log('Query results:', { profilesData, profilesError });
 
@@ -1092,6 +1093,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const indexOfLastProfile = currentPage * profilesPerPage;
   const indexOfFirstProfile = indexOfLastProfile - profilesPerPage;
   const currentProfiles = profiles.slice(indexOfFirstProfile, indexOfLastProfile);
+  console.log('profile #', profiles.length)
 
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -1140,8 +1142,8 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     />
                     <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold text-[#cc0000]">
                       {profile.matchPercentage}% Match
-            </div>
-          </div>
+                    </div>
+                  </div>
                   <div className="p-4">
                     <div className="mb-3">
                       <h3 className="text-lg font-semibold mb-1">
@@ -1163,29 +1165,29 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                             {profile.bio}
                           </p>
                         )}
-                  </div>
-                </div>
+                      </div>
+                    </div>
                     <div className="flex gap-2 mb-4">
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Crown className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
                           {profile.dater_status || 'bronze'}
                         </span>
-                  </div>
+                      </div>
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Heart className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
                           {profile.matchPercentage}%
                         </span>
-                  </div>
+                      </div>
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Star className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
                           {profile.average_rating ? profile.average_rating.toFixed(1) : 'New'}
                         </span>
-                  </div>
-                </div>
-                  <button
+                        </div>
+                    </div>
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/send-date-request/${profile.id}`);
@@ -1194,42 +1196,42 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     >
                       Send Date Request
                     </button>
-              </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+            {/* Pagination */}
+            {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8 mb-24">
-            <button
-                  onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
-                >
-                  <ChevronLeft className="h-5 w-5 text-gray-600" />
-            </button>
-                {[...Array(totalPages)].map((_, index) => (
-            <button
-                    key={index + 1}
-                    onClick={() => paginate(index + 1)}
-                    className={`w-8 h-8 rounded-full text-sm font-medium ${
-                      currentPage === index + 1
-                        ? 'bg-[#cc0000] text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
                 <button
-                  onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
-                >
-                  <ChevronRight className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
+                      onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                      className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                    {[...Array(totalPages)].map((_, index) => (
+                <button
+                        key={index + 1}
+                        onClick={() => paginate(index + 1)}
+                        className={`w-8 h-8 rounded-full text-sm font-medium ${
+                          currentPage === index + 1
+                            ? 'bg-[#cc0000] text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                      className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
+                    >
+                      <ChevronRight className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
             )}
           </>
         )}

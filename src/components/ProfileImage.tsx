@@ -17,31 +17,54 @@ interface ProfileImageProps {
   sizes?: string;
 }
 
-const getAvatarUrl = (avatarPath: string | null): string => {
-  if (!avatarPath) return DEFAULT_AVATAR;
+const getAvatarUrl = (avatarPath: string | null) => {
+  if (!avatarPath) return '/images/default-avatar.png';
   
-  // If it's already a full URL, return it
-  if (avatarPath.startsWith('http')) {
-    return avatarPath;
-  }
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
 
-  // If it's the default avatar path, return the full URL
-  if (avatarPath.includes('default-avatar.png')) {
-    return DEFAULT_AVATAR;
-  }
+    // Extract just the filename from the path
+    const filename = avatarPath
+      .split('/')                                // Split by /
+      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
+      .join('/')                                 // Join remaining parts
+      .split('?')[0];                            // Remove query parameters
 
-  // Clean up the path and construct the full URL
-  const cleanPath = avatarPath.replace(/^avatars\//, '').split('?')[0];
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${cleanPath}`;
+    // Get a public URL that doesn't expire
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
 };
 
 const ProfileImage = ({ user, className = '', priority = false, sizes }: ProfileImageProps) => {
   const [error, setError] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      const url = getAvatarUrl(user.avatar_url || null);
+      setAvatarUrl(url);
+    };
+    fetchAvatarUrl();
+  }, [user.avatar_url]);
 
   return (
     <div className={`relative w-full h-full ${className}`}>
       <Image
-        src={error ? DEFAULT_AVATAR : (user.avatar_url || DEFAULT_AVATAR)}
+        src={error ? DEFAULT_AVATAR : (avatarUrl || DEFAULT_AVATAR)}
         alt={user?.first_name ? `${user.first_name}'s profile` : 'Profile'}
         fill
         className="object-cover"
