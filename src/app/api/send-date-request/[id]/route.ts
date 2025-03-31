@@ -135,7 +135,9 @@ export async function POST(
       },
       templateId: process.env.SENDGRID_DATE_NOTIFICATION_TEMPLATE_ID!,
       dynamicTemplateData: {
-        recipientName: receiverProfile.first_name,
+        user: {
+          name: receiverProfile.first_name,
+        },
         senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
         venue: body.venue,
         dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
@@ -149,10 +151,6 @@ export async function POST(
         }),
         paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
         dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
-      },
-      asm: {
-        groupId: 20158, // Unsubscribe group ID
-        groupsToDisplay: [20158]
       },
       mailSettings: {
         bypassListManagement: {
@@ -171,6 +169,8 @@ export async function POST(
         }
       }
     };
+
+    console.log(msg);
 
     try {
       const emailResult = await sgMail.send(msg);
