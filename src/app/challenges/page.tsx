@@ -739,16 +739,10 @@ export default function ChallengesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="sticky top-0 z-50 bg-white shadow-sm">
-        <div className="text-center py-4 text-[#cc0000] text-2xl font-bold">
-          Ophelia
-        </div>
-      </div>
-      <Header variant="challenges" />
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-t-3xl p-5">
-          <Tabs defaultValue="post" className="mb-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto p-5">
+        <div className="space-y-6">
+          <Tabs defaultValue="post" className="w-full" onValueChange={(value) => setSelectedTab(value as any)}>
             <TabsList className="w-full">
               <TabsTrigger value="post" className="flex-1 font-bold text-lg">Post Date</TabsTrigger>
               <TabsTrigger value="challenge" className="flex-1 font-bold text-lg">Challenge</TabsTrigger>
@@ -917,9 +911,9 @@ export default function ChallengesPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={isLoading || !selectedImage || !venue}
-                  className="w-full py-2 px-4 bg-[#cc0000] text-white rounded-full font-bold text-base hover:bg-[#aa0000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-6"
+                  className="w-full py-4 px-6 bg-[#aa0000] text-white rounded-full font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8 mb-6 text-lg shadow-lg"
                 >
-                  {isLoading ? 'Posting...' : 'POST TO COMMUNITY'}
+                  {isLoading ? 'Posting...' : 'Post'}
                 </button>
               </div>
             </TabsContent>
@@ -1182,10 +1176,11 @@ export default function ChallengesPage() {
                   </div>
                 )}
 
+                {/* Send Challenge Button */}
                 <button
                   onClick={() => handleDareSubmit(selectedChallenge!)}
                   disabled={!selectedDareUser || !selectedChallenge}
-                  className="w-full py-4 bg-[#aa0000] text-white rounded-lg font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-4 px-6 bg-[#aa0000] text-white rounded-full font-semibold hover:bg-[#990000] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4 mb-6 text-lg shadow-lg"
                 >
                   Send Challenge
                 </button>
