@@ -1053,13 +1053,14 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      console.log('Fetching profiles...');
-      console.log('Current user:', currentUser);
+      console.log('Fetching profiles...', currentUser);
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .neq('id', currentUser.id)
+        .eq('gender', currentUser.preferred_gender)
+        .eq('preferred_gender', currentUser.gender)
         .or('relationship_status.eq.single,relationship_status.is.null')
         .limit(50);
 
@@ -1067,10 +1068,16 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
 
       if (profilesError) throw profilesError;
 
+      // Sort profiles: those with avatar_url first, then by matchPercentage
       const sortedProfiles = (profilesData || []).sort((a, b) => {
+        // First prioritize profiles with avatar_url
         if (a.avatar_url && !b.avatar_url) return -1;
         if (!a.avatar_url && b.avatar_url) return 1;
-        return 0;
+        
+        // If both have or don't have avatar_url, sort by match percentage
+        const matchA = calculateMatchPercentage(currentUser, a);
+        const matchB = calculateMatchPercentage(currentUser, b);
+        return matchB - matchA;
       });
 
       const profilesWithMatches = sortedProfiles.map(profile => ({
@@ -1100,25 +1107,25 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-5xl mx-auto px-4 py-8 pb-32">
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
+                </div>
         )}
 
         {error && (
           <div className="text-center py-12">
             <p className="text-red-600 mb-4">{error}</p>
-                <button
+                    <button
               onClick={fetchProfiles}
               className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
               Retry
-                </button>
+                    </button>
                 </div>
               )}
 
@@ -1142,8 +1149,8 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     />
                     <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-bold text-[#cc0000]">
                       {profile.matchPercentage}% Match
-                    </div>
-                  </div>
+            </div>
+          </div>
                   <div className="p-4">
                     <div className="mb-3">
                       <h3 className="text-lg font-semibold mb-1">
@@ -1165,29 +1172,29 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                             {profile.bio}
                           </p>
                         )}
-                      </div>
-                    </div>
+                  </div>
+                </div>
                     <div className="flex gap-2 mb-4">
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Crown className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
-                          {profile.dater_status || 'bronze'}
+                          {(profile.dater_status || 'bronze').charAt(0).toUpperCase() + (profile.dater_status || 'bronze').slice(1)}
                         </span>
-                      </div>
+                  </div>
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Heart className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
                           {profile.matchPercentage}%
                         </span>
-                      </div>
+                  </div>
                       <div className="bg-gray-50 rounded-full px-3 py-1 text-center flex items-center gap-1">
                         <Star className="h-3.5 w-3.5 text-[#cc0000]" />
                         <span className="text-xs font-medium">
                           {profile.average_rating ? profile.average_rating.toFixed(1) : 'New'}
                         </span>
-                        </div>
-                    </div>
-                    <button
+                  </div>
+                </div>
+                  <button
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/send-date-request/${profile.id}`);
@@ -1196,23 +1203,23 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     >
                       Send Date Request
                     </button>
-                  </div>
-                </div>
-              ))}
+              </div>
             </div>
+          ))}
+        </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+        {/* Pagination */}
+        {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-8 mb-24">
-                <button
+            <button
                       onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
+              disabled={currentPage === 1}
                       className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
                     >
                       <ChevronLeft className="h-5 w-5 text-gray-600" />
-                </button>
+            </button>
                     {[...Array(totalPages)].map((_, index) => (
-                <button
+            <button
                         key={index + 1}
                         onClick={() => paginate(index + 1)}
                         className={`w-8 h-8 rounded-full text-sm font-medium ${
@@ -1226,12 +1233,12 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
                     ))}
                     <button
                       onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages}
                       className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-transparent"
                     >
                       <ChevronRight className="h-5 w-5 text-gray-600" />
-                </button>
-              </div>
+            </button>
+          </div>
             )}
           </>
         )}
