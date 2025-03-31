@@ -1,4 +1,4 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 import { cookies } from 'next/headers';
 import { prompt } from '@/app/fonts';
 import Link from 'next/link';
@@ -29,8 +29,6 @@ interface Post {
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
-  const supabase = createServerComponentClient({ cookies });
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 

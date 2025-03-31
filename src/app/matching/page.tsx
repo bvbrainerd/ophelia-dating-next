@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/supabase/client';
 import BottomNav from '@/components/BottomNav';
 import Header from '@/components/Header';
 import ProfileImage from '@/components/ProfileImage';
@@ -1033,7 +1033,6 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     fetchProfiles();
@@ -1180,7 +1179,7 @@ const MatchingPage = () => {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClientComponentClient();
+
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
