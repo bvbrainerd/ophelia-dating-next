@@ -1470,6 +1470,7 @@ const EditProfilePage = () => {
         avatar_url: cleanAvatarUrl,
         profile_visibility: profileData.profile_visibility || 'public',
         relationship_status: profileData.relationship_status || 'single',
+        email: profileData.email || '',
         is_couple_profile: profileData.relationship_status === 'couple',
         partner_email: profileData.relationship_status === 'couple' ? profileData.partner_email : null,
         partner_id: profileData.relationship_status === 'couple' ? profileData.partner_id : null,
