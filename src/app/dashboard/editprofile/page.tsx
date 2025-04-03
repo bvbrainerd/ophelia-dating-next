@@ -69,11 +69,7 @@ interface Profile {
   dater_archetype: string;
   school: string;
   profile_visibility: "public" | "private";
-  relationship_status: "single" | "couple";
-  partner_id?: string;
-  partner_email?: string;
-  is_couple_profile: boolean;
-  couple_verified: boolean;
+  couple_status: "single" | "in_relationship" | "married" | null;
   descriptors: Descriptor[];
 }
 
@@ -91,11 +87,7 @@ interface ProfileData {
   dater_archetype: string;
   school: string;
   profile_visibility: "public" | "private";
-  relationship_status: "single" | "couple";
-  partner_id?: string | null;
-  partner_email?: string | null;
-  is_couple_profile: boolean;
-  couple_verified: boolean;
+  couple_status: "single" | "in_relationship" | "married" | null;
   descriptors: Descriptor[];
   referral_code?: string;
 }
@@ -366,13 +358,6 @@ const PaymentSection = ({
         return;
       }
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user?.email) {
-        throw new Error('No email found in user account');
-      }
-
-      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -381,57 +366,15 @@ const PaymentSection = ({
 
       if (profileError) throw profileError;
 
-      // Initialize profile data with default values if null
-      const initializedProfileData = {
-        ...profileData,
-        avatar_url: profileData.avatar_url || DEFAULT_AVATAR,
-        relationship_status: profileData.relationship_status || 'single',
-        is_couple_profile: profileData.relationship_status === 'couple',
-        partner_email: profileData.relationship_status === 'couple' ? profileData.partner_email : null,
-        partner_id: profileData.relationship_status === 'couple' ? profileData.partner_id : null,
-        gender: profileData.gender || '',
-        preferred_gender: profileData.preferred_gender || '',
-        dater_archetype: profileData.dater_archetype || '',
-        descriptors: profileData.descriptors || [],
-        school: profileData.school || '',
-        profile_visibility: profileData.profile_visibility || 'public'
-      };
-
-      setProfileData(initializedProfileData);
-
-      // Fetch profile images
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('profile_images')
-        .select('*')
-        .eq('profile_id', session.user.id)
-        .order('created_at', { ascending: false });
-
-      if (imagesError) throw imagesError;
-
-      // Initialize profile images array even if empty
-      setProfileImages(imagesData || []);
-
-      // If there's no avatar_url but there are profile images, use the main image
-      if (!profileData.avatar_url && imagesData && imagesData.length > 0) {
-        const mainImage = imagesData.find(img => img.is_main);
-        if (mainImage) {
-          await supabase
-            .from('profiles')
-            .update({ avatar_url: mainImage.image_url })
-            .eq('id', user.id);
-          
-          setProfileData(prev => ({
-            ...prev,
-            avatar_url: mainImage.image_url
-          }));
-        }
+      if (profileData) {
+        setProfileData(profileData);
+        setReferralCode(profileData.referral_code || '');
       }
-
     } catch (error) {
       console.error('Error fetching profile:', error);
-      handleError(error instanceof Error ? error.message : 'Failed to load profile');
+      setImageError('Failed to load profile');
     }
-  }, [router]);
+  }, [router, setProfileData]);
 
   const handleError = (message: string) => {
     setImageError(message);
@@ -440,76 +383,36 @@ const PaymentSection = ({
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     setIsUploading(true);
-    setError(null);
-    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // Upload the image to storage
       const filename = `${user.id}_${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
+      const { data, error } = await supabase.storage
+            .from('avatars')
         .upload(filename, croppedBlob, {
           contentType: 'image/jpeg',
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
-      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filename);
 
-      if (!publicUrl) throw new Error('Failed to get public URL for uploaded image');
-
-      // Update existing images to not be main
-      if (profileImages.length > 0) {
-        await supabase
-          .from('profile_images')
-          .update({ is_main: false })
-          .eq('profile_id', user.id);
-      }
-
-      // Insert new image as main
-      const { data: imageData, error: insertError } = await supabase
+      await supabase
         .from('profile_images')
         .insert({
           profile_id: user.id,
           image_url: publicUrl,
-          is_main: true
-        })
-        .select()
-        .single();
+          is_main: profileImages.length === 0
+        });
 
-      if (insertError) throw insertError;
-
-      // Update profile avatar_url
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Update local state
-      setProfileData(prev => ({
-        ...prev,
-        avatar_url: publicUrl
-      }));
-
-      // Add new image to images array
-      setProfileImages(prev => [imageData, ...prev.map(img => ({ ...img, is_main: false }))]);
-
-      // Close cropper and clean up
+      await fetchProfile();
       setShowCropper(false);
       setSelectedFile(null);
-      toast.success('Profile picture updated successfully');
-      
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
       handleError(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setIsUploading(false);
@@ -517,118 +420,73 @@ const PaymentSection = ({
   };
 
   const handleChange = (field: keyof ProfileData, value: string | number | null) => {
-    setProfileData(prev => {
-      // For relationship_status, handle the transition properly
-      if (field === 'relationship_status') {
-        const newStatus = value as 'single' | 'couple';
-        const baseUpdate = {
-          ...prev,
-          relationship_status: newStatus || 'single'
-        };
-
-        if (newStatus === 'single') {
-          return {
-            ...baseUpdate,
-            partner_email: null,
-            partner_id: null,
-            is_couple_profile: false,
-            couple_verified: false
-          };
-        }
-        return {
-          ...baseUpdate,
-          is_couple_profile: true
-        };
-      }
-      
-      // For partner_email, update couple-related fields
-      if (field === 'partner_email') {
-        return {
-          ...prev,
-          partner_email: value as string | null,
-          is_couple_profile: Boolean(value),
-          couple_verified: false // Reset verification when partner email changes
-        };
-      }
-
-      // For select fields, ensure we never set null values
-      if (['gender', 'preferred_gender', 'dater_archetype', 'school', 'profile_visibility'].includes(field)) {
-        return {
-          ...prev,
-          [field]: value || ''
-        };
-      }
-      
-      return { ...prev, [field]: value };
-    });
+    console.log('Handling change for field:', field, 'value:', value);
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setImageError(null);
 
     try {
-      const cleanAvatarUrl = profileData.avatar_url || DEFAULT_AVATAR;
-      const updatedProfile = {
-        first_name: profileData.first_name || '',
-        last_name: profileData.last_name || '',
-        bio: profileData.bio || '',
-        age: profileData.age || null,
-        gender: profileData.gender || '',
-        preferred_gender: profileData.preferred_gender || '',
-        dater_archetype: profileData.dater_archetype || '',
-        school: profileData.school || '',
-        descriptors: profileData.descriptors || [],
-        avatar_url: cleanAvatarUrl,
-        profile_visibility: profileData.profile_visibility || 'public',
-        relationship_status: profileData.relationship_status || 'single',
-        is_couple_profile: profileData.relationship_status === 'couple',
-        partner_email: profileData.relationship_status === 'couple' ? profileData.partner_email : null,
-        partner_id: profileData.relationship_status === 'couple' ? profileData.partner_id : null,
-        couple_verified: profileData.relationship_status === 'couple' ? profileData.couple_verified : false
-      };
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updatedProfile)
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Profile update error:', error);
-        throw new Error(error.message);
-      }
-
-      // If this is a couple profile and partner email is provided, send invitation
-      if (profileData.relationship_status === 'couple' && profileData.partner_email) {
-        console.log('Sending partner invitation to:', profileData.partner_email);
-        
-        const response = await fetch('/api/invite-partner', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            partnerEmail: profileData.partner_email,
-            userId: user.id,
-            userName: profileData.first_name
-          })
-        });
-
-        const responseData = await response.json();
-        console.log('Partner invitation response:', responseData);
-
-        if (!response.ok) {
-          throw new Error(responseData.error || responseData.details || 'Failed to send partner invitation');
+      // Clean up avatar_url - remove any duplicate avatars/ prefix
+      let cleanAvatarUrl = profileData.avatar_url;
+      if (cleanAvatarUrl && !cleanAvatarUrl.startsWith('/images/')) {
+        if (cleanAvatarUrl.startsWith('http')) {
+          // Extract filename from URL
+          const match = cleanAvatarUrl.match(/\/avatars\/([^?]+)/);
+          if (match) {
+            cleanAvatarUrl = match[1];
+          }
+        } else {
+          cleanAvatarUrl = cleanAvatarUrl.replace(/^avatars\//, '');
         }
       }
 
-      toast.success('Profile updated successfully');
-      router.push('/dashboard');
+      // Map the display value to the database value for dater_archetype
+      const daterArchetype = ARCHETYPES.find(
+        archetype => archetype.label === profileData.dater_archetype
+      )?.value || profileData.dater_archetype;
+
+      // Only include fields that exist in the profiles table
+      const updates = {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        age: profileData.age,
+        gender: profileData.gender,
+        preferred_gender: profileData.preferred_gender,
+        bio: profileData.bio,
+        dater_archetype: daterArchetype,
+        school: profileData.school,
+        avatar_url: cleanAvatarUrl,
+        profile_visibility: profileData.profile_visibility,
+        couple_status: profileData.couple_status
+      };
+
+      console.log('Updating profile with:', updates);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Show success message
+      alert('Profile updated successfully!');
+      
+      // Refresh profile to get updated state with correct URLs
+      await fetchProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
-      setError('Failed to update profile. Please try again.');
+      setImageError(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
@@ -640,7 +498,7 @@ const PaymentSection = ({
       router.push('/auth/login');
     } catch (error) {
       console.error('Error logging out:', error);
-      setError('Failed to log out');
+      setImageError('Failed to log out');
     }
   };
 
@@ -648,21 +506,18 @@ const PaymentSection = ({
     const refreshImage = async () => {
       if (profileData.avatar_url && !profileData.avatar_url.startsWith('/images/')) {
         try {
-          // If it's already a full URL and starts with http, keep using it
+          // If it's already a full URL, keep using it
           if (profileData.avatar_url.startsWith('http')) {
             return;
           }
 
-          // Clean up the path and ensure it doesn't have a dashboard prefix
-          const cleanPath = profileData.avatar_url
-            .replace(/^\/dashboard\//, '')
-            .replace(/^avatars\//, '')
-            .split('?')[0];
+          // Clean up the path - remove any duplicate avatars/ prefix
+          const cleanPath = profileData.avatar_url.replace(/^avatars\//, '');
 
-          // Get the public URL from Supabase storage
+          // Get the public URL that doesn't expire
           const { data } = supabase
             .storage
-            .from('avatars')
+          .from('avatars')
             .getPublicUrl(cleanPath);
 
           if (data?.publicUrl) {
@@ -671,7 +526,7 @@ const PaymentSection = ({
               avatar_url: data.publicUrl
             }));
           } else {
-            console.error('Failed to get public URL for:', cleanPath);
+            setImageError('Failed to load image URL');
             setProfileData(prev => ({
               ...prev,
               avatar_url: DEFAULT_AVATAR
@@ -679,6 +534,7 @@ const PaymentSection = ({
           }
         } catch (error) {
           console.error('Error refreshing image:', error);
+          setImageError('Error loading profile image');
           setProfileData(prev => ({
             ...prev,
             avatar_url: DEFAULT_AVATAR
@@ -697,7 +553,7 @@ const PaymentSection = ({
       window.location.replace('/auth/reset-password');
     } catch (error) {
       console.error('Error:', error);
-      setError('Failed to initiate password reset');
+      setImageError('Failed to initiate password reset');
     } finally {
       setIsLoading(false);
     }
@@ -1090,21 +946,18 @@ const EditProfilePage = () => {
   const [profileData, setProfileData] = useState<ProfileData>({
     first_name: '',
     last_name: '',
-    email: '',
-    avatar_url: DEFAULT_AVATAR,
-    bio: '',
     age: null,
     gender: '',
     preferred_gender: '',
+    bio: '',
     dater_archetype: '',
-    school: '',
+    school: 'Boston College',
+    avatar_url: null,
+    email: '',
+    referral_code: '',
     descriptors: [],
     profile_visibility: 'public',
-    relationship_status: 'single',
-    is_couple_profile: false,
-    couple_verified: false,
-    partner_id: null,
-    partner_email: null
+    couple_status: null
   });
   const [imageKey, setImageKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -1147,7 +1000,6 @@ const EditProfilePage = () => {
         throw new Error('No email found in user account');
       }
 
-      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -1156,25 +1008,8 @@ const EditProfilePage = () => {
 
       if (profileError) throw profileError;
 
-      // Initialize profile data with default values if null
-      const initializedProfileData = {
-        ...profileData,
-        avatar_url: profileData.avatar_url || DEFAULT_AVATAR,
-        relationship_status: profileData.relationship_status || 'single',
-        is_couple_profile: profileData.relationship_status === 'couple',
-        partner_email: profileData.relationship_status === 'couple' ? profileData.partner_email : null,
-        partner_id: profileData.relationship_status === 'couple' ? profileData.partner_id : null,
-        gender: profileData.gender || '',
-        preferred_gender: profileData.preferred_gender || '',
-        dater_archetype: profileData.dater_archetype || '',
-        descriptors: profileData.descriptors || [],
-        school: profileData.school || '',
-        profile_visibility: profileData.profile_visibility || 'public'
-      };
+      setProfileData(profileData);
 
-      setProfileData(initializedProfileData);
-
-      // Fetch profile images
       const { data: imagesData, error: imagesError } = await supabase
         .from('profile_images')
         .select('*')
@@ -1183,27 +1018,8 @@ const EditProfilePage = () => {
 
       if (imagesError) throw imagesError;
 
-      // Initialize profile images array even if empty
-      setProfileImages(imagesData || []);
-
-      // If there's no avatar_url but there are profile images, use the main image
-      if (!profileData.avatar_url && imagesData && imagesData.length > 0) {
-        const mainImage = imagesData.find(img => img.is_main);
-        if (mainImage) {
-          await supabase
-            .from('profiles')
-            .update({ avatar_url: mainImage.image_url })
-            .eq('id', user.id);
-          
-          setProfileData(prev => ({
-            ...prev,
-            avatar_url: mainImage.image_url
-          }));
-        }
-      }
-
+      setProfileImages(imagesData);
     } catch (error) {
-      console.error('Error fetching profile:', error);
       handleError(error instanceof Error ? error.message : 'Failed to load profile');
     }
   }, [router]);
@@ -1292,76 +1108,36 @@ const EditProfilePage = () => {
 
   const handleCropComplete = async (croppedBlob: Blob) => {
     setIsUploading(true);
-    setError(null);
-    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      // Upload the image to storage
       const filename = `${user.id}_${Date.now()}.jpg`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('avatars')
         .upload(filename, croppedBlob, {
           contentType: 'image/jpeg',
           upsert: true
         });
 
-      if (uploadError) throw uploadError;
+      if (error) throw error;
 
-      // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filename);
 
-      if (!publicUrl) throw new Error('Failed to get public URL for uploaded image');
-
-      // Update existing images to not be main
-      if (profileImages.length > 0) {
-        await supabase
-          .from('profile_images')
-          .update({ is_main: false })
-          .eq('profile_id', user.id);
-      }
-
-      // Insert new image as main
-      const { data: imageData, error: insertError } = await supabase
+      await supabase
         .from('profile_images')
         .insert({
           profile_id: user.id,
           image_url: publicUrl,
-          is_main: true
-        })
-        .select()
-        .single();
+          is_main: profileImages.length === 0
+        });
 
-      if (insertError) throw insertError;
-
-      // Update profile avatar_url
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Update local state
-      setProfileData(prev => ({
-        ...prev,
-        avatar_url: publicUrl
-      }));
-
-      // Add new image to images array
-      setProfileImages(prev => [imageData, ...prev.map(img => ({ ...img, is_main: false }))]);
-
-      // Close cropper and clean up
+      await fetchProfile();
       setShowCropper(false);
       setSelectedFile(null);
-      toast.success('Profile picture updated successfully');
-      
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
       handleError(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setIsUploading(false);
@@ -1405,119 +1181,74 @@ const EditProfilePage = () => {
   };
 
   const handleChange = (field: keyof ProfileData, value: string | number | null) => {
-    setProfileData(prev => {
-      // For relationship_status, handle the transition properly
-      if (field === 'relationship_status') {
-        const newStatus = value as 'single' | 'couple';
-        const baseUpdate = {
-          ...prev,
-          relationship_status: newStatus || 'single'
-        };
-
-        if (newStatus === 'single') {
-          return {
-            ...baseUpdate,
-            partner_email: null,
-            partner_id: null,
-            is_couple_profile: false,
-            couple_verified: false
-          };
-        }
-        return {
-          ...baseUpdate,
-          is_couple_profile: true
-        };
-      }
-      
-      // For partner_email, update couple-related fields
-      if (field === 'partner_email') {
-        return {
-          ...prev,
-          partner_email: value as string | null,
-          is_couple_profile: Boolean(value),
-          couple_verified: false // Reset verification when partner email changes
-        };
-      }
-
-      // For select fields, ensure we never set null values
-      if (['gender', 'preferred_gender', 'dater_archetype', 'school', 'profile_visibility'].includes(field)) {
-        return {
-          ...prev,
-          [field]: value || ''
-        };
-      }
-      
-      return { ...prev, [field]: value };
-    });
+    console.log('Handling change for field:', field, 'value:', value);
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
-      const cleanAvatarUrl = profileData.avatar_url || DEFAULT_AVATAR;
-      const updatedProfile = {
-        first_name: profileData.first_name || '',
-        last_name: profileData.last_name || '',
-        bio: profileData.bio || '',
-        age: profileData.age || null,
-        gender: profileData.gender || '',
-        preferred_gender: profileData.preferred_gender || '',
-        dater_archetype: profileData.dater_archetype || '',
-        school: profileData.school || '',
-        descriptors: profileData.descriptors || [],
-        avatar_url: cleanAvatarUrl,
-        profile_visibility: profileData.profile_visibility || 'public',
-        relationship_status: profileData.relationship_status || 'single',
-        email: profileData.email || '',
-        is_couple_profile: profileData.relationship_status === 'couple',
-        partner_email: profileData.relationship_status === 'couple' ? profileData.partner_email : null,
-        partner_id: profileData.relationship_status === 'couple' ? profileData.partner_id : null,
-        couple_verified: profileData.relationship_status === 'couple' ? profileData.couple_verified : false
-      };
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
 
-      const { error } = await supabase
-        .from('profiles')
-        .update(updatedProfile)
-        .eq('id', user.id);
-
-      if (error) {
-        console.error('Profile update error:', error);
-        throw new Error(error.message);
-      }
-
-      // If this is a couple profile and partner email is provided, send invitation
-      if (profileData.relationship_status === 'couple' && profileData.partner_email) {
-        console.log('Sending partner invitation to:', profileData.partner_email);
-        
-        const response = await fetch('/api/invite-partner', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            partnerEmail: profileData.partner_email,
-            userId: user.id,
-            userName: profileData.first_name
-          })
-        });
-
-        const responseData = await response.json();
-        console.log('Partner invitation response:', responseData);
-
-        if (!response.ok) {
-          throw new Error(responseData.error || responseData.details || 'Failed to send partner invitation');
+      // Clean up avatar_url - remove any duplicate avatars/ prefix
+      let cleanAvatarUrl = profileData.avatar_url;
+      if (cleanAvatarUrl && !cleanAvatarUrl.startsWith('/images/')) {
+        if (cleanAvatarUrl.startsWith('http')) {
+          // Extract filename from URL
+          const match = cleanAvatarUrl.match(/\/avatars\/([^?]+)/);
+          if (match) {
+            cleanAvatarUrl = match[1];
+          }
+        } else {
+          cleanAvatarUrl = cleanAvatarUrl.replace(/^avatars\//, '');
         }
       }
 
-      toast.success('Profile updated successfully');
-      router.push('/dashboard');
+      // Map the display value to the database value for dater_archetype
+      const daterArchetype = ARCHETYPES.find(
+        archetype => archetype.label === profileData.dater_archetype
+      )?.value || profileData.dater_archetype;
+
+      // Only include fields that exist in the profiles table
+      const updates = {
+        first_name: profileData.first_name,
+        last_name: profileData.last_name,
+        age: profileData.age,
+        gender: profileData.gender,
+        preferred_gender: profileData.preferred_gender,
+        bio: profileData.bio,
+        dater_archetype: daterArchetype,
+        school: profileData.school,
+        avatar_url: cleanAvatarUrl,
+        profile_visibility: profileData.profile_visibility,
+        couple_status: profileData.couple_status,
+        email: profileData.email,
+      };
+
+      console.log('Updating profile with:', updates);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Show success message
+      alert('Profile updated successfully!');
+      
+      // Refresh profile to get updated state with correct URLs
+      await fetchProfile();
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
-      setError('Failed to update profile. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
       setIsLoading(false);
     }
@@ -1537,18 +1268,15 @@ const EditProfilePage = () => {
     const refreshImage = async () => {
       if (profileData.avatar_url && !profileData.avatar_url.startsWith('/images/')) {
         try {
-          // If it's already a full URL and starts with http, keep using it
+          // If it's already a full URL, keep using it
           if (profileData.avatar_url.startsWith('http')) {
             return;
           }
 
-          // Clean up the path and ensure it doesn't have a dashboard prefix
-          const cleanPath = profileData.avatar_url
-            .replace(/^\/dashboard\//, '')
-            .replace(/^avatars\//, '')
-            .split('?')[0];
+          // Clean up the path - remove any duplicate avatars/ prefix
+          const cleanPath = profileData.avatar_url.replace(/^avatars\//, '');
 
-          // Get the public URL from Supabase storage
+          // Get the public URL that doesn't expire
           const { data } = supabase
             .storage
             .from('avatars')
@@ -1560,7 +1288,7 @@ const EditProfilePage = () => {
               avatar_url: data.publicUrl
             }));
           } else {
-            console.error('Failed to get public URL for:', cleanPath);
+            setImageError('Failed to load image URL');
             setProfileData(prev => ({
               ...prev,
               avatar_url: DEFAULT_AVATAR
@@ -1568,6 +1296,7 @@ const EditProfilePage = () => {
           }
         } catch (error) {
           console.error('Error refreshing image:', error);
+          setImageError('Error loading profile image');
           setProfileData(prev => ({
             ...prev,
             avatar_url: DEFAULT_AVATAR
@@ -1639,20 +1368,23 @@ const EditProfilePage = () => {
             </TabsList>
 
               <TabsContent value="profile">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-6">
                   {/* Profile Photos Section */}
                   <div className="mb-8">
                     <h2 className="text-2xl font-semibold text-gray-800 mb-6">Profile Photos</h2>
                     <div className="flex flex-col items-center gap-4">
                       <div className="relative w-32 h-32">
                         <Image
-                          src={profileData.avatar_url?.startsWith('http') ? profileData.avatar_url : DEFAULT_AVATAR}
+                          src={profileData.avatar_url || DEFAULT_AVATAR}
                           alt="Profile"
                           fill
                           className="rounded-full object-cover"
+                          unoptimized={true}
                           priority={true}
+                          crossOrigin="anonymous"
                           onError={(e) => {
                             console.error('Error loading profile image:', profileData.avatar_url);
+                            setImageError('Failed to load profile image');
                             const target = e.target as HTMLImageElement;
                             target.src = DEFAULT_AVATAR;
                           }}
@@ -1759,7 +1491,7 @@ const EditProfilePage = () => {
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">Dating Preferences</h3>
                     <div className="space-y-4">
                       <select
-                        value={profileData.gender || ''}
+                        value={profileData.gender}
                         onChange={(e) => handleChange('gender', e.target.value)}
                         className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
                         required
@@ -1771,7 +1503,7 @@ const EditProfilePage = () => {
                       </select>
 
                       <select
-                        value={profileData.preferred_gender || ''}
+                        value={profileData.preferred_gender}
                         onChange={(e) => handleChange('preferred_gender', e.target.value)}
                         className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
                         required
@@ -1787,61 +1519,31 @@ const EditProfilePage = () => {
                   {/* Dating Style */}
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">Dating Style</h3>
-                    <div className="space-y-4">
-                      <select
-                        value={profileData.dater_archetype || ''}
-                        onChange={(e) => handleChange('dater_archetype', e.target.value)}
-                        className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-                        required
-                      >
-                        <option value="">Select Dating Style</option>
-                        {ARCHETYPES.map(({ value, label }) => (
-                          <option key={value} value={value}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="space-y-4">
+                    <select
+                      value={profileData.dater_archetype}
+                      onChange={(e) => handleChange('dater_archetype', e.target.value)}
+                      className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                      required
+                    >
+                      <option value="">Select Dating Style</option>
+                      {ARCHETYPES.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
 
-                      <div className="sm:col-span-2">
-                        <label htmlFor="relationship_status" className="block text-sm font-medium leading-6 text-gray-900 mb-2">
-                          Relationship Status
-                        </label>
-                        <select
-                          id="relationship_status"
-                          name="relationship_status"
-                          value={profileData.relationship_status || 'single'}
-                          onChange={(e) => handleChange('relationship_status', e.target.value as 'single' | 'couple')}
-                          className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-                        >
-                          <option value="single">Single</option>
-                          <option value="couple">In a Relationship</option>
-                        </select>
-                      </div>
-
-                      {profileData.relationship_status === 'couple' && (
-                        <>
-                          <div className="sm:col-span-2">
-                            <label htmlFor="partner_email" className="block text-sm font-medium leading-6 text-gray-900 mb-2">
-                              Partner's Email
-                            </label>
-                            <div className="mt-2">
-                              <input
-                                type="email"
-                                name="partner_email"
-                                id="partner_email"
-                                value={profileData.partner_email || ''}
-                                onChange={(e) => handleChange('partner_email', e.target.value)}
-                                className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
-                                placeholder="Enter your partner's email"
-                              />
-                            </div>
-                            <p className="mt-2 text-sm text-gray-500">
-                              Your partner will receive an invitation to join your couple profile.
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <select
+                      value={profileData.couple_status || ''}
+                      onChange={(e) => handleChange('couple_status', e.target.value || null)}
+                      className="w-full p-2.5 border border-gray-200 rounded-full outline-none focus:border-[#cc0000] transition-colors"
+                    >
+                      <option value="">Relationship Status</option>
+                      <option value="single">Single</option>
+                      <option value="in_relationship">In a Relationship</option>
+                    </select>
+                  </div>
                   </div>
 
                   {/* Descriptors */}
@@ -1879,8 +1581,8 @@ const EditProfilePage = () => {
                   <div className="max-w-4xl mx-auto">
                       <button
                         type="button"
-                        onClick={handleSubmit}
-                        className="w-full bg-[#BA2525] text-white px-6 py-2.5 rounded-full hover:bg-[#a02020] transition-colors"
+                      onClick={handleSave}
+                      className="w-full bg-[#BA2525] text-white px-6 py-2.5 rounded-full hover:bg-[#a02020] transition-colors"
                       >
                       Save Changes
                       </button>

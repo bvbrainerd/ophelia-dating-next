@@ -1,11 +1,13 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
+import { supabase } from '@/supabase/client';
 import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
 
+
 // Initialize SendGrid with your API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+sgMail.setApiKey(process.env.ADDITIONAL_SENDGRID_API_KEY_!);
 
 export async function GET(
   request: Request
@@ -33,42 +35,73 @@ export async function GET(
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(
+  request: Request
+) {
   try {
-    const supabase = await createClient();
+
+    // Get id from URL instead of params
+    const id = request.url.split('/').pop();
     
-    // Verify authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get the authorization header
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'No authorization header' },
+        { status: 401 }
+      );
     }
 
-    const { sender_id, venue, proposed_time, proposed_payment } = await request.json();
+    // Create a new Supabase client
+    const supabase = await createClient();
 
-    // Insert the date request
-    const { data: dateRequest, error: insertError } = await supabase
+    // Get user from the token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: session } = await supabase.auth.getSession();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Invalid session' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Verify that the sender_id matches the authenticated user
+    if (body.sender_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized: User ID mismatch' },
+        { status: 401 }
+      );
+    }
+
+    // Create the date request
+    const { error: insertError } = await supabase
       .from('date_requests')
-      .insert([{
-        sender_id,
-        receiver_id: params.id,
-        venue,
-        proposed_time,
-        proposed_payment,
+      .insert({
+        sender_id: user.id,
+        receiver_id: id,
+        venue: body.venue,
+        proposed_time: body.proposed_time,
+        proposed_payment: body.proposed_payment,
         status: 'pending'
-      }])
-      .select()
-      .single();
+      });
 
     if (insertError) {
-      console.error('Insert Error:', insertError);
-      return NextResponse.json({ error: insertError.message }, { status: 400 });
+      console.error('Insert error:', insertError);
+      return NextResponse.json(
+        { error: insertError.message },
+        { status: 400 }
+      );
     }
 
     // After successful date request insertion, fetch receiver's email and name
     const { data: receiverProfile, error: receiverError } = await supabase
       .from('profiles')
       .select('email, first_name')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (receiverError || !receiverProfile) {
@@ -80,7 +113,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { data: senderProfile, error: senderError } = await supabase
       .from('profiles')
       .select('first_name, last_name')
-      .eq('id', sender_id)
+      .eq('id', user.id)
       .single();
 
     if (senderError || !senderProfile) {
@@ -92,15 +125,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const msg = {
       to: receiverProfile.email,
       from: {
-        email: process.env.SENDGRID_FROM_EMAIL || 'dates@opheliadating.io',
+        email:'dates@opheliadating.io',
         name: 'Ophelia Dating'
       },
-      templateId: process.env.SENDGRID_DATE_REQUEST_TEMPLATE_ID!,
+      templateId: process.env.SENDGRID_DATE_NOTIFICATION_TEMPLATE_ID!,
       dynamicTemplateData: {
-        recipientName: receiverProfile.first_name,
+        user: {
+          name: receiverProfile.first_name,
+        },
         senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
-        venue: venue,
-        dateTime: new Date(proposed_time).toLocaleString('en-US', {
+        venue: body.venue,
+        dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -109,12 +144,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           minute: 'numeric',
           hour12: true
         }),
-        paymentAmount: proposed_payment ? `$${proposed_payment}` : 'Pre-paid by sender',
+        paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
         dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
-      },
-      asm: {
-        groupId: 20158, // Unsubscribe group ID
-        groupsToDisplay: [20158]
       },
       mailSettings: {
         bypassListManagement: {
@@ -134,11 +165,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
       }
     };
 
+    console.log(msg);
+
     try {
       const emailResult = await sgMail.send(msg);
       console.log('Email sent successfully:', emailResult);
     } catch (emailError: any) {
       console.error('SendGrid Error:', emailError);
+      console.log('SendGrid Error:', emailError.response.body);
       if (emailError.response?.body) {
         console.error(emailError.response.body);
       }
@@ -146,11 +180,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
       // but we should log the error for monitoring
     }
 
-    return NextResponse.json({ success: true, data: dateRequest });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error:', error);
     return NextResponse.json(
-      { error: 'Failed to create date request' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

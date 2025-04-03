@@ -1,0 +1,8 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "moduleResolution": "node",
+      "types": ["node", "puppeteer"]
+    },
+    "include": ["src/app/api/reserve/yelp/route.ts"]
+  }
