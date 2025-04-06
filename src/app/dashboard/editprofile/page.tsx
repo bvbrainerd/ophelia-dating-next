@@ -27,7 +27,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 });
 
 // Log Stripe initialization
-console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY exists:', !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+// console.log('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY exists:', !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
 const DEFAULT_AVATAR = '/images/default-avatar.png';
 
@@ -603,7 +603,7 @@ const PaymentSection = ({
 
       // If this is a couple profile and partner email is provided, send invitation
       if (profileData.relationship_status === 'couple' && profileData.partner_email) {
-        console.log('Sending partner invitation to:', profileData.partner_email);
+        // console.log('Sending partner invitation to:', profileData.partner_email);
         
         const response = await fetch('/api/invite-partner', {
           method: 'POST',
@@ -616,7 +616,7 @@ const PaymentSection = ({
         });
 
         const responseData = await response.json();
-        console.log('Partner invitation response:', responseData);
+        // console.log('Partner invitation response:', responseData);
 
         if (!response.ok) {
           throw new Error(responseData.error || responseData.details || 'Failed to send partner invitation');
@@ -1491,7 +1491,7 @@ const EditProfilePage = () => {
 
       // If this is a couple profile and partner email is provided, send invitation
       if (profileData.relationship_status === 'couple' && profileData.partner_email) {
-        console.log('Sending partner invitation to:', profileData.partner_email);
+        // console.log('Sending partner invitation to:', profileData.partner_email);
         
         const response = await fetch('/api/invite-partner', {
           method: 'POST',
@@ -1504,7 +1504,7 @@ const EditProfilePage = () => {
         });
 
         const responseData = await response.json();
-        console.log('Partner invitation response:', responseData);
+        // console.log('Partner invitation response:', responseData);
 
         if (!response.ok) {
           throw new Error(responseData.error || responseData.details || 'Failed to send partner invitation');

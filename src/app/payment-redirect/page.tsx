@@ -16,7 +16,7 @@ function SetupConfirmation() {
     const handleRedirect = async () => {
       try {
         if (!stripe) {
-          console.log('Waiting for Stripe to initialize...');
+          // console.log('Waiting for Stripe to initialize...');
           return; // Will retry on next effect run when stripe is available
         }
 

@@ -57,7 +57,7 @@ const ProfileImage = ({ user, className = '', priority = false, sizes }: Profile
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   useEffect(() => {
     const fetchAvatarUrl = async () => {
-      console.log('Avatar URL:', user.avatar_url);
+      // console.log('Avatar URL:', user.avatar_url);
 
       const url = getAvatarUrl(user.avatar_url || null);
       setAvatarUrl(url);
