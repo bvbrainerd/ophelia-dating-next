@@ -708,7 +708,7 @@ export default function DateRequestsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      console.log('Starting fetchData...');
+      // console.log('Starting fetchData...');
       setIsLoading(true);
       setError(null);
       setNetworkError(null);
@@ -721,7 +721,7 @@ export default function DateRequestsPage() {
         return;
       }
 
-      console.log('Current user ID:', user.id);
+      // console.log('Current user ID:', user.id);
 
       // Query matching your actual database schema
       const { data: requestsData, error: requestsError } = await supabase
@@ -740,12 +740,12 @@ export default function DateRequestsPage() {
         .eq('receiver_id', user.id)
         .eq('status', 'pending');
 
-      console.log('Date requests response:', { data: requestsData, error: requestsError });
+      // console.log('Date requests response:', { data: requestsData, error: requestsError });
 
       if (requestsError) throw requestsError;
 
       const formattedRequests = (requestsData || []).map((request: any) => {
-        console.log('Processing request:', request);
+        // console.log('Processing request:', request);
         
         // Get coordinates from your venueCoordinates mapping
         const coordinates = venueCoordinates[request.venue as keyof typeof venueCoordinates] || [-71.0589, 42.3601];
@@ -771,7 +771,7 @@ export default function DateRequestsPage() {
         };
       });
 
-      console.log('Formatted requests:', formattedRequests);
+      // console.log('Formatted requests:', formattedRequests);
       setDateRequests(formattedRequests);
 
       // Similarly update the upcoming dates query
@@ -817,7 +817,7 @@ export default function DateRequestsPage() {
         };
       });
 
-      console.log('Formatted upcoming:', formattedUpcoming);
+      // console.log('Formatted upcoming:', formattedUpcoming);
       setUpcomingDates(formattedUpcoming);
 
     } catch (error: any) {
@@ -889,7 +889,7 @@ export default function DateRequestsPage() {
   }, []);
 
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
-    console.log('Handling date response:', { requestId, status });
+    // console.log('Handling date response:', { requestId, status });
     try {
       // Step 1: Get the date request details first
       const { data: request, error: requestError } = await supabase
@@ -897,12 +897,12 @@ export default function DateRequestsPage() {
         .select('*')
         .eq('id', requestId)
         .single();
-        console.log('request.id:', request.id);
+        // console.log('request.id:', request.id);
 
-      console.log('request:', request);
+      // console.log('request:', request);
 
       if (requestError || !request) {
-        console.log('dateRequest not found');
+        // console.log('dateRequest not found');
         throw requestError || new Error('Date request not found');
       }
       if (status === 'accepted') {
@@ -917,8 +917,8 @@ export default function DateRequestsPage() {
             minute: "2-digit",
             hour12: true,
           });
-          console.log('reservation date', reservationDate);
-          console.log('reservation time', reservationTime);
+          // console.log('reservation date', reservationDate);
+          // console.log('reservation time', reservationTime);
 
           // const reservationResponse = await fetch("/api/reserve/opentable", {
           //   method: "POST",
@@ -960,7 +960,7 @@ export default function DateRequestsPage() {
         .filter('id', 'eq', requestId)
         .select();
 
-      console.log('Update response:', { data, status: resStatus, statusText });
+      // console.log('Update response:', { data, status: resStatus, statusText });
       // console.log('Update response:', { error: updateError });
 
       // if (updateError) throw updateError;
@@ -1005,7 +1005,7 @@ export default function DateRequestsPage() {
 
       // Step 7: Redirect to Stripe or payment confirmation  
       if (status === "accepted") {
-        console.log(request.venue)
+        // console.log(request.venue)
         const venueType = getVenueType(request.venue);
         if (!(venueType.toLowerCase().includes("restaurant") || venueType.toLowerCase().includes("cafe") || venueType.toLowerCase().includes("bar"))) {
           const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link

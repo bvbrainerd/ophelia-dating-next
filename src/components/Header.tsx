@@ -83,7 +83,7 @@ export default function Header({ variant = 'default' }: HeaderProps) {
         .single();
 
       if (profileData) {
-        console.log('Raw profile data from header:', profileData);
+        // console.log('Raw profile data from header:', profileData);
         
         // Get the avatar URL
         const avatarUrl = await getAvatarUrl(profileData.avatar_url);

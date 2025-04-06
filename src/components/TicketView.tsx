@@ -37,13 +37,13 @@ const TicketView: React.FC<TicketViewProps> = ({ date }) => {
             .maybeSingle();
 
           if (ticketError) {
-            console.log('Database error:', ticketError);
+            // console.log('Database error:', ticketError);
             // Continue to vendor service
           } else if (ticketData?.ticket_details) {
             details = ticketData.ticket_details as TicketDetails;
           }
         } catch (dbError) {
-          console.log('Database error:', dbError);
+          // console.log('Database error:', dbError);
           // Continue to vendor service
         }
 

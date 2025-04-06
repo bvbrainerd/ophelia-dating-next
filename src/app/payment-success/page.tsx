@@ -48,13 +48,13 @@ export default function PaymentSuccessHandler() {
         if (updateError) throw updateError;
 
         // Add debug logs
-        console.log('Sending confirmation email with data:', {
-          recipientEmail: dateRequest.profiles.email,
-          recipientName: dateRequest.profiles.first_name,
-          venueName: dateRequest.venue,
-          dateTime: dateRequest.proposed_time,
-          dateDetails: dateRequest.date_details
-        });
+        // console.log('Sending confirmation email with data:', {
+        //   recipientEmail: dateRequest.profiles.email,
+        //   recipientName: dateRequest.profiles.first_name,
+        //   venueName: dateRequest.venue,
+        //   dateTime: dateRequest.proposed_time,
+        //   dateDetails: dateRequest.date_details
+        // });
 
         // Send confirmation email
         const emailResponse = await fetch('/api/send-date-confirmation', {
@@ -72,7 +72,7 @@ export default function PaymentSuccessHandler() {
         });
 
         const emailResult = await emailResponse.json();
-        console.log('Email send result:', emailResult);
+        // console.log('Email send result:', emailResult);
 
         setIsProcessing(false);
         
@@ -136,7 +136,7 @@ export default function PaymentSuccessHandler() {
               })
             ]);
 
-            console.log('Date confirmation emails sent successfully');
+            // console.log('Date confirmation emails sent successfully');
           } catch (error) {
             console.error('Error sending confirmation emails:', error);
           }

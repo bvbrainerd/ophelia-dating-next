@@ -42,7 +42,7 @@ export default function HighlightReelPage() {
     if (!video) return;
 
     // Log the video URL being attempted
-    console.log('Attempting to load video from:', '/videos/highlightreel.mp4');
+    // console.log('Attempting to load video from:', '/videos/highlightreel.mp4');
 
     // Set a timeout to handle stalled loading
     loadTimeoutRef.current = setTimeout(() => {
@@ -65,20 +65,20 @@ export default function HighlightReelPage() {
 
     const handleLoadStart = () => {
       if (!mounted) return;
-      console.log('Video load started');
+      // console.log('Video load started');
       setVideoLoading(true);
       setVideoError(false);
     };
 
     const handleLoadedMetadata = () => {
       if (!mounted) return;
-      console.log('Video metadata loaded', {
-        duration: video.duration,
-        videoWidth: video.videoWidth,
-        videoHeight: video.videoHeight,
-        readyState: video.readyState,
-        networkState: video.networkState
-      });
+      // console.log('Video metadata loaded', {
+      //   duration: video.duration,
+      //   videoWidth: video.videoWidth,
+      //   videoHeight: video.videoHeight,
+      //   readyState: video.readyState,
+      //   networkState: video.networkState
+      // });
     };
 
     const handleLoadedData = () => {

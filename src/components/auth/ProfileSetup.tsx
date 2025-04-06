@@ -95,7 +95,7 @@ export default function ProfileSetup({ onComplete }: ProfileSetupProps) {
   };
 
   if (showQuiz) {
-    console.log('Rendering quiz component');
+    // console.log('Rendering quiz component');
     return (
       <div className="max-w-md mx-auto p-5">
         <h2 className="text-center text-[#cc0000] font-bold text-3xl mb-6">

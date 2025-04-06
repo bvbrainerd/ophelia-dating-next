@@ -128,7 +128,7 @@ const DEFAULT_VENUE_IMAGE = 'https://oyjfhrqfufujmsnqevgr.supabase.co/storage/v1
 
 const getAvatarUrl = async (avatarPath: string | null) => {
   if (!avatarPath) {
-    console.log('No avatar path provided, using default');
+    // console.log('No avatar path provided, using default');
     return DEFAULT_AVATAR;
   }
 
@@ -1500,7 +1500,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const fetchProfiles = async () => {
     try {
       setLoading(true);
-      console.log('Fetching profiles...', currentUser);
+      // console.log('Fetching profiles...', currentUser);
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -1511,7 +1511,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
         .or('relationship_status.eq.single,relationship_status.is.null')
         .limit(50);
 
-      console.log('Query results:', { profilesData, profilesError });
+      // console.log('Query results:', { profilesData, profilesError });
 
       if (profilesError) throw profilesError;
 
@@ -1532,7 +1532,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
         matchPercentage: calculateMatchPercentage(currentUser, profile)
       }));
 
-      console.log('Processed profiles:', profilesWithMatches);
+      // console.log('Processed profiles:', profilesWithMatches);
       setProfiles(profilesWithMatches);
       setLoading(false);
     } catch (error) {
@@ -1557,7 +1557,7 @@ const MatchingPageContent = ({ currentUser }: { currentUser: Profile }) => {
   const indexOfLastProfile = currentPage * profilesPerPage;
   const indexOfFirstProfile = indexOfLastProfile - profilesPerPage;
   const currentProfiles = filteredProfiles.slice(indexOfFirstProfile, indexOfLastProfile);
-  console.log('profile #', filteredProfiles.length)
+  // console.log('profile #', filteredProfiles.length)
 
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);

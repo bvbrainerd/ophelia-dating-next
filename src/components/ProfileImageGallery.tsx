@@ -48,7 +48,7 @@ const getAvatarUrl = async (path: string): Promise<string> => {
       .replace(/^avatars\//, '') // Remove single avatars prefix
       .split('?')[0];  // Remove query parameters
     
-    console.log('Attempting to get URL for path:', cleanPath);
+    // console.log('Attempting to get URL for path:', cleanPath);
     
     // Use getPublicUrl instead of signed URL
     const { data } = supabase.storage
@@ -80,10 +80,10 @@ export default function ProfileImageGallery({
   useEffect(() => {
     const processUrls = async () => {
       try {
-        console.log('Processing images:', images);
+        // console.log('Processing images:', images);
         
         if (!images || images.length === 0) {
-          console.log('No images found, using default avatar');
+          // console.log('No images found, using default avatar');
           setProcessedUrls({ 0: DEFAULT_AVATAR });
           return;
         }
@@ -95,12 +95,12 @@ export default function ProfileImageGallery({
             continue;
           }
           
-          console.log('Processing image:', image.id, image.image_url);
+          // console.log('Processing image:', image.id, image.image_url);
           const processedUrl = await getAvatarUrl(image.image_url);
           urlMap[image.id] = processedUrl;
         }
         
-        console.log('Processed URLs:', urlMap);
+        // console.log('Processed URLs:', urlMap);
         setProcessedUrls(urlMap);
       } catch (error) {
         console.error('Error processing URLs:', error);

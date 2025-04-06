@@ -101,7 +101,7 @@ const getSignedUrl = async (filePath: string) => {
       .replace(/^avatars\//, '') // Remove single avatars prefix
       .split('?')[0];  // Remove query parameters
 
-    console.log('Cleaned path:', cleanPath);
+    // console.log('Cleaned path:', cleanPath);
 
     // Try to get a public URL first
     const { data: publicUrlData } = supabase.storage
@@ -109,7 +109,7 @@ const getSignedUrl = async (filePath: string) => {
       .getPublicUrl(cleanPath);
 
     if (publicUrlData?.publicUrl) {
-      console.log('Generated public URL:', publicUrlData.publicUrl);
+      // console.log('Generated public URL:', publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
     }
 
@@ -123,7 +123,7 @@ const getSignedUrl = async (filePath: string) => {
       return '/images/default-avatar.png';
     }
 
-    console.log('Generated signed URL:', data.signedUrl);
+    // console.log('Generated signed URL:', data.signedUrl);
     return data.signedUrl;
   } catch (error) {
     console.error('Error getting URL:', error);

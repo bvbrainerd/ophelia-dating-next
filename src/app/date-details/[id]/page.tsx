@@ -183,7 +183,7 @@ export default function DateDetailsPage({
       // Get current match ID from params and remove any timestamp
       const fullId = params.id;
       const baseId = fullId.split('-1')[0]; // Remove timestamp if present
-      console.log('Attempting to fetch match with ID:', baseId);
+      // console.log('Attempting to fetch match with ID:', baseId);
 
       // First try to get the match from localStorage
       const storedMatches = localStorage.getItem('todayMatches');
@@ -192,12 +192,12 @@ export default function DateDetailsPage({
       if (storedMatches) {
         const parsedMatches = JSON.parse(storedMatches);
         matchFromStorage = parsedMatches.find((match: any) => match.id === baseId);
-        console.log('Found match in storage:', matchFromStorage);
+        // console.log('Found match in storage:', matchFromStorage);
       }
 
       // If we found it in storage, use that
       if (matchFromStorage) {
-        console.log('Using match from storage:', matchFromStorage);
+        // console.log('Using match from storage:', matchFromStorage);
         setSuggestedDate(matchFromStorage);
         setVenueCoordinates(VENUE_COORDINATES[matchFromStorage.venue] || [-71.0589, 42.3601]);
         const parsedMatches = JSON.parse(storedMatches || '[]');
@@ -217,12 +217,12 @@ export default function DateDetailsPage({
         .eq('id', baseId)
         .maybeSingle();
 
-      console.log('Specific match query:', {
-        match: specificMatch,
-        error: specificError,
-        baseId,
-        userId: session.user.id
-      });
+      // console.log('Specific match query:', {
+      //   match: specificMatch,
+      //   error: specificError,
+      //   baseId,
+      //   userId: session.user.id
+      // });
 
       if (specificError || !specificMatch) {
         console.error('Error fetching match:', specificError || 'Match not found');
@@ -236,11 +236,11 @@ export default function DateDetailsPage({
           `)
           .or(`user_id.eq.${session.user.id},matched_user_id.eq.${session.user.id}`);
 
-        console.log('User matches query:', {
-          matches: userMatches,
-          error: userMatchesError,
-          userId: session.user.id
-        });
+        // console.log('User matches query:', {
+        //   matches: userMatches,
+        //   error: userMatchesError,
+        //   userId: session.user.id
+        // });
 
         if (userMatchesError) {
           console.error('Error fetching user matches:', userMatchesError);
@@ -251,13 +251,13 @@ export default function DateDetailsPage({
         // Try to find the match in user's matches
         const matchFromAll = userMatches?.find(match => match.id === baseId);
         if (!matchFromAll) {
-          console.log('Match not found in any results:', {
-            baseId,
-            matchCount: userMatches?.length || 0,
-            userIdFromSession: session.user.id,
-            availableIds: userMatches?.map(m => m.id),
-            allMatches: userMatches
-          });
+          // console.log('Match not found in any results:', {
+          //   baseId,
+          //   matchCount: userMatches?.length || 0,
+          //   userIdFromSession: session.user.id,
+          //   availableIds: userMatches?.map(m => m.id),
+          //   allMatches: userMatches
+          // });
           router.push('/matching');
           return;
         }
@@ -348,7 +348,7 @@ export default function DateDetailsPage({
 
     // Get the base ID without timestamp
     const baseId = suggestedDate.id.split('-1')[0];
-    console.log('Updating match status for ID:', baseId);
+    // console.log('Updating match status for ID:', baseId);
 
     // Update the status in the database
     try {
@@ -424,7 +424,7 @@ export default function DateDetailsPage({
 
     // Get the base ID without timestamp
     const baseId = suggestedDate.id.split('-1')[0];
-    console.log('Updating match status for ID:', baseId);
+    // console.log('Updating match status for ID:', baseId);
 
     // Update the status in the database
     try {

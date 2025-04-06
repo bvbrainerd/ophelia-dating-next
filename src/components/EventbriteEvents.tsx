@@ -54,7 +54,7 @@ export default function EventbriteEvents() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        console.log('Fetching events...');
+        // console.log('Fetching events...');
         const response = await fetch('/api/eventbrite', {
           method: 'GET',
           headers: {
@@ -64,12 +64,12 @@ export default function EventbriteEvents() {
         });
 
         const data = await response.json();
-        console.log('Response data:', data);
+        // console.log('Response data:', data);
 
         if (!response.ok) {
           // If we got organization data in the error response, log it
           if (data.organizations) {
-            console.log('Available organizations:', data.organizations);
+            // console.log('Available organizations:', data.organizations);
           }
           throw new Error(data.error || `Failed to fetch events: ${response.status}`);
         }
@@ -78,7 +78,7 @@ export default function EventbriteEvents() {
           throw new Error('No events data received');
         }
 
-        console.log('Successfully fetched events:', data.events.length);
+        // console.log('Successfully fetched events:', data.events.length);
         setEvents(data.events);
         setError(null);
       } catch (err) {
