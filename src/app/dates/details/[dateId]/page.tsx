@@ -27,12 +27,52 @@ interface DateDetails {
   payment_amount?: number;
 }
 
+const getAvatarUrl = (avatarPath: string | null) => {
+  if (!avatarPath) return '/images/default-avatar.png';
+  
+  try {
+    // If it's already a public URL or default image, return it directly
+    if (avatarPath.startsWith('http') || avatarPath.startsWith('images/') || avatarPath.startsWith('/images/')) {
+      return avatarPath;
+    }
+
+    // Extract just the filename from the path
+    const filename = avatarPath
+      .split('/')                                // Split by /
+      .filter(part => part !== 'avatars')        // Remove all 'avatars' parts
+      .join('/')                                 // Join remaining parts
+      .split('?')[0];                            // Remove query parameters
+
+    // Get a public URL that doesn't expire
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    if (!publicUrlData?.publicUrl) {
+      throw new Error('Could not generate public URL');
+    }
+
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error('Error getting avatar URL:', error);
+    return '/images/default-avatar.png';
+  }
+};
+
 export default function DateDetailsPage({ params }: { params: { dateId: string } }) {
   const router = useRouter();
   const [dateDetails, setDateDetails] = useState<DateDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchAvatarUrl = async () => {
+      console.log('Avatar URL:', dateDetails?.sender.avatar_url);
+
+      const url = getAvatarUrl(dateDetails?.sender.avatar_url || null);
+      setAvatarUrl(url);
+    };
     const fetchDateDetails = async () => {
       try {
         const { data: dateData, error } = await supabase
@@ -82,6 +122,7 @@ export default function DateDetailsPage({ params }: { params: { dateId: string }
         };
 
         setDateDetails(transformedData);
+        fetchAvatarUrl();
       } catch (error) {
         console.error('Error fetching date details:', error);
       } finally {
@@ -90,7 +131,7 @@ export default function DateDetailsPage({ params }: { params: { dateId: string }
     };
 
     fetchDateDetails();
-  }, [params.dateId]);
+  }, [params.dateId, dateDetails?.sender.avatar_url]);
 
   if (loading) {
     return (
@@ -139,7 +180,7 @@ export default function DateDetailsPage({ params }: { params: { dateId: string }
           <div className="flex items-center mb-8">
             <div className="relative w-20 h-20 rounded-full overflow-hidden mr-4">
               <Image
-                src={dateDetails.sender.avatar_url || '/images/default-avatar.png'}
+                src={avatarUrl || '/images/default-avatar.png'}
                 alt={dateDetails.sender.first_name}
                 fill
                 className="object-cover"
