@@ -1,6 +1,5 @@
 // app/send-request/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/supabase/client';
 import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
@@ -14,6 +13,7 @@ export async function GET(
 ) {
   const id = request.url.split('/').pop();
   try {
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -43,22 +43,11 @@ export async function POST(
     // Get id from URL instead of params
     const id = request.url.split('/').pop();
     
-    // Get the authorization header
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'No authorization header' },
-        { status: 401 }
-      );
-    }
-
     // Create a new Supabase client
     const supabase = await createClient();
 
     // Get user from the token
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    const { data: session } = await supabase.auth.getSession();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(

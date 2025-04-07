@@ -16,7 +16,7 @@ import ProfileImage from '@/components/ProfileImage';
 import Link from 'next/link';
 import TicketView from '@/components/TicketView';
 import { Prompt } from 'next/font/google';
-import { getVenueType } from '@/utils/venues';
+import { getVenueCategory } from '@/utils/venues';
 
 interface Profile {
   id: string;
@@ -1006,8 +1006,14 @@ export default function DateRequestsPage() {
       // Step 7: Redirect to Stripe or payment confirmation  
       if (status === "accepted") {
         console.log(request.venue)
-        const venueType = getVenueType(request.venue);
-        if (!(venueType.toLowerCase().includes("restaurant") || venueType.toLowerCase().includes("cafe") || venueType.toLowerCase().includes("bar"))) {
+        const venueType = getVenueCategory(request.venue);
+        if (!venueType) {
+          console.error("Venue type not found");
+          return;
+        }
+        console.log("Venue type:", venueType);
+        const isPrepay = ["sports", "activity"].includes(venueType);
+        if (isPrepay) {
           const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
           window.open(stripeLink, "_blank", "noopener,noreferrer");
         }

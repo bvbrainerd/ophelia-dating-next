@@ -1025,18 +1025,23 @@ export const getVenueCoordinates = (venueName: string): [number, number] => {
   return venueCoordinates[venueName] || [-71.0589, 42.3601]; // Default to Boston center
 }; 
 
-export const getVenueType = (venueName: string): string => {
-  // Search through all venue categories
-  for (const category in VENUES) {
-    // Find the venue with matching name, case-insensitive
-    const venue = VENUES[category].find(v => 
-      v.name.toLowerCase() === venueName.toLowerCase()
-    );
-    if (venue) {
-      return venue.type;
+export const getVenueCategory = (venueName: string): string | null => {
+  // Try to find the venue by exact match on ID first
+  // for (const [category, venues] of Object.entries(VENUES)) {
+  //   const found = venues.find(venue => venue.id === venueName);
+  //   if (found) {
+  //     return category;
+  //   }
+  // }
+  
+  // Then try to find by name (case insensitive)
+  const searchName = venueName.toLowerCase();
+  for (const [category, venues] of Object.entries(VENUES)) {
+    const found = venues.find(venue => venue.name.toLowerCase() === searchName);
+    if (found) {
+      return category;
     }
   }
   
-  // Return a default type if venue not found
-  return "Venue";
-};
+  return 'default'; // Return null if venue not found in any category
+}

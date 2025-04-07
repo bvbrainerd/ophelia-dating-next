@@ -11,7 +11,7 @@ import VenueSelector from '@/components/VenueSelector';
 import { Venue } from '@/types/venue';
 import EventbriteEvents from '@/components/EventbriteEvents';
 import Link from 'next/link';
-import { VENUES } from '@/utils/venues';
+import { VENUES, getVenueCategory } from '@/utils/venues';
 
 interface Profile {
   id: string;
@@ -359,8 +359,13 @@ export default function DateRequestPage({
     fetchUserProfile();
   }, []);
 
-  const isRestaurantVenue = (venueName: string) => {
-    return VENUES.restaurants.some(venue => venue.name === venueName);
+  const isPrepayVenue = (venueName: string) => {
+    const venueType = getVenueCategory(venueName);
+    if (!venueType) return false;
+    if (['sports', 'activities'].includes(venueType)) {
+      return true;
+    }
+    return false;
   };
 
   const handleVenueSelect = (venueName: string) => {
@@ -416,7 +421,7 @@ export default function DateRequestPage({
           setFormData(prev => ({
             ...prev,
             venue: venueName,
-            split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
+            split_payment: !isPrepayVenue(venueName) ? prev.split_payment : false
           }));
           setShowVenueList(false);
         } catch (err) {
@@ -431,7 +436,7 @@ export default function DateRequestPage({
       setFormData(prev => ({
         ...prev,
         venue: venueName,
-        split_payment: isRestaurantVenue(venueName) ? prev.split_payment : false
+        split_payment: !isPrepayVenue(venueName) ? prev.split_payment : false
       }));
       setShowVenueList(false);
     }
@@ -598,7 +603,7 @@ export default function DateRequestPage({
             </div>
 
             <div>
-              {isRestaurantVenue(formData.venue) ? (
+              {!isPrepayVenue(formData.venue) ? (
                 <>
                   <label className="text-lg font-semibold mb-2 block">
                     Payment Preference
