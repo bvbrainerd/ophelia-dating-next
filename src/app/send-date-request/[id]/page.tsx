@@ -439,10 +439,16 @@ export default function DateRequestPage({
 
   const sendDateRequestNotification = async (receiverEmail: string, requestDetails: any) => {
     try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.access_token) {
+        throw new Error("No active session");
+      }
+
       const response = await fetch(`/api/send-date-request/${profileId}`, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           sender_id: requestDetails.sender_id,

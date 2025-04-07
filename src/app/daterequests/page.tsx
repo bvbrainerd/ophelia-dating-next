@@ -36,7 +36,7 @@ interface DateRequest {
   id: string;
   sender_id: string;
   receiver_id: string;
-  status: string;
+  status: 'accepted' | 'declined' | null;
   created_at: string;
   updated_at: string;
   proposed_time: string | null;
@@ -54,6 +54,8 @@ interface DateRequest {
   payment_amount?: number;
   payment_method_id?: string;
   stripe_payment_intent_id?: string;
+  reservation_url?: string;
+  booking_status?: 'none' | 'in_progress' | 'confirmed' | 'failed';
 }
 
 interface ValentineRequest {
@@ -813,7 +815,8 @@ export default function DateRequestsPage() {
           latitude: request.latitude,
           longitude: request.longitude,
           venue_id: request.venue_id,
-          date_time: request.date_reservations?.[0]?.date_time || new Date().toISOString()
+          date_time: request.date_reservations?.[0]?.date_time || new Date().toISOString(),
+          reservation_url: request.reservation_url,
         };
       });
 
@@ -891,13 +894,14 @@ export default function DateRequestsPage() {
   const handleDateResponse = async (requestId: string, status: 'accepted' | 'declined') => {
     console.log('Handling date response:', { requestId, status });
     try {
-      // Step 1: Get the date request details first
+      // Step 1: Fetch date request details 
       const { data: request, error: requestError } = await supabase
         .from('date_requests')
         .select('*')
         .eq('id', requestId)
         .single();
-        console.log('request.id:', request.id);
+      
+      console.log('request.id:', request.id);
 
       console.log('request:', request);
 
@@ -905,117 +909,193 @@ export default function DateRequestsPage() {
         console.log('dateRequest not found');
         throw requestError || new Error('Date request not found');
       }
-      if (status === 'accepted') {
-        // Step 2: Trigger reservation API call before updating DB
+
+      // Step 2: Handle Decline Flow
+      if (status === 'declined') {
+        // Send decline emails
         try {
-          const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
+          await fetch('/api/email/date-declined', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              sender_id: request.sender_id,
+              receiver_id: request.receiver_id,
+              venue: request.venue,
+              proposed_time: request.proposed_time || request.created_at,
+            }),
           });
-          const reservationTime = new Date(request.proposed_time || request.created_at).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          });
-          console.log('reservation date', reservationDate);
-          console.log('reservation time', reservationTime);
-
-          // const reservationResponse = await fetch("/api/reserve/opentable", {
-          //   method: "POST",
-          //   headers: {
-          //     "Content-Type": "application/json",
-          //   },
-          //   body: JSON.stringify({
-          //     restaurantName: request.venue,
-          //     restaurantURL: '',
-          //     reservationTime: reservationTime,
-          //     reservationDate: reservationDate,
-          //   }),
-          // });
-
-          // const reservationData = await reservationResponse.json();
-
-          // if (!reservationData.success) {
-          //   alert("Reservation failed: " + reservationData.error);
-          //   return; // Stop here if reservation failed
-          // }
-
-          // Optional: store reservationData.url in the database if needed
-
-          // alert("Reservation confirmed! You can view it here:" + reservationData.url);
-        } catch (error) {
-          console.error("Error during reservation booking:", error);
-          toast.error("Reservation booking failed");
-          return;
+        } catch (err) {
+          console.error("Decline email failed:", err);
         }
-      }
 
-      // Step 3. Update the request status in Supabase
-      const { data: data, status: resStatus, statusText: statusText } = await supabase
+        // Update DB with declined status
+        await supabase
         .from('date_requests')
         .update({
-          status: status,
-          updated_at: new Date().toISOString()
+            status: 'declined',
+            booking_status: 'none',
+            updated_at: new Date().toISOString(),
         })
-        .filter('id', 'eq', requestId)
-        .select();
+        .eq('id', requestId);
 
-      console.log('Update response:', { data, status: resStatus, statusText });
-      // console.log('Update response:', { error: updateError });
+        setDateRequests((prev: DateRequest[]) => prev.filter((req) => req.id !== requestId));
+        return;
+      }
 
-      // if (updateError) throw updateError;
 
-      // Step 3: If accepted, update match status (optional if you're tracking this in another table)
+      // Step 3: Handle Acceptance Flow - Notify that booking is in progress
       if (status === 'accepted') {
-        const baseId = requestId.split('-1')[0]; // Assumes -1 is added to make ID unique
+        // Send acceptance emails
+        try {
+          await fetch('/api/email/date-accepted', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              sender_id: request.sender_id,
+              receiver_id: request.receiver_id,
+              venue: request.venue,
+              proposed_time: request.proposed_time || request.created_at,
+              proposed_payment: request.proposed_payment,
+            }),
+          });
+        } catch (err) {
+          console.error("Acceptance email failed:", err);
+        }
+
+        // Update DB: status accepted, booking in progress
+        await supabase
+          .from('date_requests')
+          .update({
+            status: 'accepted',
+            booking_status: 'in_progress',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', requestId);
+
+        const reservationDate = new Date(request.proposed_time || request.created_at).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric"
+        });
+        const reservationTime = new Date(request.proposed_time || request.created_at).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true
+        });
+
+        try {
+          // Step 4: Attempt reservation
+          const reservationResponse = await fetch("/api/reserve/opentable", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              date_request_id: request.id,
+              restaurantName: request.venue,
+              restaurantURL: "",
+              reservationTime,
+              reservationDate,
+            }),
+          });
+
+          const reservationData = await reservationResponse.json();
+
+          if (!reservationData.success) {
+            throw new Error(reservationData.error || "Unknown booking failure");
+          }
+
+          // Step 5: Update DB with reservation URL and booking confirmed
+          await supabase
+            .from("date_requests")
+            .update({
+              reservation_url: reservationData.details.url,
+              booking_status: "confirmed"
+            })
+            .eq("id", request.id);
+
+          const confirmEmailResponse = await fetch('/api/email/reservation-confirmed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date_request_id: request.id,
+              reservation_url: reservationData.details.url,
+            }),
+          });
+
+          {/*if (!confirmEmailResponse.ok) {
+            const error = await confirmEmailResponse.json();
+            throw new Error("Failed to send reservation confirmation email:", error);
+          }*/}
+
+          toast.success("Reservation confirmed!");
+          alert("Reservation confirmed! You can view it here:" + reservationData.details.url);
+        } catch (bookingError) {
+          console.error("Reservation failed:", bookingError);
+
+          await supabase
+            .from("date_requests")
+            .update({
+              booking_status: "failed"
+            })
+            .eq("id", request.id);
+
+          // TODO: Create and call /api/email/booking-failed
+          toast.error("Booking failed, but we're working on it!");
+
+
+          const bookingFailedEmailResponse = await fetch('/api/email/booking-failed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              date_request_id: request.id,
+            })
+          });
+
+          {/*if (!bookingFailedEmailResponse.ok) {
+            const error = await bookingFailedEmailResponse.json();
+            throw new Error("Failed to send booking failure email:", error);
+          }*/}
+        }
+
+        // Update match status if applicable
+        const baseId = requestId.split('-1')[0]; // What does this code do?
         try {
           await supabase
-          .from('daily_matches')
-          .update({ status: "accepted"})
-          .eq('id', baseId); 
+            .from('daily_matches')
+            .update({ status: "accepted" })
+            .eq('id', baseId);
         } catch (error) {
-          console.warn("Match status update failed:", error);
+          console.warn('daily_matches update failed:', error);
         }
-      }
 
-      // Step 4: Update local state to remove from current list
-      setDateRequests(prev => prev.filter(req => req.id !== requestId));
+        // Step 6: Update local state 
+        setDateRequests((prev: DateRequest[]) => prev.filter((req) => req.id !== requestId));
+        setUpcomingDates((prev: DateRequest[]) => [
+          ...prev,
+          {
+            ...request,
+            status: 'accepted',
+            booking_status: "in_progress", // may be updated to 'confirmed' later
+            date_time: request.proposed_time || request.created_at,
+          },
+        ]);
 
-      // step 5: Add date request to upcomingDates if accepted
-      if (status === 'accepted') {
-        const updatedRequest = {
-          ...request,
-          status: 'accepted',
-          date_time: request.proposed_time || request.created_at
-        };
-        setUpcomingDates(prev => [...prev, updatedRequest]);
-      }
-      
-
-      // step 6: Add date request to upcomingDates if accepted
-      if (status === 'accepted') {
-        const updatedRequest = {
-          ...request,
-          status: 'accepted',
-          date_time: request.proposed_time || request.created_at
-        };
-        setUpcomingDates(prev => [...prev, updatedRequest]);
-      }
-      
-
-      // Step 7: Redirect to Stripe or payment confirmation  
-      if (status === "accepted") {
-        console.log(request.venue)
+        // Step 7: Open Stripe payment link if applicable
         const venueType = getVenueType(request.venue);
-        if (!(venueType.toLowerCase().includes("restaurant") || venueType.toLowerCase().includes("cafe") || venueType.toLowerCase().includes("bar"))) {
-          const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"]; // Fallback link
+        if (
+          !['restaurant', 'cafe', 'bar'].some((keyword) =>
+            venueType.toLowerCase().includes(keyword)
+          )
+        ) {
+          const stripeLink = stripeLinks[request.venue] || stripeLinks["BC Basketball"];
           window.open(stripeLink, "_blank", "noopener,noreferrer");
         }
-        router.refresh(); // ✅  Can customize this redirect
+
+        router.refresh();
       }
     } catch (error) {
-      console.error("Error handling date response:", error);
-      toast.error("Failed to process your response. Please try again.");
+      console.error('handleDateResponse failed:', error);
+      toast.error("Something went wrong. Please try again.");
     }
   };
 
@@ -1296,6 +1376,19 @@ export default function DateRequestsPage() {
                             <Calendar className="w-4 h-4" />
                             {date.venue}
                           </div>
+                          {/* Reservation Link (if available) */}
+                          {date.reservation_url && (
+                            <div className="mt-4">
+                              <a
+                                href={date.reservation_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 underline mt-1"
+                              >
+                                View Reservation
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
 

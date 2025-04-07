@@ -4,6 +4,7 @@ import { supabase } from '@/supabase/client';
 import { createClient } from '@/supabase/server';
 import { cookies } from 'next/headers';
 import sgMail from '@sendgrid/mail';
+import { mg } from '@/lib/mailgun';
 
 
 // Initialize SendGrid with your API key
@@ -122,63 +123,90 @@ export async function POST(
     }
 
     // Send email using SendGrid template
-    const msg = {
-      to: receiverProfile.email,
-      from: {
-        email:'dates@opheliadating.io',
-        name: 'Ophelia Dating'
-      },
-      templateId: process.env.SENDGRID_DATE_NOTIFICATION_TEMPLATE_ID!,
-      dynamicTemplateData: {
-        user: {
-          name: receiverProfile.first_name,
-        },
-        senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
-        venue: body.venue,
-        dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true
-        }),
-        paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
-        dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
-      },
-      mailSettings: {
-        bypassListManagement: {
-          enable: true // This is a transactional email
-        },
-        sandboxMode: {
-          enable: false
-        }
-      },
-      trackingSettings: {
-        clickTracking: {
-          enable: true
-        },
-        openTracking: {
-          enable: true
-        }
-      }
-    };
+    // const msg = {
+    //   to: receiverProfile.email,
+    //   from: {
+    //     email:'dates@opheliadating.io',
+    //     name: 'Ophelia Dating'
+    //   },
+    //   templateId: process.env.SENDGRID_DATE_NOTIFICATION_TEMPLATE_ID!,
+    //   dynamicTemplateData: {
+    //     user: {
+    //       name: receiverProfile.first_name,
+    //     },
+    //     senderName: `${senderProfile.first_name} ${senderProfile.last_name}`,
+    //     venue: body.venue,
+    //     dateTime: new Date(body.proposed_time).toLocaleString('en-US', {
+    //       weekday: 'long',
+    //       year: 'numeric',
+    //       month: 'long',
+    //       day: 'numeric',
+    //       hour: 'numeric',
+    //       minute: 'numeric',
+    //       hour12: true
+    //     }),
+    //     paymentAmount: body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender',
+    //     dashboardLink: `${process.env.NEXT_PUBLIC_BASE_URL}/daterequests`
+    //   },
+    //   mailSettings: {
+    //     bypassListManagement: {
+    //       enable: true // This is a transactional email
+    //     },
+    //     sandboxMode: {
+    //       enable: false
+    //     }
+    //   },
+    //   trackingSettings: {
+    //     clickTracking: {
+    //       enable: true
+    //     },
+    //     openTracking: {
+    //       enable: true
+    //     }
+    //   }
+    // };
 
-    console.log(msg);
-
+    // Send email to receivee using Mailgun
+    let emailResponse;
     try {
-      const emailResult = await sgMail.send(msg);
-      console.log('Email sent successfully:', emailResult);
-    } catch (emailError: any) {
-      console.error('SendGrid Error:', emailError);
-      console.log('SendGrid Error:', emailError.response.body);
-      if (emailError.response?.body) {
-        console.error(emailError.response.body);
+        emailResponse = await mg.messages.create(process.env.MAILGUN_SANDBOX_DOMAIN!, {
+        from: `Ophelia Dating <${process.env.MAILGUN_FROM_EMAIL}>`,
+        to: [`Varun Singh <singhva@bc.edu>`],
+        subject: `Test Email`,
+        text: `Hey ${receiverProfile.first_name},\n\nYou have a new date request from ${senderProfile.first_name} ${senderProfile.last_name}.`,
+        html: `
+          <p>Hi ${receiverProfile.first_name},</p>
+          <p>You have a new date request from ${senderProfile.first_name} ${senderProfile.last_name}!</p>
+          <p><strong>Venue:</strong> ${body.venue}</p>
+          <p><strong>Time:</strong> ${new Date(body.proposed_time).toLocaleString('en-US')}</p>
+          <p><strong>Payment:</strong> ${body.proposed_payment ? `$${body.proposed_payment}` : 'Pre-paid by sender'}</p>
+          <p><a href="${process.env.NEXT_PUBLIC_BASE_URL}/daterequests">View on Dashboard</a></p>
+        `
+    });
+      if (emailResponse?.id) {
+        console.log('✅ Email successfully queued by Mailgun.');
+      } else {
+        console.warn('⚠️ Unexpected Mailgun response:', emailResponse);
       }
+      console.log('Mailgun response:', emailResponse);
+    } catch (error) {
+      console.error(`Mailgun Email Error:`, error);
       // Don't throw here - we still want to return success for the date request
       // but we should log the error for monitoring
     }
+
+    // try {
+    //   const emailResult = await sgMail.send(msg);
+    //   console.log('Email sent successfully:', emailResult);
+    // } catch (emailError: any) {
+    //   console.error('SendGrid Error:', emailError);
+    //   console.log('SendGrid Error:', emailError.response.body);
+    //   if (emailError.response?.body) {
+    //     console.error(emailError.response.body);
+    //   }
+    //   // Don't throw here - we still want to return success for the date request
+    //   // but we should log the error for monitoring
+    // }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/supabase/server';
 // import { chromium } from 'playwright';
 
 // List of user agents to rotate through
@@ -24,13 +25,42 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { restaurantName, reservationTime, reservationDate } = body;
+    const { restaurantName, reservationTime, reservationDate, date_request_id } = body;
 
     if (!restaurantName || !reservationTime || !reservationDate) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // Right before returing the success, call email API to indicate that reservation has been made
+
+    // How does this fetch all work? Why do I need the NEXT_PUBLIC_BASE_URL key?
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/email/reservation-confirmed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        date_request_id: date_request_id, // Make sure to pass this from the client /daterequests/page.tsx
+        reservation_url: `https://www.opentable.com/search?text=${encodeURIComponent(restaurantName)}`,
+      }),
+    });
+
+    //After email is sent
+    // Create Supabase client
+    const supabase = await createClient();
+    // Save reservation URL to date_requests
+    const { error: updateError } = await supabase
+      .from('date_requests')
+      .update({
+        reservation_url: `https://www.opentable.com/search?text=${encodeURIComponent(restaurantName)}`,
+      })
+      .eq('id', date_request_id);
+
+    if (updateError) {
+      console.error("Failed to update reservation_url in Supabase:", updateError);
     }
 
     // Return a mock success response
