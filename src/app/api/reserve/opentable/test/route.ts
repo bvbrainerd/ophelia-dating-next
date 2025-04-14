@@ -4,11 +4,33 @@ import { chromium } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from 'redis';
 
+/* Restaurants with seating options for reservations:
+* - Buttermilk & Bourbon
+* - Blue Ribbon Sushi
+* - Moo Seaport
+* - Krasi
+* - Branch Line
+* - Capital Grille
+*/
+
+/* Restaurants without OpenTable Reservations:
+* - Capo
+* - Lolita Back Bay
+* - Kava
+* - Carmelina's North End
+* - Coquette
+* - Boston Burger Company
+* - Lola 42
+* - Bartaco
+* - 
+*/
+
 function getRandomUserAgent() {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
 async function tryVerificationCode(uniqueId: string, reservationPage: any) {
+  //
   let verificationCode = await getVerificationCode(uniqueId);    
   console.log(uniqueId);
   const verificationCodeInput = reservationPage.locator('iframe[title="Sign in"]').contentFrame().locator('[data-test="verification-code-input"]');
@@ -38,13 +60,13 @@ async function tryVerificationCode(uniqueId: string, reservationPage: any) {
 
       await resendCodeButton.click();
 
+      await reservationPage.waitForTimeout(5000);
       // Check if the code was resent successfully
       const codeResentNotif = reservationPage
         .locator('iframe[title="Sign in"]')
         .contentFrame()
         .getByText('A code has been successfully resent.');
 
-      await reservationPage.waitForTimeout(5000);
       if (await codeResentNotif.count() > 0) {
         verificationCode = await getVerificationCode(uniqueId);
         const verificationCodeInput = reservationPage
@@ -186,6 +208,12 @@ export async function POST(request: Request) {
     await reservationPage.waitForLoadState();
     const reservationLink = reservationPage.getByRole('link', { name: reservationTime });
     await reservationLink.click();
+
+    const seatingOptionDefault = reservationPage.locator('button[data-test="seatingOption-default-button"]');
+    await reservationPage.waitForTimeout(1000);
+    if (await seatingOptionDefault.count() > 0) {
+      await seatingOptionDefault.click();
+    }
     // for(let i = 0; i < reservationTimes.length; i++) {
     //   const time = reservationTimes[i];
     //   try {
@@ -301,13 +329,14 @@ export async function POST(request: Request) {
     console.log('Reservation attempt completed.');
     await reservationPage.pause();
 
+    await browser.close();
 
-    return NextResponse.json({ success: true, message: 'Reservation attempt completed.', url: copiedLink });
+    return NextResponse.json({ success: true, message: 'Reservation attempt completed.', url: copiedLink }, { status: 200 });
   } catch (error) {
     console.error('Error during automation:', error);
-    return NextResponse.json({ success: false, error: error }, { status: 500 });
-  } finally {
     await browser.close();
+
+    return NextResponse.json({ success: false, message: 'Could not book a reservation.' }, { status: 500 });
   }
 }
 
